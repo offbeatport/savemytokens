@@ -1,0 +1,9 @@
+project,monthly_revenue,plan
+prod-chat-api,18000,Enterprise
+doc-extraction,4000,Scale
+batch-tagging,9000,Growth
+support-assistant,14000,Pro
+reasoning-pipeline,2000,Team
+default,0,Free
+internal-eval,0,Enterprise
+embeddings-rerank,3000,Scale

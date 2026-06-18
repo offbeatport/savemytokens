@@ -1,0 +1,8 @@
+project,monthly_revenue,plan
+checkout-agent,3000,Pro
+support-bot,9000,Scale
+doc-summarizer,2000,Team
+batch-classifier,6000,Growth
+reasoning-jobs,0,Enterprise
+default,0,Pro
+internal-tools,0,Scale

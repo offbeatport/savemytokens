@@ -1,0 +1,22 @@
+usage_date,service,model,project_id,requests,input_tokens,output_tokens,thinking_tokens,cost,errors
+2026-06-09,Generative Language API,gemini-2.5-pro,vision-api,3207,11379167,2258497,1355098,36.81,0
+2026-06-10,Generative Language API,gemini-2.5-pro,vision-api,4412,16089761,3161123,1896674,51.72,0
+2026-06-11,Generative Language API,gemini-2.5-pro,vision-api,3754,13669798,2726443,1635866,44.35,0
+2026-06-12,Generative Language API,gemini-2.5-pro,vision-api,5188,18573535,3910796,2346478,62.32,0
+2026-06-13,Generative Language API,gemini-2.5-pro,vision-api,10657,36696267,7042056,4225234,116.29,0
+2026-06-14,Generative Language API,gemini-2.5-pro,vision-api,2949,10555730,1928684,1157210,32.48,0
+2026-06-15,Generative Language API,gemini-2.5-pro,vision-api,2499,8531393,1748066,1048840,28.14,0
+2026-06-09,Generative Language API,gemini-2.5-flash,summaries,5040,47516988,7920960,4752576,34.06,0
+2026-06-10,Generative Language API,gemini-2.5-flash,summaries,6934,63875358,9941975,5965185,44.02,0
+2026-06-11,Generative Language API,gemini-2.5-flash,summaries,5900,53406323,8755324,5253194,37.91,0
+2026-06-12,Generative Language API,gemini-2.5-flash,summaries,8153,67590947,11390901,6834541,48.75,0
+2026-06-13,Generative Language API,gemini-2.5-flash,summaries,16747,150642938,23817897,14290738,104.74,0
+2026-06-14,Generative Language API,gemini-2.5-flash,summaries,4633,38419858,7297541,4378525,29.77,0
+2026-06-15,Generative Language API,gemini-2.5-flash,summaries,3927,33430690,6176576,3705946,25.47,0
+2026-06-09,Generative Language API,gemini-1.5-flash,classifier,77890,123535167,13140764,0,13.21,7789
+2026-06-10,Generative Language API,gemini-1.5-flash,classifier,107155,172372854,20641303,0,19.12,10716
+2026-06-11,Generative Language API,gemini-1.5-flash,classifier,91178,136349397,15375953,0,14.84,9118
+2026-06-12,Generative Language API,gemini-1.5-flash,classifier,125993,180515464,21790727,0,20.08,12599
+2026-06-13,Generative Language API,gemini-1.5-flash,classifier,258813,412314165,43358720,0,43.93,25881
+2026-06-14,Generative Language API,gemini-1.5-flash,classifier,71608,112809109,12987338,0,12.36,7161
+2026-06-15,Generative Language API,gemini-1.5-flash,classifier,60696,96420065,11422679,0,10.66,6070

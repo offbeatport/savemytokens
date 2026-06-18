@@ -1,0 +1,207 @@
+@import "tailwindcss";
+
+/* ───────────────────────────────────────────────────────────
+   SaveMyTokens - design system
+   Flat, founder-friendly SaaS. Hairline borders, generous space,
+   large light Space Grotesk titles. No heavy cards / shadows.
+   Differentiation lives in TYPE SCALE and a single savings-green
+   accent - text stays near-monochrome ink.
+   ─────────────────────────────────────────────────────────── */
+
+@theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Space Grotesk", "Inter", -apple-system, sans-serif;
+
+  /* Surfaces - warm paper */
+  --color-background: oklch(0.992 0.004 95);
+  --color-surface: oklch(1 0 0);
+  --color-surface-sunken: oklch(0.975 0.005 95);
+
+  /* Ink (text) - keep near-monochrome */
+  --color-foreground: oklch(0.23 0.012 75);
+  --color-muted: oklch(0.54 0.012 80);
+  --color-faint: oklch(0.68 0.01 85);
+
+  /* Hairlines */
+  --color-border: oklch(0.912 0.006 90);
+  --color-border-strong: oklch(0.83 0.008 88);
+
+  /* Brand / savings green - the one accent */
+  --color-primary: oklch(0.585 0.122 162);
+  --color-primary-foreground: oklch(0.99 0.004 150);
+  --color-primary-soft: oklch(0.955 0.038 162);
+  --color-primary-strong: oklch(0.5 0.12 162);
+
+  /* Semantic - health / risk */
+  --color-good: oklch(0.6 0.13 158);
+  --color-good-soft: oklch(0.955 0.04 158);
+  --color-good-ink: oklch(0.44 0.12 158);
+  --color-watch: oklch(0.74 0.142 78);
+  --color-watch-soft: oklch(0.965 0.05 86);
+  --color-watch-ink: oklch(0.47 0.1 66);
+  --color-risk: oklch(0.585 0.19 27);
+  --color-risk-soft: oklch(0.96 0.035 30);
+  --color-risk-ink: oklch(0.5 0.19 27);
+
+  /* Data viz ramp (charts) */
+  --color-chart-1: oklch(0.585 0.122 162);
+  --color-chart-2: oklch(0.62 0.11 230);
+  --color-chart-3: oklch(0.74 0.142 78);
+  --color-chart-4: oklch(0.6 0.16 320);
+  --color-chart-5: oklch(0.585 0.19 27);
+  --color-chart-6: oklch(0.55 0.04 250);
+
+  --radius-sm: 0.375rem;
+  --radius: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.125rem;
+
+  --container-page: 72rem;
+}
+
+/* ── Dark theme ──────────────────────────────────────────────
+   Token-only override: every utility reads var(--color-*), so flipping these
+   under .dark recolors the whole app. -soft become dark tints; -ink become
+   bright text (badges); the emerald accent brightens for contrast. */
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --color-background: oklch(0.17 0.006 75);
+  --color-surface: oklch(0.205 0.008 75);
+  --color-surface-sunken: oklch(0.245 0.009 75);
+
+  --color-foreground: oklch(0.93 0.006 85);
+  --color-muted: oklch(0.72 0.01 85);
+  --color-faint: oklch(0.56 0.01 85);
+
+  --color-border: oklch(0.29 0.008 80);
+  --color-border-strong: oklch(0.38 0.01 80);
+
+  --color-primary: oklch(0.7 0.14 162);
+  --color-primary-foreground: oklch(0.17 0.03 162);
+  --color-primary-soft: oklch(0.3 0.06 162);
+  --color-primary-strong: oklch(0.8 0.13 162);
+
+  --color-good: oklch(0.7 0.14 158);
+  --color-good-soft: oklch(0.29 0.05 158);
+  --color-good-ink: oklch(0.82 0.13 158);
+  --color-watch: oklch(0.8 0.14 80);
+  --color-watch-soft: oklch(0.32 0.05 80);
+  --color-watch-ink: oklch(0.87 0.12 85);
+  --color-risk: oklch(0.68 0.18 27);
+  --color-risk-soft: oklch(0.32 0.08 27);
+  --color-risk-ink: oklch(0.83 0.15 27);
+
+  --color-chart-1: oklch(0.7 0.14 162);
+  --color-chart-2: oklch(0.7 0.12 230);
+  --color-chart-3: oklch(0.8 0.14 78);
+  --color-chart-4: oklch(0.72 0.16 320);
+  --color-chart-5: oklch(0.68 0.18 27);
+  --color-chart-6: oklch(0.72 0.04 250);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    letter-spacing: -0.005em;
+  }
+
+  h1, h2, h3, h4, h5 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--color-foreground);
+    text-wrap: balance;
+  }
+
+  /* Large + light display scale - the primary source of hierarchy */
+  h1 { font-size: clamp(2.5rem, 5.5vw, 4.25rem); line-height: 1.02; font-weight: 300; }
+  h2 { font-size: clamp(1.9rem, 3.5vw, 2.75rem); line-height: 1.08; font-weight: 300; }
+  h3 { font-size: clamp(1.35rem, 2vw, 1.65rem); line-height: 1.18; font-weight: 400; }
+  h4 { font-size: 1.15rem; line-height: 1.3; font-weight: 500; }
+  h5 { font-size: 0.95rem; line-height: 1.4; font-weight: 600; }
+
+  p { line-height: 1.6; }
+
+  ::selection {
+    background: var(--color-primary-soft);
+    color: var(--color-primary-strong);
+  }
+
+  /* Tabular numerals for all money/metrics */
+  .tnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+}
+
+@layer components {
+  /* Eyebrow / kicker label */
+  .eyebrow {
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  /* Flat grouped section - hairline border, no fill, no shadow */
+  .section-rule {
+    border-top: 1px solid var(--color-border);
+  }
+
+  /* Markdown prose (founder memo etc.) */
+  .prose-smt { color: var(--color-foreground); font-size: 0.95rem; line-height: 1.65; }
+  .prose-smt h2 { font-size: 1.35rem; font-weight: 400; margin: 0 0 0.75rem; }
+  .prose-smt h3 { font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+  .prose-smt p { margin: 0 0 0.9rem; }
+  .prose-smt strong { font-weight: 600; color: var(--color-foreground); }
+  .prose-smt ul { margin: 0 0 0.9rem; padding-left: 1.1rem; list-style: disc; }
+  .prose-smt ol { margin: 0 0 0.9rem; padding-left: 1.2rem; list-style: decimal; }
+  .prose-smt li { margin: 0.3rem 0; }
+  .prose-smt li::marker { color: var(--color-faint); }
+  .prose-smt a { color: var(--color-primary); text-decoration: underline; text-underline-offset: 2px; }
+  .prose-smt em { color: var(--color-muted); }
+  .prose-smt hr { border: none; border-top: 1px solid var(--color-border); margin: 1.25rem 0; }
+  .prose-smt code { font-size: 0.85em; background: var(--color-surface-sunken); padding: 0.1rem 0.35rem; border-radius: 0.3rem; }
+}
+
+/* Print: drop site chrome so the report exports cleanly to PDF */
+@media print {
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+  .print-block {
+    break-inside: avoid;
+  }
+}
+
+/* Recharts: inherit our type + remove default focus outline boxes */
+.recharts-surface { overflow: visible; }
+.recharts-text { font-family: var(--font-sans); }
+.recharts-cartesian-axis-tick-value { fill: var(--color-muted); font-size: 11px; }
+.recharts-default-tooltip {
+  border-radius: var(--radius) !important;
+  border: 1px solid var(--color-border) !important;
+  font-family: var(--font-sans) !important;
+}
