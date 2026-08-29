@@ -26,8 +26,6 @@ export const Route = createFileRoute('/s/$scanId/r/$reportSlug/')({
   component: SnapshotPage,
 })
 
-const FAUX_IMPACT = ['$2,400/mo', '$1,180/mo', '$760/mo', '$430/mo', '$2,950/mo', '$910/mo']
-
 function SnapshotPage() {
   const r = Route.useLoaderData()
   const { scanId, reportSlug } = Route.useParams()
@@ -41,7 +39,19 @@ function SnapshotPage() {
   const [error, setError] = React.useState<string | null>(null)
 
   const hasOpps = s.opportunityCount > 0
-  const hasLocked = s.lockedCount > 0 && s.lockedCategories.length > 0
+  const conf = s.confirmed
+  const susp = s.suspected
+  const hasTiers = hasOpps && (conf?.count ?? 0) + (susp?.count ?? 0) > 0
+  // Locked categories grouped by tier (Confirmed first). Falls back to the legacy
+  // untiered list if an older snapshot lacks the split.
+  const lockedCats =
+    conf || susp
+      ? [
+          ...(conf?.categories ?? []).map((label) => ({ label, tier: 'confirmed' as const })),
+          ...(susp?.categories ?? []).map((label) => ({ label, tier: 'suspected' as const })),
+        ]
+      : s.lockedCategories.map((label) => ({ label, tier: 'suspected' as const }))
+  const hasLocked = s.lockedCount > 0 && lockedCats.length > 0
   const ctaCopy = hasOpps ? `Unlock exact fixes for ${usd(REPORT_PRICE)}.` : `Unlock the full report for ${usd(REPORT_PRICE)}.`
   const includes = meta?.includes ?? []
 
@@ -100,6 +110,7 @@ function SnapshotPage() {
           </h1>
           <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3">
             <Stat label="Spend analyzed" value={usd(s.spendAnalyzed)} sub={s.periodLabel} />
+            <Stat label="Top model" value={s.topModel.model} sub={`${pct(s.topModel.pct)} of spend`} />
             {s.costBasis && (
               <Badge tone={s.costBasis === 'actual' ? 'primary' : 'neutral'} dot>
                 {s.costBasis === 'actual' ? 'Actual' : s.costBasis === 'mixed' ? 'Mixed' : 'Estimated'}
@@ -120,31 +131,40 @@ function SnapshotPage() {
         </p>
       )}
 
-      {hasOpps && (
+      {hasTiers && (
         <Panel className="mt-12 overflow-hidden">
-          <div className="grid divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-            <Stat
-              className="p-5 sm:p-6"
-              label="Estimated savings"
-              value={usdRange(s.estSavingsLow, s.estSavingsHigh)}
-              sub="per month"
-              valueClassName="text-2xl text-primary-strong"
-            />
-            <Stat
-              className="p-5 sm:p-6"
-              label="Opportunities found"
-              value={num(s.opportunityCount)}
-              sub="in this report"
-              valueClassName="text-2xl"
-            />
-            <Stat
-              className="p-5 sm:p-6"
-              label="Top model"
-              value={s.topModel.model}
-              sub={`${pct(s.topModel.pct)} of spend`}
-              valueClassName="text-2xl"
-            />
+          <div className="grid divide-y divide-border sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+            <div className="p-5 sm:p-6">
+              <div className="flex items-center gap-2">
+                <Badge tone="good" dot>
+                  Confirmed
+                </Badge>
+                <span className="text-xs text-faint">provable from your metadata</span>
+              </div>
+              <div className="tnum mt-3 text-2xl text-good-ink">
+                {usdRange(conf?.savingsLow ?? 0, conf?.savingsHigh ?? 0)}
+              </div>
+              <div className="mt-1 text-sm text-muted">
+                {num(conf?.count ?? 0)} confirmed {(conf?.count ?? 0) === 1 ? 'finding' : 'findings'} · per month
+              </div>
+            </div>
+            <div className="p-5 sm:p-6">
+              <div className="flex items-center gap-2">
+                <Badge tone="watch" dot>
+                  Suspected
+                </Badge>
+                <span className="text-xs text-faint">worth investigating</span>
+              </div>
+              <div className="tnum mt-3 text-2xl text-foreground">
+                {usdRange(susp?.savingsLow ?? 0, susp?.savingsHigh ?? 0)}
+              </div>
+              <div className="mt-1 text-sm text-muted">{num(susp?.count ?? 0)} to investigate · per month</div>
+            </div>
           </div>
+          <p className="border-t border-border px-5 py-3 text-xs text-faint">
+            We separate what we can prove from your metadata from what&rsquo;s worth investigating - and never add the
+            two into a single number.
+          </p>
         </Panel>
       )}
 
@@ -187,28 +207,26 @@ function SnapshotPage() {
         <section className="mt-12">
           <h3 className="flex items-center gap-2.5">
             <Lock className="size-5 shrink-0 text-faint" aria-hidden />
-            {s.lockedCount} more {s.lockedCount === 1 ? 'opportunity' : 'opportunities'} found
-            <span className="text-muted"> - including higher-impact savings</span>
+            {s.lockedCount} more {s.lockedCount === 1 ? 'opportunity' : 'opportunities'} locked
           </h3>
           <Panel className="mt-5 overflow-hidden">
             <ul className="divide-y divide-border">
-              {s.lockedCategories.map((cat, i) => (
-                <li key={cat} className="flex items-center justify-between gap-4 px-5 py-4">
+              {lockedCats.map(({ label, tier }) => (
+                <li key={`${tier}-${label}`} className="flex items-center justify-between gap-4 px-5 py-4">
                   <div className="flex min-w-0 items-center gap-3">
                     <Lock className="size-4 shrink-0 text-faint" aria-hidden />
-                    <span className="truncate text-foreground">{cat}</span>
+                    <span className="truncate text-foreground">{label}</span>
                   </div>
-                  <span aria-hidden className="tnum shrink-0 select-none text-muted blur-[3px]">
-                    {FAUX_IMPACT[i % FAUX_IMPACT.length]}
-                  </span>
-                  <span className="sr-only">Locked - unlock the full report to view</span>
+                  <Badge tone={tier === 'confirmed' ? 'good' : 'watch'} size="sm">
+                    {tier === 'confirmed' ? 'Confirmed' : 'Suspected'}
+                  </Badge>
                 </li>
               ))}
             </ul>
           </Panel>
           <p className="mt-4 max-w-2xl leading-relaxed text-muted">
-            Unlock the full report to see exact affected projects, models, estimated impact, and
-            recommended fixes.
+            Unlock the full report to see exact affected projects, models, estimated impact, and recommended fixes -
+            confirmed findings first.
           </p>
         </section>
       )}

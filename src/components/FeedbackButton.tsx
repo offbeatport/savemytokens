@@ -56,7 +56,7 @@ export function FeedbackButton() {
           reset()
           setOpen(true)
         }}
-        className="fixed bottom-5 right-5 z-30 inline-flex items-center gap-2 rounded-full border border-border-strong bg-surface px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-sunken"
+        className="no-print fixed bottom-5 right-5 z-30 inline-flex items-center gap-2 rounded-full border border-border-strong bg-surface px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-sunken"
         aria-label="Request a report or feature"
       >
         <MessageSquarePlus className="size-4 text-primary" aria-hidden />

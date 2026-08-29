@@ -3,18 +3,13 @@ import {
   ArrowRight,
   Check,
   Plug,
-  ScanLine,
-  Eye,
   CreditCard,
   FileText,
   Target,
-  FileSignature,
   ShieldCheck,
-  HeartPulse,
   TrendingDown,
-  Scissors,
   DatabaseZap,
-  Workflow,
+  LayoutGrid,
   type LucideIcon,
 } from 'lucide-react'
 import { Container } from '@/components/Container'
@@ -29,150 +24,135 @@ import {
   AccordionTrigger,
   AccordionPanel,
 } from '@/components/ui/accordion'
-import {
-  LIVE_REPORT,
-  REPORTS,
-  REPORT_PRICE,
-  BUNDLE_PRICE,
-  PAID_REPORT_COUNT,
-} from '@/lib/reports/catalog'
-import { usd, usdRange } from '@/lib/format'
+import { usd } from '@/lib/format'
 import { track } from '@/lib/analytics'
 
 export const Route = createFileRoute('/')({
   component: LandingPage,
 })
 
-/** lucide icons keyed by ReportProduct.icon */
-const REPORT_ICONS: Record<string, LucideIcon> = {
-  HeartPulse,
-  TrendingDown,
-  Scissors,
-  DatabaseZap,
-  Workflow,
-}
-
 const STEPS: { icon: LucideIcon; title: string; body: string }[] = [
   {
     icon: Plug,
-    title: 'Connect',
-    body: 'Connect your provider read-only, or drop in a usage CSV. Upload-first - no code.',
-  },
-  {
-    icon: ScanLine,
-    title: 'Scan',
-    body: 'We analyze spend by model, project, and token type - deterministically, in seconds.',
-  },
-  {
-    icon: Eye,
-    title: 'Free Preview',
-    body: 'See your health score, estimated savings, and a sample opportunity. Free.',
+    title: 'Connect usage',
+    body: 'Drop a usage CSV or connect read-only — OpenAI, Anthropic, OpenRouter, or any gateway. Upload-first, no code.',
   },
   {
     icon: CreditCard,
-    title: 'Pay',
-    body: `A one-time ${usd(REPORT_PRICE)} unlocks the full report. No subscription, ever.`,
+    title: 'Add revenue',
+    body: 'Paste a Stripe read-only key or a revenue CSV. We auto-match your usage to your customers — no manual tagging.',
   },
   {
     icon: FileText,
-    title: 'Full Report',
-    body: 'Ranked fixes, exact affected projects and models, and a founder-ready memo.',
+    title: 'Get one report',
+    body: 'Margin Health Score, the per-customer margin ledger, leaks, ranked actions, cost evidence, and a CFO report — all in tabs.',
   },
+  {
+    icon: Target,
+    title: 'Act on it',
+    body: 'Every action names the customer, the dollar impact, and the exact fix. Re-scan to track margin and catch below-cost crossovers.',
+  },
+]
+
+const TABS: { label: string; body: string }[] = [
+  { label: 'Overview', body: 'Your Margin Health Score, top leaks, and the highest-impact actions — the 30-second answer.' },
+  { label: 'Margins', body: 'The margin ledger by customer, plan, feature, project, or model — who is profitable and who is below cost.' },
+  { label: 'Actions', body: 'Recommendations ranked by monthly impact × confidence × ease, each tied to a specific entity.' },
+  { label: 'Risk', body: '“Who is about to go below cost,” concentration risk, and accounts that newly crossed since last period.' },
+  { label: 'Cost breakdown', body: 'Spend by model, the input/output split, caching, retries — the cost evidence behind every leak.' },
+  { label: 'CFO Report', body: 'Revenue/cost/margin change and a founder-ready memo. Export to PDF and send your team.' },
 ]
 
 const VALUE_CARDS: { icon: LucideIcon; title: string; body: string }[] = [
   {
     icon: Target,
-    title: 'Exact fixes, not vibes',
-    body: 'Every recommendation names the model, the project, and the precise change to make.',
+    title: 'Margin, not just spend',
+    body: 'We answer “who is unprofitable,” not just “how much did we spend.” Revenue → cost → margin, per customer.',
   },
   {
-    icon: Plug,
-    title: 'Zero integration',
-    body: 'No SDK, no proxy, no code changes. Upload a CSV or connect read-only and you are done.',
+    icon: DatabaseZap,
+    title: 'Automatic attribution',
+    body: 'We map messy usage keys (acme-prod-api) to your real customers — the join a spreadsheet can’t do, even with no customer column.',
   },
   {
-    icon: FileSignature,
-    title: 'Founder-ready memo',
-    body: 'A clear, concrete summary you can paste straight to your team or your investors.',
+    icon: TrendingDown,
+    title: 'Below-cost alerts',
+    body: 'See exactly which customers cost more in AI than they pay you — and who newly crossed below cost since last period.',
   },
   {
     icon: ShieldCheck,
-    title: 'Diagnosis even if healthy',
-    body: 'If nothing is leaking, you learn what is working and where not to waste engineering time.',
+    title: 'Metadata only',
+    body: 'Revenue totals + usage metadata. Never your prompts, responses, or customer data. No SDK, no proxy.',
   },
 ]
 
-// Exactly what we ingest (left) and exactly what comes back (right).
 const INPUTS: string[] = [
   'provider, model, date',
-  'project / API-key label',
+  'customer / project / API-key label',
   'input & output token counts',
-  'request counts & error counts',
   'cost (or we estimate it from tokens)',
+  'Stripe MRR by customer — read-only, optional',
 ]
 
 const OUTPUTS: { t: string; d: string }[] = [
   {
-    t: 'Your spend, decoded',
-    d: 'Cost by model and by project, the input-vs-output split, and the cost-per-request for each.',
+    t: 'Per-customer margin ledger',
+    d: 'Revenue × cost per customer, plan, feature, project and model — sortable, with a margin % and a status on each.',
   },
   {
-    t: 'Cheaper-model math',
-    d: 'e.g. gpt-4o at $0.0128/req vs gpt-4o-mini at $0.0008/req — and how much moving suitable traffic saves.',
+    t: 'Below-cost accounts, named',
+    d: 'Exactly which customers are unprofitable on AI, how much margin is at risk, and why.',
   },
   {
-    t: 'Ranked fixes, with receipts',
-    d: 'Each opportunity names the model, the project, the math behind it, and the exact change to make.',
+    t: 'Automatic attribution',
+    d: 'We resolve usage keys to your customers automatically and surface anything we can’t match for you to confirm.',
   },
   {
-    t: 'A leak ledger',
-    d: 'Every lever added up to one recoverable number — per month and annualized.',
+    t: 'Ranked actions with receipts',
+    d: 'Each fix tied to a customer/feature, ranked by monthly impact × confidence × ease, with the math shown.',
   },
   {
-    t: 'A founder-ready memo',
-    d: 'A concrete summary you can paste straight to your team or your investors.',
+    t: 'Cost evidence behind every leak',
+    d: 'Expensive model mix, output inflation, caching, retries — the supporting why, not the headline.',
   },
   {
-    t: 'Honest limits',
-    d: 'What the scan can and cannot see from metadata — so you trust the numbers that are here.',
+    t: 'Weekly AI CFO Report',
+    d: 'Revenue/cost/margin change and a founder-ready memo you can export to PDF and send to your team.',
   },
 ]
 
 const FAQ: { q: string; a: string }[] = [
   {
-    q: 'What data do you need?',
-    a: 'Only aggregate usage fields: provider, model, date, project or API-key label, input and output token counts, request counts, and cost. We never see your prompts, completions, or any customer data.',
+    q: 'Do I need Stripe?',
+    a: 'No. Upload usage alone and you get Cost Intelligence plus an AI Health Score. Connect Stripe (or drop a revenue CSV) to unlock per-customer margin — who is below cost and what to do about it.',
+  },
+  {
+    q: 'How is this different from my gateway dashboard?',
+    a: 'Gateways (OpenRouter, Helicone, Vercel/Cloudflare AI Gateway) show cost by model. None of them has your revenue. Only we join cost to revenue to give you margin per customer — the number that decides pricing.',
+  },
+  {
+    q: 'How does attribution work without a customer column?',
+    a: 'Usage exports rarely carry a customer id — they carry a project/API-key label. We auto-match those to your revenue customers by name, populate the join, and surface anything ambiguous for you to confirm. No manual tagging in a spreadsheet.',
   },
   {
     q: 'Is it secure?',
-    a: 'Yes. We ingest only the usage fields above - no prompts or responses ever leave your side. Connections are read-only, and you can upload a CSV instead of connecting anything at all.',
+    a: 'We read aggregate usage metadata and revenue totals — never your prompts, responses, or customer data. Connections are read-only and used once; you can upload CSVs instead of connecting anything.',
   },
   {
-    q: 'How accurate are the estimates?',
-    a: 'Estimates are ranges derived deterministically from your real usage and current provider pricing. Every finding shows a low–high band and a confidence level so you can prioritize with eyes open.',
-  },
-  {
-    q: 'What if no savings are found?',
-    a: 'You still get value. The paid report tells you what is already working, what to monitor, the budget thresholds to watch, and where not to waste engineering time chasing savings that are not there.',
-  },
-  {
-    q: 'Refunds and one-time pricing?',
-    a: `Every report is a one-time ${usd(REPORT_PRICE)} - no subscription and no seat fees. The initial scan is free, so you see your health score and estimated savings before you ever pay.`,
+    q: 'How accurate are the numbers?',
+    a: 'Per-customer margin is exact arithmetic — your revenue minus your billed AI cost. Cost-optimization estimates show a low–high range and a confidence level, and we label what is measured versus inferred so you can trust the headline.',
   },
 ]
 
-const TRUST_ITEMS = ['No SDK', 'No proxy', 'No dashboard', 'No prompts or responses']
+const TRUST_ITEMS = ['No SDK', 'No proxy', 'Revenue + usage, never prompts', 'Read-only']
 
 function LandingPage() {
   const navigate = useNavigate()
 
-  function runScan(location: string) {
+  function go(location: string) {
     track('cta_click', { location })
-    navigate({ to: '/scan' })
+    navigate({ to: '/margin' })
   }
-
-  const LiveIcon = REPORT_ICONS[LIVE_REPORT.icon] ?? HeartPulse
 
   return (
     <>
@@ -182,46 +162,58 @@ function LandingPage() {
           <div className="grid items-center gap-14 lg:grid-cols-2 lg:gap-16">
             <div>
               <Badge tone="primary" dot>
-                Free spend snapshot
+                AI Margin Intelligence
               </Badge>
-              <h1 className="mt-6">Find ways to cut your AI bill in minutes.</h1>
+              <h1 className="mt-6">Know which customers, plans, and features are killing your AI margins.</h1>
               <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted">
-                One-time scan. No setup, no SDK, no dashboard. Get clear savings recommendations,
-                estimated impact, and exact fixes to reduce LLM spend.
+                Connect your AI usage and revenue. We compute margin by customer, plan, feature,
+                workspace, project, and model — and tell you exactly what&rsquo;s below cost and what to
+                do. No SDK, no proxy.
               </p>
               <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
-                <Button size="lg" onClick={() => runScan('hero')}>
-                  Run Free Scan
+                <Button size="lg" onClick={() => go('hero')}>
+                  See your AI margins
                   <ArrowRight />
                 </Button>
                 <TrustLine />
               </div>
+              <p className="mt-3 text-sm text-faint">
+                No revenue yet?{' '}
+                <button
+                  type="button"
+                  onClick={() => go('hero-cost')}
+                  className="font-medium text-muted underline underline-offset-2 hover:text-foreground"
+                >
+                  Run a cost-only analysis
+                </button>{' '}
+                — add Stripe later to unlock margin.
+              </p>
             </div>
 
-            {/* Flat sample snapshot preview */}
+            {/* Flat sample margin preview */}
             <div className="lg:pl-4">
               <Panel className="p-6 sm:p-8">
                 <div className="flex items-center justify-between">
-                  <span className="eyebrow">Spend snapshot</span>
-                  <Badge tone="watch" dot>
-                    Worth a look
+                  <span className="eyebrow">Margin snapshot</span>
+                  <Badge tone="risk" dot>
+                    2 below cost
                   </Badge>
                 </div>
                 <div className="mt-7 flex flex-col items-center gap-8 sm:flex-row sm:items-center">
-                  <HealthScore score={58} band="watch" label="Worth a look" />
+                  <HealthScore score={64} band="watch" label="Watch" />
                   <div className="grid w-full flex-1 gap-5">
-                    <Stat label="Spend analyzed" value={usd(8420)} />
-                    <Stat label="Opportunities" value="6" sub="across models & projects" />
+                    <Stat label="Gross AI margin" value="62%" sub={`${usd(18400)} of ${usd(29600)} revenue`} />
+                    <Stat label="Customers below cost" value="2" sub="of 18" />
                     <Stat
-                      label="Est. savings"
-                      value={usdRange(1900, 4600)}
-                      sub="per month, estimated"
-                      valueClassName="text-2xl text-primary"
+                      label="Revenue at risk"
+                      value={usd(4200)}
+                      sub="per month"
+                      valueClassName="text-2xl text-risk-ink"
                     />
                   </div>
                 </div>
                 <div className="mt-7 border-t border-border pt-4 text-xs text-faint">
-                  Example output. Your numbers come from your own usage.
+                  Example output. Your numbers come from your own usage + revenue.
                 </div>
               </Panel>
             </div>
@@ -247,10 +239,10 @@ function LandingPage() {
         <Container>
           <SectionHeading
             eyebrow="How it works"
-            title="From usage to fixes in five steps."
-            lead="No integration project, no waiting on a sales call. Scan first, decide after you see the savings."
+            title="From usage to margin in four steps."
+            lead="No integration project, no sales call. Upload first, connect revenue, get one report you can act on."
           />
-          <ol className="mt-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-5 lg:gap-8">
+          <ol className="mt-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
             {STEPS.map((step, i) => {
               const Icon = step.icon
               return (
@@ -277,8 +269,8 @@ function LandingPage() {
         <Container>
           <SectionHeading
             eyebrow="What you give, what you get"
-            title="A CSV of usage metadata in. A decision you can act on, out."
-            lead="No prompts, no responses, no customer data — only the aggregate fields below. We turn them into ranked, dollar-quantified fixes with the math shown."
+            title="Usage + revenue in. Per-customer margin, out."
+            lead="No prompts, no responses, no customer data — only the aggregate fields below. We turn them into a margin number per customer, with the cost evidence and the fix."
           />
           <div className="mt-12 grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:gap-8">
             {/* Inputs */}
@@ -298,8 +290,8 @@ function LandingPage() {
                 ))}
               </ul>
               <div className="mt-auto border-t border-border pt-5 text-xs leading-relaxed text-faint">
-                Aggregate usage metadata only. We never see your prompts, completions, or any customer
-                data — upload a CSV or connect read-only.
+                Aggregate metadata + revenue totals only. We never see your prompts, completions, or any
+                customer data — upload CSVs or connect read-only.
               </div>
             </Panel>
 
@@ -327,118 +319,61 @@ function LandingPage() {
         </Container>
       </section>
 
-      {/* ───────────── REPORTS SUITE + PRICING ───────────── */}
-      <section id="reports" className="scroll-mt-24 border-t border-border py-20 sm:py-28">
+      {/* ───────────── THE ONE REPORT ───────────── */}
+      <section id="report" className="scroll-mt-24 border-t border-border py-20 sm:py-28">
         <Container>
           <SectionHeading
-            eyebrow="Reports suite & pricing"
-            title="One free scan to begin. Five reports, $99 each."
-            lead={`Start free. One scan powers all ${PAID_REPORT_COUNT} reports - unlock any for a one-time ${usd(REPORT_PRICE)}, or the whole suite for ${usd(BUNDLE_PRICE)}. No subscription, no seat fees.`}
+            eyebrow="One report"
+            title="Everything in one place, organized into tabs."
+            lead="No five separate reports to buy, no dashboards to babysit. One scan produces one report — switch tabs to go from the 30-second answer to the receipts."
           />
-          <div
-            id="pricing"
-            className="mt-7 flex scroll-mt-24 flex-wrap items-center gap-3 text-sm"
-          >
+
+          <div className="mt-7 flex flex-wrap items-center gap-3 text-sm">
             <Badge tone="primary" dot>
-              1 free scan
-            </Badge>
-            <span className="text-faint">+</span>
-            <Badge tone="neutral">
-              {PAID_REPORT_COUNT} reports · {usd(REPORT_PRICE)} each
+              Free to run
             </Badge>
             <span className="text-faint">·</span>
-            <Badge tone="neutral">all {PAID_REPORT_COUNT} for {usd(BUNDLE_PRICE)}</Badge>
+            <Badge tone="neutral">Cost Intelligence on usage alone</Badge>
+            <span className="text-faint">·</span>
+            <Badge tone="neutral">Margin Intelligence when you connect revenue</Badge>
           </div>
 
-          {/* Featured LIVE report */}
-          <Panel className="mt-10 border-primary/40 p-7 sm:p-10">
-            <div className="grid gap-10 lg:grid-cols-[1.5fr_1fr] lg:items-center">
-              <div>
-                <div className="flex items-center gap-3">
-                  <span className="grid size-11 place-items-center rounded-xl border border-primary/40 text-primary">
-                    <LiveIcon className="size-5" />
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {TABS.map((t, i) => (
+              <Panel key={t.label} className="flex flex-col p-6">
+                <div className="flex items-center gap-2.5">
+                  <span className="grid size-9 place-items-center rounded-lg border border-border text-muted">
+                    <LayoutGrid className="size-4" />
                   </span>
-                  <Badge tone="primary" dot>
-                    Available now
-                  </Badge>
+                  <span className="font-display text-lg">{t.label}</span>
+                  {i === 0 && (
+                    <Badge tone="primary" size="sm">
+                      default
+                    </Badge>
+                  )}
                 </div>
-                <h3 className="mt-5">{LIVE_REPORT.name}</h3>
-                <p className="mt-1.5 text-muted">{LIVE_REPORT.tagline}</p>
-                <p className="mt-4 max-w-xl leading-relaxed text-muted">
-                  {LIVE_REPORT.description}
-                </p>
-                <ul className="mt-6 grid gap-2.5 sm:grid-cols-2">
-                  {LIVE_REPORT.bullets.map((b) => (
-                    <li key={b} className="flex items-start gap-2 text-sm text-foreground">
-                      <Check className="mt-0.5 size-4 shrink-0 text-primary" />
-                      {b}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="flex flex-col items-start gap-4 lg:border-l lg:border-border lg:pl-10">
-                <div className="flex items-baseline gap-2">
-                  <span className="font-display text-4xl font-light tnum text-foreground">
-                    Free
-                  </span>
-                  <span className="text-muted">scan to begin</span>
-                </div>
-                <Button size="lg" className="w-full sm:w-auto" onClick={() => runScan('reports')}>
-                  Run Free Scan
-                  <ArrowRight />
-                </Button>
-                <p className="text-sm text-muted">
-                  then <span className="tnum font-medium text-foreground">{usd(REPORT_PRICE)}</span>{' '}
-                  to unlock
-                </p>
-                <TrustLine />
-              </div>
-            </div>
-          </Panel>
+                <p className="mt-3 text-sm leading-relaxed text-muted">{t.body}</p>
+              </Panel>
+            ))}
+          </div>
 
-          {/* The other 4 reports - all live, all from the same scan */}
-          <div className="mt-6 grid gap-6 sm:grid-cols-2">
-            {REPORTS.filter((r) => r.slug !== LIVE_REPORT.slug).map((r) => {
-              const Icon = REPORT_ICONS[r.icon] ?? FileText
-              return (
-                <Panel key={r.slug} className="flex flex-col p-6 sm:p-7">
-                  <div className="flex items-center justify-between">
-                    <span className="grid size-10 place-items-center rounded-lg border border-border text-muted">
-                      <Icon className="size-5" />
-                    </span>
-                    <Badge tone="neutral">{usd(REPORT_PRICE)} · one-time</Badge>
-                  </div>
-                  <h3 className="mt-5 text-xl">{r.name}</h3>
-                  <p className="mt-1 text-sm font-medium text-muted">{r.tagline}</p>
-                  <p className="mt-3 text-sm leading-relaxed text-muted">{r.description}</p>
-                  <ul className="mt-4 space-y-2">
-                    {r.bullets.map((b) => (
-                      <li key={b} className="flex items-start gap-2.5 text-sm text-foreground">
-                        <span className="mt-2 size-1 shrink-0 rounded-full bg-faint" />
-                        {b}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-auto pt-6">
-                    <Button variant="secondary" size="sm" onClick={() => runScan('reports-grid')}>
-                      Run Free Scan
-                      <ArrowRight />
-                    </Button>
-                  </div>
-                </Panel>
-              )
-            })}
+          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
+            <Button size="lg" onClick={() => go('report')}>
+              See your AI margins
+              <ArrowRight />
+            </Button>
+            <TrustLine />
           </div>
         </Container>
       </section>
 
-      {/* ───────────── WHY / WHAT YOU GET ───────────── */}
+      {/* ───────────── WHY ───────────── */}
       <section className="border-t border-border py-20 sm:py-28">
         <Container>
           <SectionHeading
             eyebrow="Why SaveMyTokens"
-            title="A decision you can act on, not a dashboard to babysit."
-            lead="Built for founders and engineering leads who want the answer, not another tool to maintain."
+            title="The number your gateway dashboard can’t show you."
+            lead="Built for founders and finance leads who need to know which customers, plans, and features are profitable — not just how many tokens they burned."
           />
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {VALUE_CARDS.map((card) => {
@@ -460,11 +395,7 @@ function LandingPage() {
       {/* ───────────── FAQ ───────────── */}
       <section id="faq" className="scroll-mt-24 border-t border-border py-20 sm:py-28">
         <Container size="narrow">
-          <SectionHeading
-            eyebrow="FAQ"
-            title="Answers before you scan."
-            align="center"
-          />
+          <SectionHeading eyebrow="FAQ" title="Answers before you run it." align="center" />
           <div className="mt-12">
             <Accordion className="divide-y divide-border border-y border-border">
               {FAQ.map((item, i) => (
@@ -485,13 +416,13 @@ function LandingPage() {
       {/* ───────────── FINAL CTA ───────────── */}
       <section className="border-t border-border py-20 sm:py-28">
         <Container size="narrow" className="text-center">
-          <h2>Find ways to cut your AI bill in minutes.</h2>
+          <h2>See what&rsquo;s eating your AI margins.</h2>
           <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-muted">
-            Run the free scan, see your savings, then decide. No setup and no card required to start.
+            Upload your usage, add revenue, get one report. Free to start — no setup, no card required.
           </p>
           <div className="mt-8 flex flex-col items-center gap-4">
-            <Button size="lg" onClick={() => runScan('final')}>
-              Run Free Scan
+            <Button size="lg" onClick={() => go('final')}>
+              See your AI margins
               <ArrowRight />
             </Button>
             <TrustLine />

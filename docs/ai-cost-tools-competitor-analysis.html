@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI Cost-Cutting Tools — Competitor Analysis</title>
+<style>
+  :root{
+    --bg:#0e0f13; --panel:#16181f; --panel-2:#1b1e27; --border:#272b36;
+    --ink:#e7e9ee; --muted:#a2a8b8; --faint:#727a8c;
+    --accent:#7c9cff; --good:#4ec98a; --warn:#f0b65e; --bad:#f07a7a;
+    --recent:#9b7cff; --mature:#5fb8d6;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:56px 24px 96px}
+  header.page{margin-bottom:40px}
+  .eyebrow{font-size:.74rem; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); font-weight:600}
+  h1{font-size:2.3rem; line-height:1.12; margin:.35em 0 .25em; font-weight:680; letter-spacing:-.02em}
+  .sub{color:var(--muted); font-size:1.05rem; max-width:70ch}
+  .meta{margin-top:18px; display:flex; flex-wrap:wrap; gap:8px}
+  .pill{font-size:.74rem; padding:5px 11px; border:1px solid var(--border); border-radius:999px; color:var(--muted); background:var(--panel)}
+
+  nav.toc{
+    position:sticky; top:0; z-index:5; margin:0 -24px 40px; padding:14px 24px;
+    background:rgba(14,15,19,.82); backdrop-filter:blur(10px); border-bottom:1px solid var(--border);
+    display:flex; flex-wrap:wrap; gap:6px;
+  }
+  nav.toc a{font-size:.82rem; color:var(--muted); text-decoration:none; padding:6px 11px; border-radius:8px; transition:.15s}
+  nav.toc a:hover{color:var(--ink); background:var(--panel-2)}
+
+  section{margin:0 0 56px}
+  h2{font-size:1.5rem; margin:0 0 6px; letter-spacing:-.01em; display:flex; align-items:center; gap:12px}
+  h2 .dot{width:9px;height:9px;border-radius:50%}
+  .lead{color:var(--muted); margin:0 0 24px; max-width:78ch}
+
+  .grid{display:grid; gap:16px}
+  .card{
+    background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border:1px solid var(--border); border-radius:var(--radius); padding:22px 24px;
+  }
+  .card .top{display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap}
+  .card h3{margin:0; font-size:1.18rem; letter-spacing:-.01em}
+  .card h3 a{color:var(--ink); text-decoration:none; border-bottom:1px dotted var(--faint)}
+  .card h3 a:hover{color:var(--accent); border-color:var(--accent)}
+  .tag{font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; font-weight:700; padding:4px 9px; border-radius:6px; white-space:nowrap}
+  .tag.recent{color:#cdbcff; background:rgba(155,124,255,.13); border:1px solid rgba(155,124,255,.32)}
+  .tag.mature{color:#bfe6f2; background:rgba(95,184,214,.12); border:1px solid rgba(95,184,214,.30)}
+  .recency{font-size:.82rem; color:var(--faint); margin:8px 0 0}
+  .row{margin-top:14px}
+  .row .k{font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); font-weight:600; margin-bottom:3px}
+  .row .v{color:var(--ink)}
+  .row.value .v{color:var(--ink)}
+  .row.price .v{color:var(--good); font-variant-numeric:tabular-nums}
+  .row.gap .v{color:#e7c7c7}
+  .row.gap .k{color:var(--bad)}
+
+  ol.gaps{list-style:none; counter-reset:g; padding:0; margin:0; display:grid; gap:14px}
+  ol.gaps li{counter-increment:g; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:20px 22px 20px 64px; position:relative}
+  ol.gaps li::before{
+    content:counter(g); position:absolute; left:20px; top:20px;
+    width:30px;height:30px;border-radius:8px; display:grid; place-items:center;
+    font-weight:700; font-size:.95rem; color:var(--bg); background:var(--warn);
+  }
+  ol.gaps h4{margin:0 0 6px; font-size:1.05rem}
+  ol.gaps p{margin:0; color:var(--muted); font-size:.95rem}
+
+  .opening{
+    border:1px solid rgba(124,156,255,.4); border-radius:var(--radius); padding:26px 28px;
+    background:radial-gradient(120% 140% at 0% 0%, rgba(124,156,255,.12), transparent 60%), var(--panel);
+  }
+  .opening h2{margin-bottom:14px}
+  .opening p{color:var(--ink); margin:0 0 14px}
+  .opening strong{color:#cdd7ff}
+
+  .takeaway{border-left:3px solid var(--accent); padding:4px 0 4px 20px; margin:18px 0}
+  .takeaway p{margin:0 0 10px; color:var(--muted)}
+  .takeaway b{color:var(--ink)}
+
+  .converge{background:var(--panel); border:1px dashed var(--border); border-radius:var(--radius); padding:20px 24px; margin-top:20px}
+  .converge p{margin:0; color:var(--muted)}
+  .converge b{color:var(--warn)}
+
+  footer{margin-top:64px; padding-top:22px; border-top:1px solid var(--border); color:var(--faint); font-size:.82rem}
+  a.src{color:var(--faint); font-size:.8rem; text-decoration:none}
+  a.src:hover{color:var(--accent)}
+  @media (max-width:640px){ h1{font-size:1.8rem} .wrap{padding:36px 16px 72px} nav.toc{margin:0 -16px 32px;padding:12px 16px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <div class="eyebrow">Market Research · AI Cost Reduction</div>
+    <h1>AI Cost-Cutting Tools — Competitor Analysis</h1>
+    <p class="sub">Live web research across 8 categories (gateways, routing, observability, caching, FinOps, eval/CI, batch, metering). 46 tools surfaced, 45 verified real, split into recent vs mature, then gap-analyzed to find the open opportunity.</p>
+    <div class="meta">
+      <span class="pill">46 candidates → 45 verified</span>
+      <span class="pill">12 recent · 33 mature</span>
+      <span class="pill">5 cross-cutting gaps</span>
+      <span class="pill">Researched June 2026</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <a href="#recent">Recent tools</a>
+    <a href="#mature">Mature tools</a>
+    <a href="#gaps">The gaps</a>
+    <a href="#opening">The opening</a>
+    <a href="#verdict">Verdict</a>
+  </nav>
+
+  <!-- RECENT -->
+  <section id="recent">
+    <h2><span class="dot" style="background:var(--recent)"></span>5 recently released (last ~12–18 months)</h2>
+    <p class="lead">New entrants that are genuinely valuable for cutting AI cost — and where each one is still thin.</p>
+    <div class="grid">
+
+      <div class="card">
+        <div class="top">
+          <h3><a href="https://www.together.ai/blog/batch-api" target="_blank" rel="noopener">Together AI Batch Inference API</a></h3>
+          <span class="tag recent">Recent</span>
+        </div>
+        <p class="recency">Launched Jun 2025; 3000× rate-limit upgrade (→30B tokens/model) through 2025–26.</p>
+        <div class="row value"><div class="k">Why valuable</div><div class="v">Flat 50% off Together's already-cheap open-model rates for any latency-tolerant bulk work (synthetic data, labeling, offline evals, log enrichment). Discount stacks on a low base; bulk jobs run on a separate rate pool so they never throttle production.</div></div>
+        <div class="row price"><div class="k">Pricing</div><div class="v">50% off list, pay-per-token, no minimum, pay only for successful completions</div></div>
+        <div class="row gap"><div class="k">Gap</div><div class="v">Open models only (no GPT/Claude/Gemini); best-effort 24h SLA; the 50% is undifferentiated (Fireworks & Groq match it); JSONL prep + polling overhead persists.</div></div>
+      </div>
+
+      <div class="card">
+        <div class="top">
+          <h3><a href="https://github.com/maximhq/bifrost" target="_blank" rel="noopener">Bifrost</a> <span style="color:var(--faint);font-size:.8rem;font-weight:400">by Maxim AI</span></h3>
+          <span class="tag recent">Recent</span>
+        </div>
+        <p class="recency">2025 entrant; ~5.9k★, very active (CLI v0.10.6, Jun 2026).</p>
+        <div class="row value"><div class="k">Why valuable</div><div class="v">OSS (Apache 2.0) <b>Go</b> gateway, drop-in OpenAI-compatible. Three levers: semantic caching, automatic failover + adaptive load-balancing to cheaper/healthier endpoints, and a 4-tier budget hierarchy with hard per-key spend caps. Go architecture cuts infra cost vs Python LiteLLM at high RPS.</div></div>
+        <div class="row price"><div class="k">Pricing</div><div class="v">OSS core free to self-host; enterprise custom (undisclosed)</div></div>
+        <div class="row gap"><div class="k">Gap</div><div class="v">Perf claims vendor-published & unconfirmed; gateway overhead is &lt;1% of call latency (edge is niche); no managed/hosted option for OSS core; observability steered to Maxim's paid platform.</div></div>
+      </div>
+
+      <div class="card">
+        <div class="top">
+          <h3><a href="https://www.requesty.ai/" target="_blank" rel="noopener">Requesty</a></h3>
+          <span class="tag recent">Recent</span>
+        </div>
+        <p class="recency">$3M seed (20VC), Sept 2025. The EU-focused OpenRouter alternative.</p>
+        <div class="row value"><div class="k">Why valuable</div><div class="v">Managed router over 400+ models. One base-URL swap → task-based routing (cheap models for simple tasks), prompt caching, failover, per-user spend caps, governance (RBAC, PII masking, SSO), and <b>EU/GDPR residency</b>. Claims 30–80% savings; differentiates on governance + compliance.</div></div>
+        <div class="row price"><div class="k">Pricing</div><div class="v">Free 200 req/day; PAYG flat 5% markup, no minimum; enterprise custom</div></div>
+        <div class="row gap"><div class="k">Gap</div><div class="v">Cloud-only (no self-host) rules out sovereignty buyers; 5% markup compounds (~$5k/mo at $100k spend) while rivals market "no markup"; thin independent validation; early-stage key-man risk.</div></div>
+      </div>
+
+      <div class="card">
+        <div class="top">
+          <h3><a href="https://batchwork.dev/" target="_blank" rel="noopener">Batchwork</a></h3>
+          <span class="tag recent">Recent</span>
+        </div>
+        <p class="recency">Brand-new: npm Jun 2026, 5 versions in ~10 days.</p>
+        <div class="row value"><div class="k">Why valuable</div><div class="v">MIT npm package: one unified batch API over 7 providers (OpenAI, Anthropic, Gemini, Groq, Mistral, Together, xAI). Serializes the right provider batch body, tracks lifecycle, returns one normalized result. Captures each provider's native ~50% discount with no markup.</div></div>
+        <div class="row price"><div class="k">Pricing</div><div class="v">Free / OSS — savings flow straight from providers' batch endpoints</div></div>
+        <div class="row gap"><div class="k">Gap</div><div class="v"><b>Bus-factor of one, days old</b> (real abandonment risk on a cost-critical path); batch support uneven across the 7; polling-based (you own crash durability); crowded field with thin differentiation.</div></div>
+      </div>
+
+      <div class="card">
+        <div class="top">
+          <h3><a href="https://redis.io/langcache/" target="_blank" rel="noopener">Redis LangCache</a></h3>
+          <span class="tag recent">Recent</span>
+        </div>
+        <p class="recency">Public preview Sept 2025; still preview Jun 2026 (GA pricing TBD).</p>
+        <div class="row value"><div class="k">Why valuable</div><div class="v">Fully managed semantic cache: returns stored responses for semantically similar (not just identical) queries. Redis handles embeddings, vector search, TTL, scoping — so you skip operating GPTCache. A cache hit skips the LLM call entirely, killing output-token cost (~40–73% on high-repetition workloads).</div></div>
+        <div class="row price"><div class="k">Pricing</div><div class="v">Free in preview; GA TBD (~$1.5/M input illustrative + Redis Cloud)</div></div>
+        <div class="row gap"><div class="k">Gap</div><div class="v"><b>Silent false positives</b> — a confidently-wrong cached answer at 200 OK (0.88–0.94 cosine danger zone) with no correctness instrumentation; manual threshold tuning; misses hidden context (permissions, locale, staleness).</div></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- MATURE -->
+  <section id="mature">
+    <h2><span class="dot" style="background:var(--mature)"></span>5 mature (established, real adoption)</h2>
+    <p class="lead">The proven workhorses customers already rely on — including the two free native features that quietly beat most paid tools.</p>
+    <div class="grid">
+
+      <div class="card">
+        <div class="top">
+          <h3><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching" target="_blank" rel="noopener">Anthropic Prompt Caching</a> <span style="color:var(--faint);font-size:.8rem;font-weight:400">native</span></h3>
+          <span class="tag mature">Mature</span>
+        </div>
+        <div class="row value"><div class="k">Why valuable</div><div class="v">Highest-leverage single change for high-volume Claude workloads with large static prefixes. Cache reads bill at <b>0.10× input (90% off)</b>; break-even after ~2 hits. Real cases: $8,000→$800/mo (10×), 59% total cut at 84% hit rate. Output byte-identical, minimal code, stacks with Batch for 95%+ combined.</div></div>
+        <div class="row price"><div class="k">Pricing</div><div class="v">No fee — token multipliers (write 1.25×, read 0.10×)</div></div>
+        <div class="row gap"><div class="k">Gap</div><div class="v">Exact-prefix-match & fragile (any drift cascades); silent min-prefix (think you're saving, you're not); 5-min TTL fragile for bursty traffic; past billing bugs caused 10–20× overspend.</div></div>
+      </div>
+
+      <div class="card">
+        <div class="top">
+          <h3><a href="https://developers.openai.com/api/docs/guides/prompt-caching" target="_blank" rel="noopener">OpenAI Prompt Caching</a> <span style="color:var(--faint);font-size:.8rem;font-weight:400">native</span></h3>
+          <span class="tag mature">Mature</span>
+        </div>
+        <div class="row value"><div class="k">Why valuable</div><div class="v">Cuts repeated-prefix input cost up to ~90% and latency ~80% with <b>zero developer action</b> — automatic on any prompt &gt;1,024 tokens, default-on across the lineup. Stacks with Batch (50%) for ~75% total input-cost reduction on async work.</div></div>
+        <div class="row price"><div class="k">Pricing</div><div class="v">No fee, applied automatically (GPT-5.x cached ~10% of standard)</div></div>
+        <div class="row gap"><div class="k">Gap</div><div class="v">Exact-prefix-match only; routing-overflow under load drops hit rate (one report: 3.77% on a 100k-token prompt); &lt;1,024-token prompts never cache; no SLA, no manual cache control, no way to force/inspect a hit.</div></div>
+      </div>
+
+      <div class="card">
+        <div class="top">
+          <h3><a href="https://openrouter.ai" target="_blank" rel="noopener">OpenRouter</a></h3>
+          <span class="tag mature">Mature</span>
+        </div>
+        <div class="row value"><div class="k">Why valuable</div><div class="v">Hosted marketplace for 400+ models with automatic routing to the cheapest/available provider + failover, so failed requests don't waste spend. <b>No per-token markup</b>; one key, unified billing, day-one new models, zero-infra adoption (swap base URL). BYOK free up to 1M req/mo.</div></div>
+        <div class="row price"><div class="k">Pricing</div><div class="v">~5–7% all-in (5.5% card fee, 5% BYOK overage); no subscription</div></div>
+        <div class="row gap"><div class="k">Gap</div><div class="v">No SLA / single point of failure (3 outages in 8 months); <b>silent quantization</b> to FP4/Int4 degrades output; fee gotchas erode the "no markup" pitch; added latency + second privacy boundary.</div></div>
+      </div>
+
+      <div class="card">
+        <div class="top">
+          <h3><a href="https://portkey.ai" target="_blank" rel="noopener">Portkey AI Gateway</a></h3>
+          <span class="tag mature">Mature</span>
+        </div>
+        <div class="row value"><div class="k">Why valuable</div><div class="v">Production control plane: sub-ms OSS gateway over 1,600+ models, plus observability, prompt mgmt, 50+ guardrails, governance. Cuts spend three ways: simple + semantic caching, conditional routing to cheapest adequate model with per-team budgets, and granular cost attribution with custom price overrides.</div></div>
+        <div class="row price"><div class="k">Pricing</div><div class="v">Free dev; $49/mo Pro (100k logs); enterprise ~$2k–10k/mo</div></div>
+        <div class="row gap"><div class="k">Gap</div><div class="v">Past log cap, traffic goes invisible in analytics (pushes to enterprise); governance + self-host gated to ~$2k–10k/mo; 30-day Pro retention; manual routing weights; PANW acquisition (May 2026) roadmap uncertainty.</div></div>
+      </div>
+
+      <div class="card">
+        <div class="top">
+          <h3><a href="https://langfuse.com/" target="_blank" rel="noopener">Langfuse</a></h3>
+          <span class="tag mature">Mature</span>
+        </div>
+        <div class="row value"><div class="k">Why valuable</div><div class="v">Most widely adopted OSS LLM observability platform. Native token + automatic cost tracking, granular usage types, custom pricing for self-hosted models, spend broken down by model/user/feature to find expensive prompts. Self-hostable, and <b>no per-seat tax</b> — all paid tiers include unlimited users.</div></div>
+        <div class="row price"><div class="k">Pricing</div><div class="v">Free Hobby → $29 Core → $199 Pro → $2,499 Enterprise; self-host free</div></div>
+        <div class="row gap"><div class="k">Gap</div><div class="v">Self-host operationally heavy (PG+ClickHouse+Redis+S3); self-hosted lags Cloud; RBAC/SSO/audit gated behind paid license; weaker real-time spend control (gateways stronger); price tables lag launches.</div></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- GAPS -->
+  <section id="gaps">
+    <h2><span class="dot" style="background:var(--warn)"></span>The cross-cutting gaps — what almost nobody does</h2>
+    <p class="lead">Distilled from every tool's individual weaknesses: the things the whole field leaves unmet.</p>
+    <ol class="gaps">
+      <li>
+        <h4>No-regression proof — proving a cost cut didn't degrade output</h4>
+        <p>Every lever (downgrade, prompt-trim, semantic cache, quantized routing) trades dollars for quality risk, and almost nothing closes the loop. Savers cut <em>blind</em> (OpenRouter quantizes silently; LangCache returns wrong answers at 200 OK). Evaluators (Braintrust, Phoenix, Langfuse) score quality but sit <em>outside</em> the savings path. <b>Nobody ships "route/cache cheaper AND here's the eval proving it still works" as one loop</b> — the single most credible objection to every savings tool, and why teams leave most of the theoretical 30–80% on the table.</p>
+      </li>
+      <li>
+        <h4>Real-time dollars, not tokens, across providers — with alerting</h4>
+        <p>Dev/observability tools emit accurate <em>tokens</em> and force cost to be derived from a stale, drifting price table. FinOps tools (CloudZero, Finout, Pay-i) speak dollars but run 24–32h behind — useless for catching a runaway-agent spike the day it happens, and their attribution degrades beyond OpenAI/Anthropic. Accurate, real-time, per-call dollars with sub-hour spike alerting is a genuine hole.</p>
+      </li>
+      <li>
+        <h4>A unified "which lever, worth how much on MY traffic" answer</h4>
+        <p>The market is fragmented by lever — batch wrappers, single caches, manual-config gateways — each optimizing one axis in isolation. None ingest your real usage to output a ranked, quantified menu: <em>"caching saves 18%, 30% of traffic is batch-eligible for +15%, downgrade these 3 calls for 22%, cache break-even is N hits."</em> FinOpsLLM-class consultants charge $1,500–$20k/mo to fill this at the top, leaving the self-serve lane wide open.</p>
+      </li>
+      <li>
+        <h4>Polished self-hosted / air-gapped cost control for regulated buyers</h4>
+        <p>Every good-UX tool is cloud-only; every self-hostable one carries a tax (Bifrost: no managed option; Langfuse: heavy ops + license traps; Phoenix: scaling cliff + restrictive license). Regulated teams get <em>either</em> good cloud UX they can't use <em>or</em> self-hostable infra with heavy ops burden. Narrower buyer set, but compliance-gated and high willingness-to-pay.</p>
+      </li>
+      <li>
+        <h4>Cost-per-successful-outcome as the optimization target</h4>
+        <p>The whole stack optimizes cost-<em>per-token</em>. But a cheaper model that fails → triggers a retry, a longer agent loop, or a human escalation makes cost-<em>per-successful-task</em> go UP. Only Pay-i genuinely targets this, and it's enterprise/CFO-only. Retry storms and runaway agent loops — the dominant hidden cost driver in agentic 2026 workloads — are exactly what cost-per-token blinds you to.</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- OPENING -->
+  <section id="opening">
+    <div class="opening">
+      <h2><span class="dot" style="background:var(--accent)"></span>The single sharpest opening</h2>
+      <p>Ship a <strong>read-only diagnostic</strong> that ingests a team's existing LLM usage (billing export or a one-line log drop-in) and returns a <strong>ranked, dollar-quantified savings menu on THEIR own traffic</strong> — <em>"prompt caching saves 18% / $X · 30% of your traffic is batch-eligible for +15% · these 3 high-volume calls can downgrade for 22% · your cache break-even is N hits"</em> — where each recommendation is backed by a <strong>replay-based quality check that proves the cheaper config still passes</strong> on a sample of the team's real prompts before they flip it on.</p>
+      <p>It wins on <strong>simplicity</strong>: it asks for nothing but logs — no base-URL swap, no SDK rewrite, no sitting in the request path, no infra — so adoption risk is near zero and there's no latency / outage / quantization exposure.</p>
+      <p>It threads the three biggest gaps at once: the <strong>unified "which lever, how much on my data"</strong> answer the point tools never give; <strong>accurate real-time dollars</strong>, not tokens against a stale table; and the <strong>no-regression proof loop</strong> that makes every savings tool scary. Sell self-serve at the unfilled sub-$20k/mo tier the consultants leave open. Lead with a free one-shot audit (instant, concrete dollar number) as the wedge; only later, once trusted, optionally move into the savings path to auto-apply.</p>
+      <p style="margin-bottom:0;color:var(--accent);font-weight:600">Diagnose first, prove it's safe, then act — trust before traffic.</p>
+    </div>
+  </section>
+
+  <!-- VERDICT -->
+  <section id="verdict">
+    <h2><span class="dot" style="background:var(--good)"></span>The honest verdict</h2>
+    <div class="takeaway">
+      <p><b>The research independently re-derived the opening as a read-only savings diagnostic — i.e. almost exactly the product previously rejected.</b> No dressing that up.</p>
+      <p>But it found the one ingredient that version never had — gap #1: <b>the no-regression replay proof.</b> The old report said <em>"you're overpaying"</em> (a number — spreadsheet-y, forgettable). The thing <b>nobody in the entire 45-tool field ships</b> is: <em>"turn this lever on, and here's the eval on a sample of your own real prompts proving the cheaper config still passes."</em> That's the difference between a report and a <b>trust instrument that unlocks a scary action.</b></p>
+    </div>
+
+    <div class="grid" style="margin-top:8px">
+      <div class="card"><div class="row value"><div class="k">Don't</div><div class="v">Build another gateway / proxy / cache / batch tool. Those five lanes are crowded and incumbents already win on simplicity — native caching is free & automatic; OpenRouter is one URL.</div></div></div>
+      <div class="card"><div class="row value"><div class="k">Do</div><div class="v">Build the proof layer that sits <em>next to</em> all of them: read-only, ingest logs → replay a sample on the cheaper config → report the quality delta alongside the dollar delta. The missing guardrail that makes everyone else's savings actually get adopted.</div></div></div>
+    </div>
+
+    <div class="converge">
+      <p><b>Strongest signal in all of this:</b> two independent research passes — one ideation, one live competitor sweep — converged on the same wedge (the replay-proof savings audit) from different directions. That convergence matters more than either pass alone.</p>
+    </div>
+
+    <div class="takeaway" style="border-color:var(--warn);margin-top:24px">
+      <p><b>The one caveat owed:</b> this is still a diagnostic-first shape, and that's been met with skepticism twice. What makes it different now is the replay proof — but before writing a line of it, the question that actually matters is unchanged: <b>will one real team pay for "prove this cut is safe"?</b> The cheapest way to find out is to run the replay-proof audit by hand on 3–5 teams' logs and see if the output makes them say "take my money."</p>
+    </div>
+  </section>
+
+  <footer>
+    Generated from live web research, June 2026 · 46 tools surfaced, 45 verified · pricing &amp; recency reflect sources at research time and may change — verify on each vendor's live page before relying on a number.
+  </footer>
+
+</div>
+</body>
+</html>

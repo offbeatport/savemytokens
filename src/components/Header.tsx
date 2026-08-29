@@ -9,8 +9,8 @@ import { track } from '@/lib/analytics'
 
 const NAV = [
   { label: 'How it works', to: '/', hash: 'how' },
-  { label: 'Reports', to: '/', hash: 'reports' },
-  { label: 'Pricing', to: '/', hash: 'pricing' },
+  { label: 'The report', to: '/', hash: 'report' },
+  { label: 'FAQ', to: '/', hash: 'faq' },
 ] as const
 
 export function Header() {
@@ -70,10 +70,10 @@ export function Header() {
             size="sm"
             onClick={() => {
               track('cta_click', { location: 'header' })
-              router.navigate({ to: '/scan' })
+              router.navigate({ to: '/margin' })
             }}
           >
-            Run Free Scan
+            See your margins
             <ArrowRight />
           </Button>
         </div>

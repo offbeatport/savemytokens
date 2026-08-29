@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { AlertTriangle, ArrowRight, Loader2, UploadCloud, ShieldCheck, Cloud, ExternalLink, Check } from 'lucide-react'
 import { Container } from '@/components/Container'
 import { SectionHeading } from '@/components/primitives'
@@ -14,6 +14,11 @@ import { track } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/scan/')({
+  // Unified journey: the single entry point is now /margin (usage-only still works,
+  // and unlocks Cost Intelligence). Old /scan links land there.
+  beforeLoad: () => {
+    throw redirect({ to: '/margin' })
+  },
   component: ScanPage,
 })
 

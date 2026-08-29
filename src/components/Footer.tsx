@@ -1,7 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { Logo } from './Logo'
 import { Container } from './Container'
-import { REPORTS } from '@/lib/reports/catalog'
 
 export function Footer() {
   return (
@@ -10,38 +9,18 @@ export function Footer() {
         <div className="max-w-xs">
           <Logo />
           <p className="mt-4 text-sm leading-relaxed text-muted">
-            A one-time AI cost savings scan. Find ways to cut your AI bill in minutes - no setup,
-            no SDK, no dashboard.
+            AI Margin Intelligence. Connect your usage and revenue and see which customers, plans, and
+            features are below cost — in one report. No SDK, no proxy.
           </p>
-          <p className="mt-4 text-xs text-faint">No prompts or responses required.</p>
+          <p className="mt-4 text-xs text-faint">Revenue + usage metadata only. Never your prompts.</p>
         </div>
 
         <div>
-          <h5 className="text-xs font-semibold uppercase tracking-wider text-faint">Reports</h5>
-          <ul className="mt-4 space-y-2.5">
-            {REPORTS.map((r) => (
-              <li key={r.slug}>
-                <Link
-                  to="/"
-                  hash="reports"
-                  className="text-sm text-muted transition-colors hover:text-foreground"
-                >
-                  {r.name}
-                  {r.status === 'coming-soon' && (
-                    <span className="ml-1.5 text-[0.65rem] text-faint">soon</span>
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div>
-          <h5 className="text-xs font-semibold uppercase tracking-wider text-faint">Start</h5>
+          <h5 className="text-xs font-semibold uppercase tracking-wider text-faint">Product</h5>
           <ul className="mt-4 space-y-2.5">
             <li>
-              <Link to="/scan" className="text-sm text-muted transition-colors hover:text-foreground">
-                Run a free scan
+              <Link to="/" hash="report" className="text-sm text-muted transition-colors hover:text-foreground">
+                The report
               </Link>
             </li>
             <li>
@@ -50,8 +29,24 @@ export function Footer() {
               </Link>
             </li>
             <li>
-              <Link to="/" hash="pricing" className="text-sm text-muted transition-colors hover:text-foreground">
-                Pricing
+              <Link to="/" hash="faq" className="text-sm text-muted transition-colors hover:text-foreground">
+                FAQ
+              </Link>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h5 className="text-xs font-semibold uppercase tracking-wider text-faint">Start</h5>
+          <ul className="mt-4 space-y-2.5">
+            <li>
+              <Link to="/margin" className="text-sm text-muted transition-colors hover:text-foreground">
+                Analyze my margins
+              </Link>
+            </li>
+            <li>
+              <Link to="/login" className="text-sm text-muted transition-colors hover:text-foreground">
+                Sign in
               </Link>
             </li>
           </ul>
@@ -59,7 +54,7 @@ export function Footer() {
       </Container>
       <Container className="flex flex-col items-center justify-between gap-3 border-t border-border py-6 text-xs text-faint sm:flex-row">
         <span>© {2026} SaveMyTokens</span>
-        <span>Estimates are directional, based on usage metadata only.</span>
+        <span>Per-customer margin is exact; cost-optimization estimates are directional, from usage metadata only.</span>
       </Container>
     </footer>
   )

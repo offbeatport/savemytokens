@@ -21,6 +21,8 @@ import type {
   MarginRow,
   MarketRow,
   ReportSlug,
+  ConfidenceTier,
+  TierSummary,
 } from './types'
 import { priceFor, blendedPrice } from './pricing'
 import { marketFor, bestAlternative, blendOf, MARKET_AS_OF } from './market'
@@ -939,6 +941,12 @@ export function buildDiagnostics(ctx: ScanContext): DiagnosticMetric[] {
     }
   }
 
+  // Tier the diagnostics: a measured fact present in the data is 'confirmed'
+  // (deprecated-models, cache-read share, unattributed spend, reasoning $);
+  // informational / "data missing" notes stay untiered.
+  for (const d of out) {
+    if (d.available && d.status !== 'info') d.confidenceTier = 'confirmed'
+  }
   return out
 }
 
@@ -981,6 +989,61 @@ export function buildMarketRows(ctx: ScanContext): MarketRow[] {
   return rows.sort((a, b) => b.cost - a.cost)
 }
 
+/* ── Confidence tiers: provable vs inferential ───────────────────
+ * Tier is assigned per finding, centrally (same pattern as rank/metrics), so
+ * detectors stay focused. The rule mirrors the detector → category mapping:
+ *   confirmed  legacy-model           (deprecated model + known cheaper successor = price fact)
+ *   confirmed  margin-below-cost/thin  (AI cost vs the supplied revenue = factual comparison)
+ *   suspected  everything else         (downgrade, output-caps, caching, bloat, retry, runaway, project-leak)
+ * Tier is ORTHOGONAL to `confidence`: a confirmed finding built on estimated cost
+ * keeps its capped confidence, and its reason says the dollars are still approximate
+ * (the tier never overrides the estimated-cost downgrade). */
+function assignTier(f: Finding, mostlyEstimated: boolean): { tier: ConfidenceTier; reason: string } {
+  const estNote = mostlyEstimated
+    ? ' Costs here are list-price estimates, so the dollar figure is still approximate.'
+    : ''
+  if (f.category === 'legacy-model') {
+    return {
+      tier: 'confirmed',
+      reason:
+        'Confirmed: this model is deprecated with a known, cheaper successor - a price-difference fact, not a behavioral guess.' +
+        estNote,
+    }
+  }
+  if (f.id === 'margin-below-cost' || f.id === 'margin-thin') {
+    return {
+      tier: 'confirmed',
+      reason:
+        'Confirmed: your AI cost compared against the revenue you supplied - a factual comparison.' + estNote,
+    }
+  }
+  if (f.id === 'runaway-volume') {
+    return {
+      tier: 'suspected',
+      reason:
+        'Suspected: the high-volume, low-token pattern is a statistical signature - metadata cannot prove an agent loop.',
+    }
+  }
+  const reasons: Partial<Record<FindingCategory, string>> = {
+    'model-downgrade':
+      'Suspected: inferred from output size and volume - we cannot see the task, so model suitability is not verified.',
+    'output-caps':
+      'Suspected: the output share is visible, but whether responses can be safely shortened depends on the task.',
+    'prompt-caching':
+      'Suspected: prompt size is visible, but the caching fix is not provable without seeing the prompts.',
+    'prompt-bloat':
+      'Suspected: prompt size is visible, but how much is trimmable depends on prompt content we never see.',
+    'retry-waste':
+      'Suspected: you did pay for errored requests, but how much is recoverable is inferred, not proven.',
+    'project-leak':
+      'Suspected: spend concentration is a fact, but the recoverable trim is an inference.',
+  }
+  return {
+    tier: 'suspected',
+    reason: reasons[f.category] ?? 'Suspected: inferred from usage patterns, not verified against actual tasks.',
+  }
+}
+
 /** Assemble one report from the shared context. */
 export function assembleReport(def: ReportDef, ctx: ScanContext): ScanResult {
   const { totals: t, models, projects, trend, spikes, tokenSplit, periodLabel, reconciliation } = ctx
@@ -1008,9 +1071,17 @@ export function assembleReport(def: ReportDef, ctx: ScanContext): ScanResult {
   findings = findings.map((f) => ({ ...f, confidence: minConfidence(f.confidence, ceiling, costCap) }))
   findings.sort((a, b) => midpoint(b) - midpoint(a))
   findings = findings.map((f, i) => ({ ...f, rank: i + 1, metrics: buildMetrics({ ...f, rank: i + 1 }, ctx) }))
+  // Tier is assigned AFTER the confidence cap so the reason can reflect an
+  // estimated-cost downgrade. Orthogonal to confidence/costSource by design.
+  findings = findings.map((f) => {
+    const { tier, reason } = assignTier(f, mostlyEstimated)
+    return { ...f, confidenceTier: tier, tierReason: reason }
+  })
 
   const estLow = sum(findings.map((f) => f.estMonthlyLow))
   const estHigh = sum(findings.map((f) => f.estMonthlyHigh))
+  const confirmedFindings = findings.filter((f) => f.confidenceTier === 'confirmed')
+  const suspectedFindings = findings.filter((f) => f.confidenceTier === 'suspected')
   const healthScore = scoreFor(total, findings)
   const { band, label } = bandFor(healthScore)
   const healthy = findings.length === 0 || (def.scope === 'meta' && estHigh < total * 0.05)
@@ -1037,6 +1108,10 @@ export function assembleReport(def: ReportDef, ctx: ScanContext): ScanResult {
     healthy,
     estMonthlyImpactLow: round(estLow),
     estMonthlyImpactHigh: round(estHigh),
+    confirmedImpactLow: round(sum(confirmedFindings.map((f) => f.estMonthlyLow))),
+    confirmedImpactHigh: round(sum(confirmedFindings.map((f) => f.estMonthlyHigh))),
+    suspectedImpactLow: round(sum(suspectedFindings.map((f) => f.estMonthlyLow))),
+    suspectedImpactHigh: round(sum(suspectedFindings.map((f) => f.estMonthlyHigh))),
     executiveSummary: execSummary,
     findings,
     topLeaks: findings.slice(0, 3),
@@ -1091,6 +1166,18 @@ function renderInsight(f: Finding, ctx: ScanContext): { title: string; body: str
 function buildSnapshot(report: Report, def: ReportDef, ctx: ScanContext): Snapshot {
   const findings = report.findings
   const top = ctx.models[0]
+  // Per-tier rollups (never summed). The aggregate $ per tier is allowed in the
+  // free snapshot; only finding-level fix/evidence stays paywalled. `excludeId`
+  // drops the one free-revealed insight from the locked category list.
+  const tierSummary = (tier: ConfidenceTier, excludeId?: string): TierSummary => {
+    const fs = findings.filter((f) => f.confidenceTier === tier)
+    return {
+      savingsLow: round(sum(fs.map((f) => f.estMonthlyLow))),
+      savingsHigh: round(sum(fs.map((f) => f.estMonthlyHigh))),
+      count: fs.length,
+      categories: uniq(fs.filter((f) => f.id !== excludeId).map((f) => f.categoryLabel)),
+    }
+  }
   const base = {
     spendAnalyzed: report.spendAnalyzed,
     periodLabel: report.periodLabel,
@@ -1117,6 +1204,8 @@ function buildSnapshot(report: Report, def: ReportDef, ctx: ScanContext): Snapsh
       },
       lockedCount: 0,
       lockedCategories: ['What looks good', 'What to monitor', 'Warning signs', 'Budget thresholds'],
+      confirmed: tierSummary('confirmed'),
+      suspected: tierSummary('suspected'),
     }
   }
 
@@ -1134,6 +1223,8 @@ function buildSnapshot(report: Report, def: ReportDef, ctx: ScanContext): Snapsh
       },
       lockedCount: findings.length,
       lockedCategories: uniq(findings.map((f) => f.categoryLabel)),
+      confirmed: tierSummary('confirmed'),
+      suspected: tierSummary('suspected'),
     }
   }
 
@@ -1163,6 +1254,8 @@ function buildSnapshot(report: Report, def: ReportDef, ctx: ScanContext): Snapsh
     visibleInsight: visible,
     lockedCount: findings.length - 1,
     lockedCategories,
+    confirmed: tierSummary('confirmed', chosen.id),
+    suspected: tierSummary('suspected', chosen.id),
   }
 }
 

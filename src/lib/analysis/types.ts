@@ -18,6 +18,12 @@ export interface UsageRow {
   model: string
   date: string // YYYY-MM-DD
   project: string // project or API-key label
+  // Dimensional attribution (optional → back-compatible). Margin Intelligence rolls
+  // usage up along each of these axes; `project` remains the always-present fallback.
+  customerId?: string // joins to Stripe/revenue
+  plan?: string
+  feature?: string
+  workspace?: string
   inputTokens: number
   outputTokens: number
   requests: number
@@ -36,6 +42,14 @@ export interface UsageRow {
 
 export type Severity = 'high' | 'medium' | 'low'
 export type Confidence = 'high' | 'medium' | 'low'
+
+/**
+ * Provability tier (orthogonal to `confidence`/`costSource`):
+ * - 'confirmed' = provable from metadata alone, no behavioral assumption
+ *   (deprecated-model price facts, cost-vs-revenue comparisons, pure aggregations).
+ * - 'suspected' = inferential — a flag to investigate, not a proven number.
+ */
+export type ConfidenceTier = 'confirmed' | 'suspected'
 
 export type FindingCategory =
   | 'model-downgrade'
@@ -62,6 +76,10 @@ export interface Finding {
   fix: string // exact recommended change
   detail: string // longer explanation for the paid report
   metrics?: FindingMetric[] // the receipts: the exact math behind this finding (paid report only)
+  /** Provability tier - assigned centrally in assembleReport (same pattern as rank/metrics). */
+  confidenceTier?: ConfidenceTier
+  /** One-line plain-English rationale for the tier (Confirmed vs Suspected). */
+  tierReason?: string
 }
 
 /** One line of the "receipts" shown under a finding - a checkable number. */
@@ -134,6 +152,16 @@ export interface RevenueMap {
   entries: RevenueEntry[]
 }
 
+/** Customer-keyed revenue (Margin Intelligence). Source = Stripe pull or CSV/manual. */
+export interface RevenueRow {
+  customerId: string
+  label: string
+  plan?: string
+  monthlyRevenue: number // normalized MRR
+  source: 'stripe' | 'csv' | 'manual'
+  asOf?: string // YYYY-MM-DD
+}
+
 /** A margin-leak table row (full report only). */
 export interface MarginRow {
   key: string
@@ -147,6 +175,16 @@ export interface MarginRow {
 export interface ReportExtras {
   marginRows?: MarginRow[]
   coveragePct?: number
+}
+
+/** Per-tier rollup for the snapshot headline. Confirmed and Suspected are
+ * presented separately and NEVER summed into one number. */
+export interface TierSummary {
+  savingsLow: number
+  savingsHigh: number
+  count: number
+  /** Locked category labels in this tier (excludes the one free-revealed insight). */
+  categories: string[]
 }
 
 /** Free preview - deliberately withholds the top/highest-value opportunity. */
@@ -168,6 +206,9 @@ export interface Snapshot {
   slug?: ReportSlug
   costBasis?: CostReconciliation['costBasis']
   metadataLimited?: boolean
+  /** Confidence-tier split. Confirmed leads; the two are never summed into one headline. */
+  confirmed?: TierSummary
+  suspected?: TierSummary
 }
 
 export interface HealthyReport {
@@ -191,6 +232,8 @@ export interface DiagnosticMetric {
   benchmark?: string
   detail: string
   available: boolean
+  /** 'confirmed' when this is a measured fact present in the data; else undefined. */
+  confidenceTier?: ConfidenceTier
 }
 
 /** One row of the market & quality check: the user's model vs the market. */
@@ -229,6 +272,11 @@ export interface Report {
   healthy: boolean
   estMonthlyImpactLow: number
   estMonthlyImpactHigh: number
+  /** Confidence-tier split of the impact (never summed in the UI). */
+  confirmedImpactLow?: number
+  confirmedImpactHigh?: number
+  suspectedImpactLow?: number
+  suspectedImpactHigh?: number
   executiveSummary: string
   findings: Finding[]
   topLeaks: Finding[]

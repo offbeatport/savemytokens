@@ -1,4 +1,4 @@
-import type { UsageRow, Provider, RevenueMap, RevenueEntry } from './types'
+import type { UsageRow, Provider, RevenueMap, RevenueEntry, RevenueRow } from './types'
 import { priceFor } from './pricing'
 
 /**
@@ -11,7 +11,11 @@ const ALIASES: Record<string, string[]> = {
   provider: ['provider', 'vendor', 'platform'],
   model: ['model', 'model_name', 'engine', 'deployment'],
   date: ['date', 'day', 'timestamp', 'usage_date', 'created_at', 'bucket', 'starting_at', 'start_time'],
-  project: ['project', 'project_id', 'api_key', 'api_key_name', 'api_key_id', 'key', 'workspace', 'workspace_id', 'app'],
+  project: ['project', 'project_id', 'api_key', 'api_key_name', 'api_key_id', 'key', 'app'],
+  customerId: ['customer_id', 'customer', 'customerid', 'customer_email', 'account', 'account_id'],
+  plan: ['plan', 'tier', 'plan_name', 'plan_id'],
+  feature: ['feature', 'feature_name', 'endpoint', 'route', 'use_case', 'usecase'],
+  workspace: ['workspace', 'workspace_id', 'team', 'org', 'organization'],
   inputTokens: ['input_tokens', 'prompt_tokens', 'uncached_input_tokens', 'inputtokens', 'input', 'prompt'],
   outputTokens: ['output_tokens', 'completion_tokens', 'outputtokens', 'output', 'completion'],
   requests: ['requests', 'request_count', 'num_model_requests', 'calls', 'count', 'n_requests'],
@@ -137,6 +141,10 @@ export function parseUsageCsv(text: string): ParseResult {
       model,
       date: normDate(idx.date >= 0 ? c[idx.date] : ''),
       project: (idx.project >= 0 && c[idx.project]) || 'default',
+      customerId: idx.customerId >= 0 ? c[idx.customerId] || undefined : undefined,
+      plan: idx.plan >= 0 ? c[idx.plan] || undefined : undefined,
+      feature: idx.feature >= 0 ? c[idx.feature] || undefined : undefined,
+      workspace: idx.workspace >= 0 ? c[idx.workspace] || undefined : undefined,
       inputTokens,
       outputTokens,
       requests: Math.max(1, num(c[idx.requests]) || 1),
@@ -202,6 +210,10 @@ function rowFromObject(obj: Record<string, unknown>, bucketDate?: string): Usage
     model,
     date,
     project: String(get('project') ?? 'default') || 'default',
+    customerId: asStr(get('customerId')),
+    plan: asStr(get('plan')),
+    feature: asStr(get('feature')),
+    workspace: asStr(get('workspace')),
     inputTokens,
     outputTokens,
     requests: Math.max(1, num(asStr(get('requests'))) || 1),
@@ -300,4 +312,48 @@ export function parseRevenueMap(csv: string): { map: RevenueMap; warnings: strin
   }
   if (!entries.length) warnings.push('No usable revenue rows parsed.')
   return { map: { keyBy: 'project', entries }, warnings }
+}
+
+const REVENUE2_ALIASES = {
+  customerId: ['customer_id', 'customer', 'customerid', 'customer_email', 'email', 'account', 'account_id', 'project', 'key', 'workspace'],
+  label: ['name', 'customer_name', 'label', 'company'],
+  revenue: ['monthly_revenue', 'mrr', 'revenue', 'amount', 'monthly'],
+  plan: ['plan', 'tier', 'plan_name'],
+}
+
+/** Parse a customer→revenue CSV into RevenueRow[] (Margin Intelligence). The CSV
+ * fallback for users who don't connect Stripe. Columns auto-mapped. */
+export function parseRevenue(csv: string): { rows: RevenueRow[]; warnings: string[] } {
+  const warnings: string[] = []
+  const lines = csv.split(/\r?\n/).filter((l) => l.trim().length)
+  if (lines.length < 2) return { rows: [], warnings: ['No data rows found.'] }
+  const header = splitCsvLine(lines[0]).map(norm)
+  const colOf = (aliases: string[]) => {
+    for (const a of aliases) {
+      const i = header.indexOf(norm(a))
+      if (i !== -1) return i
+    }
+    return -1
+  }
+  const ci = colOf(REVENUE2_ALIASES.customerId)
+  const li = colOf(REVENUE2_ALIASES.label)
+  const ri = colOf(REVENUE2_ALIASES.revenue)
+  const pi = colOf(REVENUE2_ALIASES.plan)
+  if (ci === -1) warnings.push('No customer/account column found.')
+  if (ri === -1) warnings.push('No revenue/MRR column found.')
+  const rows: RevenueRow[] = []
+  for (let i = 1; i < lines.length; i++) {
+    const c = splitCsvLine(lines[i])
+    const customerId = ci >= 0 ? c[ci] : ''
+    if (!customerId) continue
+    rows.push({
+      customerId,
+      label: (li >= 0 && c[li]) || customerId,
+      monthlyRevenue: num(c[ri]),
+      plan: pi >= 0 ? c[pi] || undefined : undefined,
+      source: 'csv',
+    })
+  }
+  if (!rows.length) warnings.push('No usable revenue rows parsed.')
+  return { rows, warnings }
 }

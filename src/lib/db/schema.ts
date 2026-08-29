@@ -103,7 +103,53 @@ export const featureRequest = sqliteTable('feature_request', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 })
 
+/* ── AI Margin Intelligence ──────────────────────────────────── */
+
+/** One margin ingest event (usage [+ revenue] → computed MarginResult). */
+export const marginIngest = sqliteTable('margin_ingest', {
+  id: text('id').primaryKey(),
+  userId: text('user_id'), // nullable — anonymous before sign-in
+  source: text('source').notNull(), // usage source
+  period: text('period').notNull(), // YYYY-MM
+  periodLabel: text('period_label').notNull(),
+  mode: text('mode').notNull(), // 'margin' | 'cost'
+  hasRevenue: integer('has_revenue', { mode: 'boolean' }).notNull().default(false),
+  costBasis: text('cost_basis'),
+  usageJson: text('usage_json').notNull(), // UsageRow[]
+  revenueJson: text('revenue_json'), // RevenueRow[]
+  resultJson: text('result_json'), // cached MarginResult (recomputed if null)
+  email: text('email'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+})
+
+/** Per-(entity,period) margin facts — the time-series powering Trend & Risk. */
+export const marginSnapshot = sqliteTable('margin_snapshot', {
+  id: text('id').primaryKey(),
+  ingestId: text('ingest_id').notNull(),
+  userId: text('user_id'),
+  entityKind: text('entity_kind').notNull(),
+  entityId: text('entity_id').notNull(),
+  entityLabel: text('entity_label').notNull(),
+  period: text('period').notNull(), // YYYY-MM
+  revenue: integer('revenue').notNull().default(0),
+  cost: integer('cost').notNull().default(0),
+  marginPct: integer('margin_pct'), // null = no revenue joined
+  status: text('status').notNull(), // MarginStatus
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+})
+
+/** Stored Stripe connection (revenue source). Scaffold for OAuth; CSV is the v1 path. */
+export const stripeConnection = sqliteTable('stripe_connection', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  accessToken: text('access_token'),
+  accountId: text('account_id'),
+  connectedAt: integer('connected_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+})
+
 export type ScanRow = typeof scan.$inferSelect
 export type NotifyRow = typeof notifySignup.$inferSelect
 export type ScanUnlockRow = typeof scanUnlock.$inferSelect
 export type FeatureRequestRow = typeof featureRequest.$inferSelect
+export type MarginIngestRow = typeof marginIngest.$inferSelect
+export type MarginSnapshotRow = typeof marginSnapshot.$inferSelect

@@ -109,6 +109,48 @@ function ensureSchema() {
     CREATE UNIQUE INDEX IF NOT EXISTS uq_scan_unlock ON scan_unlock(scan_id, report_slug);
     CREATE INDEX IF NOT EXISTS idx_scan_unlock_checkout ON scan_unlock(checkout_id);
   `)
+
+  // AI Margin Intelligence tables.
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS margin_ingest (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      source TEXT NOT NULL,
+      period TEXT NOT NULL,
+      period_label TEXT NOT NULL,
+      mode TEXT NOT NULL,
+      has_revenue INTEGER NOT NULL DEFAULT 0,
+      cost_basis TEXT,
+      usage_json TEXT NOT NULL,
+      revenue_json TEXT,
+      result_json TEXT,
+      email TEXT,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+    CREATE TABLE IF NOT EXISTS margin_snapshot (
+      id TEXT PRIMARY KEY,
+      ingest_id TEXT NOT NULL,
+      user_id TEXT,
+      entity_kind TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      entity_label TEXT NOT NULL,
+      period TEXT NOT NULL,
+      revenue INTEGER NOT NULL DEFAULT 0,
+      cost INTEGER NOT NULL DEFAULT 0,
+      margin_pct INTEGER,
+      status TEXT NOT NULL,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+    CREATE TABLE IF NOT EXISTS stripe_connection (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      access_token TEXT,
+      account_id TEXT,
+      connected_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+    CREATE INDEX IF NOT EXISTS idx_margin_snapshot_entity ON margin_snapshot(entity_kind, entity_id, period);
+    CREATE INDEX IF NOT EXISTS idx_margin_snapshot_user ON margin_snapshot(user_id, period);
+  `)
 }
 
 function addColumn(table: string, col: string, ddl: string) {
