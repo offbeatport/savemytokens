@@ -3,6 +3,7 @@ import path from "node:path";
 import readline from "node:readline";
 import { LifetimeCost } from "../../core/cost.js";
 import { hash32 } from "../../core/hash.js";
+import { usd } from "../../core/pricing.js";
 import { addUsage, emptyUsage, estimateTokens, weigh } from "../../core/tokens.js";
 import {
   EVIDENCE_SCHEMA,
@@ -16,6 +17,17 @@ import {
 export const LARGE_OUTPUT_CHARS = 10_000;
 export const USEFUL_OUTPUT_CHARS = 2_000;
 export const HIGH_CONTEXT_TOKENS = 120_000;
+export const DEAD_CARRY_TOKENS = 80_000;
+export const DEAD_CARRY_MIN_TURNS = 5;
+const ANAPHORIC_OPENER =
+  /^\s*(ok|okay|now|also|and|then|next|again|yes|no|nope|yep|same|do the same|the other|these|those|them|it|that|this|continue|carry on|keep going|go on|more|another|fix (it|that|this)|try again|redo|revert|undo|hmm|wait|great|nice|thanks|perfect|good)\b/i;
+
+export function isSelfContained(prompt: string): boolean {
+  const text = prompt.trim();
+  if (text.length < 40) return false;
+  if (ANAPHORIC_OPENER.test(text)) return false;
+  return true;
+}
 export const PREMIUM_MODELS = /opus/i;
 const MECHANICAL_TOOLS = new Set(["Bash", "Grep", "Glob", "Read", "WebFetch", "WebSearch"]);
 const SEARCH_TOOLS = new Set(["Grep", "Glob", "WebSearch"]);
@@ -49,6 +61,7 @@ interface PendingTool {
 
 interface TaskState extends TaskSummary {
   modelSet: Set<string>;
+  fileSet: Set<string>;
 }
 
 function bucket(map: Map<string, Bucket>, key: string, tool: string): Bucket {
@@ -170,6 +183,8 @@ export async function parseClaudeSession(file: string, stat: fs.Stats): Promise<
   let toolCalls = 0;
   let toolErrors = 0;
   let apiErrors = 0;
+  let rateLimitHits = 0;
+  let lastRateLimitAt = 0;
   let interruptions = 0;
   let sidechainTurns = 0;
   let sidechainWeighted = 0;
@@ -180,19 +195,29 @@ export async function parseClaudeSession(file: string, stat: fs.Stats): Promise<
   let searchChars = 0;
   let current: TaskState | null = null;
 
-  const openTask = (id: string, ts: number, promptChars: number): TaskState => {
+  const openTask = (id: string, ts: number, prompt: string): TaskState => {
     const task: TaskState = {
       id,
+      sessionId,
+      project: cwd,
+      prompt: prompt.replace(/\s+/g, " ").trim().slice(0, 120),
       startedAt: ts,
       endedAt: ts,
-      promptChars,
+      promptChars: prompt.length,
       turns: 0,
       toolCalls: 0,
       models: [],
       modelSet: new Set<string>(),
+      fileSet: new Set<string>(),
       usage: emptyUsage(),
       weighted: 0,
+      usd: 0,
       peakContext: 0,
+      carriedContext: 0,
+      carriedUsd: 0,
+      carriedIsDead: false,
+      touchedPriorFiles: false,
+      selfContained: isSelfContained(prompt),
       outcome: "completed",
       toolErrors: 0,
     };
@@ -273,23 +298,36 @@ export async function parseClaudeSession(file: string, stat: fs.Stats): Promise<
           }
 
           if (current) {
+            if (current.turns === 0) current.carriedContext = turnUsage.cacheRead + turnUsage.input;
             current.turns++;
             addUsage(current.usage, turnUsage);
             current.weighted += turnWeighted;
+            current.usd += usd(model, turnUsage);
             current.modelSet.add(model);
             if (context > current.peakContext) current.peakContext = context;
           }
         }
         if (record.isApiErrorMessage) {
           apiErrors++;
+          const text = Array.isArray(message.content)
+            ? message.content.map((b: any) => (typeof b?.text === "string" ? b.text : "")).join(" ")
+            : "";
+          if (/\blimit\b/i.test(text) || record.quotaLimits?.status === "rejected") {
+            const at = Number.isFinite(ts) ? ts : lastRateLimitAt;
+            if (at - lastRateLimitAt > 5 * 60 * 1000 || lastRateLimitAt === 0) rateLimitHits++;
+            lastRateLimitAt = at;
+          }
           if (current) current.outcome = "failed";
         }
         for (const block of Array.isArray(message.content) ? message.content : []) {
           if (block?.type !== "tool_use") continue;
           toolCalls++;
-          if (current) current.toolCalls++;
           if (pending.size > MAX_PENDING_TOOLS) pending.clear();
           const input = block.input ?? {};
+          if (current) {
+            current.toolCalls++;
+            if (typeof input.file_path === "string") current.fileSet.add(input.file_path);
+          }
           pending.set(block.id, {
             name: block.name ?? "unknown",
             turn,
@@ -334,7 +372,7 @@ export async function parseClaudeSession(file: string, stat: fs.Stats): Promise<
           const isHuman = record.origin?.kind === "human" || record.promptSource === "typed";
           if (isHuman && content.length > 0) {
             humanPrompts++;
-            current = openTask(record.promptId ?? record.uuid ?? `task-${tasks.length}`, Number.isFinite(ts) ? ts : 0, content.length);
+            current = openTask(record.promptId ?? record.uuid ?? `task-${tasks.length}`, Number.isFinite(ts) ? ts : 0, content);
           }
           break;
         }
@@ -501,10 +539,24 @@ export async function parseClaudeSession(file: string, stat: fs.Stats): Promise<
     failures: topBuckets(failures, segmentEnds),
   };
 
+  const seenFiles = new Set<string>();
   const finishedTasks: TaskSummary[] = tasks.map((t) => {
-    const { modelSet, ...rest } = t;
-    const outcome: TaskOutcome = rest.outcome;
-    return { ...rest, models: [...modelSet], outcome };
+    const { modelSet, fileSet, ...rest } = t;
+    const models = [...modelSet];
+    const touchedPriorFiles = [...fileSet].some((f) => seenFiles.has(f));
+    for (const f of fileSet) seenFiles.add(f);
+    const carriedUsd = usd(models[0] ?? "claude-opus-5", {
+      input: 0,
+      output: 0,
+      cacheWrite: 0,
+      cacheRead: rest.carriedContext * rest.turns,
+    });
+    const carriedIsDead =
+      rest.carriedContext >= DEAD_CARRY_TOKENS &&
+      rest.turns >= DEAD_CARRY_MIN_TURNS &&
+      rest.selfContained &&
+      !touchedPriorFiles;
+    return { ...rest, models, touchedPriorFiles, carriedUsd, carriedIsDead, project: cwd };
   });
 
   return {
@@ -530,6 +582,7 @@ export async function parseClaudeSession(file: string, stat: fs.Stats): Promise<
     bloatTokens,
     bloatWeighted,
     apiErrors,
+    rateLimitHits,
     interruptions,
     toolCalls,
     toolErrors,

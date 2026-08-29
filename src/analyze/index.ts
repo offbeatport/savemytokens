@@ -25,6 +25,9 @@ export function analyze(corpus: Corpus, ranAt = Date.now()): Audit {
     upliftRatio,
     models: agg.models,
     outcomes: agg.outcomes,
+    rateLimitHits: agg.rateLimitHits,
+    topTasks: agg.topTasks,
+    projects: agg.projects,
   };
 }
 

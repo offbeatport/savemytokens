@@ -1,4 +1,4 @@
-export const EVIDENCE_SCHEMA = 3;
+export const EVIDENCE_SCHEMA = 4;
 
 export type AdapterId = "claude-code" | "codex" | "gemini";
 
@@ -15,6 +15,9 @@ export type TaskOutcome = "completed" | "interrupted" | "failed";
 
 export interface TaskSummary {
   id: string;
+  sessionId: string;
+  project: string;
+  prompt: string;
   startedAt: number;
   endedAt: number;
   promptChars: number;
@@ -23,7 +26,13 @@ export interface TaskSummary {
   models: string[];
   usage: Usage;
   weighted: number;
+  usd: number;
   peakContext: number;
+  carriedContext: number;
+  carriedUsd: number;
+  carriedIsDead: boolean;
+  touchedPriorFiles: boolean;
+  selfContained: boolean;
   outcome: TaskOutcome;
   toolErrors: number;
 }
@@ -109,6 +118,7 @@ export interface SessionEvidence {
   bloatTokens: number;
   bloatWeighted: number;
   apiErrors: number;
+  rateLimitHits: number;
   interruptions: number;
   toolCalls: number;
   toolErrors: number;
@@ -144,20 +154,26 @@ export interface FindingEvidenceLine {
   text: string;
 }
 
+export type FixEffort = "one-time" | "habit";
+
 export interface Finding {
   id: string;
   title: string;
   measured: string[];
   wastedWeighted: number;
+  wastedUsd: number;
   wasteRatio: number;
   confidence: Confidence;
+  effort: FixEffort;
   fix: string;
+  receipts?: string[];
   detail?: string[];
 }
 
 export interface Totals {
   usage: Usage;
   weighted: number;
+  usd: number;
   tokens: number;
   freshTokens: number;
   cacheReadTokens: number;
@@ -179,6 +195,9 @@ export interface Audit {
   upliftRatio: number;
   models: ModelUse[];
   outcomes: { completed: number; interrupted: number; failed: number };
+  rateLimitHits: number;
+  topTasks: TaskSummary[];
+  projects: Array<{ name: string; usd: number; tasks: number }>;
 }
 
 export interface ScoreComponent {

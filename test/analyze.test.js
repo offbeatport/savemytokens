@@ -30,6 +30,7 @@ function session(overrides = {}) {
     bloatTokens: 0,
     bloatWeighted: 0,
     apiErrors: 0,
+    rateLimitHits: 0,
     interruptions: 0,
     toolCalls: 50,
     toolErrors: 0,
@@ -110,16 +111,59 @@ test("combined waste discounts overlapping findings and stays capped", () => {
   assert.equal(combinedWaste([]), 0);
 });
 
+function task(overrides = {}) {
+  return {
+    id: "t1",
+    sessionId: "s1",
+    project: "/tmp/demo",
+    prompt: "add rate limiting to the invoice export endpoint",
+    startedAt: 1,
+    endedAt: 2,
+    promptChars: 48,
+    turns: 40,
+    toolCalls: 20,
+    models: ["claude-opus-5"],
+    usage: { input: 0, output: 2_000, cacheWrite: 20_000, cacheRead: 8_000_000 },
+    weighted: 0,
+    usd: 12,
+    peakContext: 400_000,
+    carriedContext: 300_000,
+    carriedUsd: 6,
+    carriedIsDead: true,
+    touchedPriorFiles: false,
+    selfContained: true,
+    outcome: "completed",
+    toolErrors: 0,
+    ...overrides,
+  };
+}
+
+test("dead carry is reported with per-task receipts and money", () => {
+  const audit = analyze(corpus([session({ tasks: [task(), task({ id: "t2" })] })]));
+  const finding = audit.findings.find((f) => f.id === "dead-carry");
+  assert.ok(finding, "expected dead-carry finding");
+  assert.equal(finding.confidence, "measured");
+  assert.equal(finding.receipts.length, 2);
+  assert.match(finding.receipts[0], /invoice export/);
+  assert.ok(finding.wastedUsd > 0);
+});
+
+test("tasks that reopened earlier files are not counted as dead carry", () => {
+  const live = { ...task(), carriedIsDead: false, touchedPriorFiles: true };
+  const audit = analyze(corpus([session({ tasks: [live] })]));
+  assert.equal(audit.findings.find((f) => f.id === "dead-carry"), undefined);
+});
+
+test("totals and top tasks come from the task layer", () => {
+  const audit = analyze(corpus([session({ tasks: [task({ usd: 3 }), task({ id: "t2", usd: 40 })] })]));
+  assert.equal(audit.totals.tasks, 2);
+  assert.equal(Math.round(audit.totals.usd), 43);
+  assert.equal(audit.topTasks[0].usd, 40);
+  assert.equal(audit.projects[0].name, "demo");
+});
+
 test("uplift is derived from the combined waste ratio", () => {
-  const audit = analyze(
-    corpus([
-      session({
-        bloatTurns: 50,
-        bloatTokens: 20_000_000,
-        bloatWeighted: 2_000_000,
-      }),
-    ]),
-  );
+  const audit = analyze(corpus([session({ tasks: [task(), task({ id: "t2" })] })]));
   const expected = 1 / (1 - audit.wasteRatio) - 1;
   assert.ok(Math.abs(audit.upliftRatio - expected) < 1e-9);
   assert.ok(audit.score < 100);

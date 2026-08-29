@@ -14,6 +14,8 @@ export function runPrivacy(version: string): void {
   out.push(bold("What it writes"));
   out.push("");
   out.push(`  ${displayHome()}/cache/     ${dim("per-session measurements, so repeat runs are fast")}`);
+  out.push(dim("      · includes the first 120 characters of each prompt, so a finding can name"));
+  out.push(dim("        the task it came from"));
   out.push(`  ${displayHome()}/runs.json  ${dim("one line per run: score, waste ratios, token totals")}`);
   out.push(`  ${displayHome()}/last-audit.json`);
   out.push("");

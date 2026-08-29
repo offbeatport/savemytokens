@@ -1,5 +1,6 @@
+import { usd } from "../core/pricing.js";
 import { addUsage, emptyUsage, rawTokens, weigh } from "../core/tokens.js";
-import type { Corpus, ModelUse, Totals, Usage } from "../core/types.js";
+import type { Corpus, ModelUse, TaskSummary, Totals, Usage } from "../core/types.js";
 
 export interface Merged<T> {
   key: string;
@@ -57,6 +58,11 @@ export interface Aggregate {
   compactions: number;
   outcomes: { completed: number; interrupted: number; failed: number };
   searchChars: number;
+  rateLimitHits: number;
+  allTasks: TaskSummary[];
+  topTasks: TaskSummary[];
+  deadCarry: { tasks: TaskSummary[]; usd: number; weighted: number; tokens: number };
+  projects: Array<{ name: string; usd: number; tasks: number }>;
 }
 
 function merger<T>() {
@@ -106,6 +112,10 @@ export function aggregate(corpus: Corpus): Aggregate {
   let sidechainWeighted = 0;
   let compactions = 0;
   let searchChars = 0;
+  let rateLimitHits = 0;
+  let totalUsd = 0;
+  const allTasks: TaskSummary[] = [];
+  const projects = new Map<string, { name: string; usd: number; tasks: number }>();
   const outcomes = { completed: 0, interrupted: 0, failed: 0 };
 
   for (const session of corpus.sessions) {
@@ -120,6 +130,16 @@ export function aggregate(corpus: Corpus): Aggregate {
     sidechainWeighted += session.sidechainWeighted;
     compactions += session.compactions;
     searchChars += session.searchChars;
+    rateLimitHits += session.rateLimitHits ?? 0;
+    for (const task of session.tasks) {
+      allTasks.push(task);
+      totalUsd += task.usd;
+      const name = (task.project || session.project).split("/").pop() || "unknown";
+      const entry = projects.get(name) ?? { name, usd: 0, tasks: 0 };
+      entry.usd += task.usd;
+      entry.tasks += 1;
+      projects.set(name, entry);
+    }
     bloatTurns += session.bloatTurns;
     bloatTokens += session.bloatTokens;
     bloatWeighted += session.bloatWeighted;
@@ -215,6 +235,7 @@ export function aggregate(corpus: Corpus): Aggregate {
     totals: {
       usage,
       weighted: weigh(usage),
+      usd: totalUsd || usd("claude-opus-5", usage),
       tokens: rawTokens(usage),
       freshTokens: usage.input + usage.output + usage.cacheWrite,
       cacheReadTokens: usage.cacheRead,
@@ -240,5 +261,19 @@ export function aggregate(corpus: Corpus): Aggregate {
     compactions,
     outcomes,
     searchChars,
+    rateLimitHits,
+    allTasks,
+    topTasks: allTasks.filter((t) => t.turns > 0).sort((a, b) => b.usd - a.usd).slice(0, 5),
+    deadCarry: (() => {
+      const dead = allTasks.filter((t) => t.carriedIsDead).sort((a, b) => b.carriedUsd - a.carriedUsd);
+      const tokens = dead.reduce((sum, t) => sum + t.carriedContext * t.turns, 0);
+      return {
+        tasks: dead.slice(0, 8),
+        usd: dead.reduce((sum, t) => sum + t.carriedUsd, 0),
+        weighted: tokens * 0.1,
+        tokens,
+      };
+    })(),
+    projects: [...projects.values()].sort((a, b) => b.usd - a.usd),
   };
 }

@@ -15,26 +15,32 @@ whether the change actually worked.
 ```
 SaveMyTokens
 
-You could get ~24% more work from the same tokens.
-7 days · 31 sessions · 187 tasks · 60M new tokens · 2.2B re-read
+You ran 228 tasks worth $1,038 and hit your usage limit 14 times.
+About $233 of that bought you nothing.
+7 days · 32 sessions · 65M new tokens · 2.4B re-read
 
-1. Repeated context reads
-   Measured: 44 identical re-reads of 12 files (880 KB re-sent unchanged)
-   Measured: worst: scratchpad/MIGRATION-BRIEF.md — 44× after the first read
-   Estimated waste: ~6% of token spend
-   Fix: Read scratchpad/MIGRATION-BRIEF.md once, then work from it. When you only
-   need part of a file, ask for a line range instead of the whole file, and put
-   facts you keep re-reading in CLAUDE.md so they ride along once per session.
+Your most expensive tasks
+      $61  picsuper       Build a new app, using 1. This stack: TanSta…  273t
+      $49  webinvoke      I want you to implement BuyDiff.com with thi…  286t
+      $39  cslopslop      ok, I want you to extract the ui library int…  271t
 
-2. Hook output injected into context
-   Measured: 1,203 hook events printed 340 KB into context
-   Measured: worst: PostToolUse:Bash — the same output repeated 706×
-   Estimated waste: ~2.5% of token spend
-   Fix: The PostToolUse:Bash hook re-prints identical output on nearly every tool
-   call. Send its stdout to /dev/null in ~/.claude/settings.json.
+1. Finished work still riding along in context  $92 · habit · measured
+   · 39 tasks started with more than 80k tokens of earlier work in context
+   · none of them re-opened a single file from that earlier work, and their
+     prompts named their own subject
+   · that context was re-read on every turn: 301M tokens
 
-Efficiency: 75/100
-Previous: 68/100 ↑
+      $40  cslopslop · "Update Chat agent window scroolbar. It is light…" — carried 985k tokens through 81 turns
+      $16  cslopslop · "When I first load the app and press the scan ho…" — carried 916k tokens through 34 turns
+
+   Do this: Press Ctrl+C and start a new session (or /clear) when the next
+   thing you type is not about the last thing you did.
+
+Start here: hook output injected into context — $19, one config change,
+never think about it again.
+
+Efficiency: 79/100
+Previous: 74/100  ↑ 5
 ```
 
 ## This is not a usage dashboard
@@ -77,16 +83,33 @@ and never uploads anything. Observe first, prove value, then decide whether you 
 Every measurement comes from your own transcripts under `~/.claude/projects` — including the
 nested subagent transcripts most tools miss.
 
+The unit is the **task** — one thing you asked for, and every turn it took to finish. Findings are
+attached to tasks you can recognise, priced in dollars, and tagged `one-time fix` or `habit`.
+
 | Detector | What it finds |
 | --- | --- |
+| `dead-carry` | tasks that began with finished work still in context and never re-opened a file from it |
+| `hook-noise` | hooks printing identical stdout into the transcript on every tool call |
 | `repeated-reads` | the same file content re-sent unchanged, in one session or across its subagents |
 | `large-output` | tool results over 10 KB that then ride along in context for the rest of the session |
-| `hook-noise` | hooks printing identical stdout into the transcript on every tool call |
-| `context-bloat` | turns running above 120k context, and the tokens re-read past that line |
+| `roundtrips` | turns that did one cheap thing while re-reading the entire conversation |
 | `failed-tools` | commands that failed or were interrupted, and what their error dumps cost |
 | `write-churn` | files written end-to-end more than once instead of edited |
 | `cold-cache` | sessions abandoned within three turns, after paying a full cache write |
-| `model-routing` | premium-model turns that were a single mechanical tool call |
+
+### How dead carry is proven, not guessed
+
+"You did not need that context" is the easiest claim to get wrong, so it has to clear four bars
+before a single dollar is counted:
+
+1. the task started with **80k+ tokens** already resident,
+2. it ran **5+ turns**, so the carry actually cost something,
+3. its prompt was **self-contained** — a prompt opening with *"ok"*, *"now do the same"*, *"the
+   other ones"* refers to earlier context and is never counted,
+4. it **never re-opened a single file** touched by any earlier task in that session.
+
+Only tasks that clear all four are counted, and each one is printed with its prompt, its project
+and its price so you can check it yourself.
 
 ### How cost is compared
 
@@ -108,10 +131,14 @@ The report always separates the two, and so should you:
 
 - **Measured** — counted directly from the logs: token counts, turn counts, duplicate reads, bytes
   of output, failures. These are facts.
-- **Estimated** (`~`) — anything inferred: bytes converted to tokens at ~4 chars per token, and how
-  much of a pattern was realistically avoidable. Context bloat is discounted to 40% recoverable,
-  model routing to 40%. Findings overlap, so the headline combines them as
-  `largest + 50% of the rest`, capped at 45%.
+- **Estimated** — anything inferred: bytes converted to tokens at ~4 chars per token, and how much
+  of a pattern was realistically avoidable (round trips are discounted to 40% recoverable). Findings
+  overlap, so the headline combines them as `largest + 50% of the rest`, capped at 45%, and the
+  list is ranked by dollars weighted by certainty — a measured finding outranks a larger estimate.
+
+Dollar figures are list-price equivalents (Opus 5 at $5/$25 per MTok, cache write 1.25×, cache read
+0.1×) for the tokens you actually used. On a subscription you do not pay them directly — they are
+the size of the thing, and the usage-limit count is what it costs you in practice.
 
 Estimates are never presented as facts.
 
@@ -120,6 +147,10 @@ Estimates are never presented as facts.
 Claude Code makes a little traffic that is never written to a transcript — session titles, quota
 checks, and some background agent work. Those tokens are billed to you but invisible here, so
 totals can run slightly under Claude Code's own cost view.
+
+It also cannot read your mind. It knows a task never re-opened an earlier file; it cannot know you
+were holding a decision from that conversation in your head. That is why the receipts are printed:
+the tool makes the claim, you get to overrule it.
 
 ## Privacy
 
@@ -132,6 +163,10 @@ Everything is local, by default and in fact — there is no network call in this
 `npx savemytokens privacy` prints exactly what it reads, exactly what it stores, and the exact JSON
 payload that *would* be sent if you ever opted in — counters only, no prompts, responses, paths,
 commands, repo names or code.
+
+The local cache under `~/.savemytokens/` does keep the first 120 characters of your prompts, because
+that is what makes a finding recognisable. It never leaves the machine, and `privacy` shows you the
+upload payload that excludes it.
 
 ## Open source strategy
 

@@ -1,6 +1,6 @@
-import type { Audit, Finding, RunRecord } from "../core/types.js";
+import type { Audit, Finding, RunRecord, TaskSummary } from "../core/types.js";
 import { bold, dim, green, red, yellow } from "../util/ansi.js";
-import { compactNumber, percent, plural, shortDate } from "../util/fmt.js";
+import { compactNumber, money, percent, plural, shortDate } from "../util/fmt.js";
 import { displayHome } from "../storage/paths.js";
 
 const INDENT = "   ";
@@ -27,66 +27,79 @@ export function wrap(text: string, indent: string, max = width()): string[] {
   return lines;
 }
 
-function wasteLine(finding: Finding): string {
-  const value = percent(finding.wasteRatio, finding.wasteRatio < 0.1 ? 1 : 0);
-  return finding.confidence === "measured"
-    ? `Measured waste: ${value} of token spend`
-    : `Estimated waste: ~${value} of token spend`;
+function taskLine(task: TaskSummary, columns: number): string {
+  const project = (task.project || "").split("/").pop() || "unknown";
+  const head = `${money(task.usd).padStart(6)}  ${project.padEnd(14).slice(0, 14)}`;
+  const room = Math.max(24, columns - head.length - 8);
+  const prompt = task.prompt.length > room ? `${task.prompt.slice(0, room - 1)}…` : task.prompt;
+  return `${head} ${prompt}  ${dim(`${task.turns}t`)}`;
 }
 
-function scopeLine(audit: Audit): string {
-  const parts = [
-    `${audit.scope.days} ${plural(audit.scope.days, "day")}`,
-    `${audit.totals.sessions} ${plural(audit.totals.sessions, "session")}`,
-    `${audit.totals.tasks} ${plural(audit.totals.tasks, "task")}`,
-    `${compactNumber(audit.totals.freshTokens)} new tokens`,
-    `${compactNumber(audit.totals.cacheReadTokens)} re-read`,
-  ];
-  if (audit.scope.project) parts.push(audit.scope.project.split("/").pop() ?? "");
-  return parts.join(" · ");
+function confidenceTag(finding: Finding): string {
+  return finding.confidence === "measured" ? dim("measured") : dim("estimated");
+}
+
+function effortTag(finding: Finding): string {
+  return finding.effort === "one-time" ? green("one-time fix") : yellow("habit");
 }
 
 function trend(audit: Audit, previous: RunRecord | null): string[] {
   if (!previous) return [dim("First run — future runs compare against this baseline.")];
   const delta = audit.score - previous.score;
-  const arrow = delta > 0 ? green("↑") : delta < 0 ? red("↓") : dim("→");
-  return [`${dim("Previous:")} ${previous.score}/100 ${arrow} ${dim(`(${shortDate(previous.ranAt)})`)}`];
+  const arrow = delta > 0 ? green(`↑ ${delta}`) : delta < 0 ? red(`↓ ${delta}`) : dim("→ no change");
+  return [`${dim("Previous:")} ${previous.score}/100  ${arrow} ${dim(`(${shortDate(previous.ranAt)})`)}`];
 }
 
 export function renderAudit(audit: Audit, previous: RunRecord | null, verbose: boolean): string {
+  const columns = width();
   const out: string[] = ["", bold("SaveMyTokens"), ""];
 
   if (audit.totals.sessions === 0) {
-    out.push("No agent sessions found in the last " + audit.scope.days + " days.");
+    out.push(`No agent sessions found in the last ${audit.scope.days} days.`);
     out.push(dim("Try a wider window: npx savemytokens --days 30"));
     out.push("");
     return out.join("\n");
   }
 
-  if (audit.findings.length === 0) {
+  const wasted = audit.findings.reduce((sum, f) => sum + f.wastedUsd, 0);
+  const headline = `You ran ${audit.totals.tasks} ${plural(audit.totals.tasks, "task")} worth ${bold(money(audit.totals.usd))}`;
+  const lockouts =
+    audit.rateLimitHits > 0
+      ? ` and hit your usage limit ${bold(String(audit.rateLimitHits))} ${plural(audit.rateLimitHits, "time")}`
+      : "";
+  out.push(`${headline}${lockouts}.`);
+  if (audit.findings.length > 0) {
+    out.push(`About ${bold(money(Math.min(wasted, audit.totals.usd)))} of that bought you nothing.`);
+  } else {
     out.push("Nothing measurably wasteful in this window.");
-    out.push("");
-    out.push(`${bold("Efficiency:")} ${audit.score}/100`);
-    out.push(...trend(audit, previous));
-    out.push("");
-    out.push(dim(scopeLine(audit)));
-    out.push(dim(`Saved to ${displayHome()} · nothing left this machine`));
-    out.push("");
-    return out.join("\n");
   }
-
-  const uplift = Math.round(audit.upliftRatio * 100);
-  out.push(`You could get ${bold(`~${uplift}% more work`)} from the same tokens.`);
-  out.push(dim(scopeLine(audit)));
+  const scope = [
+    `${audit.scope.days} ${plural(audit.scope.days, "day")}`,
+    `${audit.totals.sessions} ${plural(audit.totals.sessions, "session")}`,
+    `${compactNumber(audit.totals.freshTokens)} new tokens`,
+    `${compactNumber(audit.totals.cacheReadTokens)} re-read`,
+  ];
+  out.push(dim(scope.join(" · ")));
   out.push("");
 
-  audit.findings.slice(0, 3).forEach((finding, index) => {
-    out.push(`${index + 1}. ${bold(finding.title)}`);
-    for (const line of finding.measured) {
-      out.push(...wrap(`${dim("Measured:")} ${line}`, INDENT));
+  if (audit.topTasks.length > 0) {
+    out.push(bold("Your most expensive tasks"));
+    for (const task of audit.topTasks.slice(0, 5)) out.push(`${INDENT}${taskLine(task, columns - 3)}`);
+    out.push("");
+  }
+
+  const shown = audit.findings.slice(0, 3);
+  shown.forEach((finding, index) => {
+    out.push(
+      `${index + 1}. ${bold(finding.title)}  ${bold(money(finding.wastedUsd))} ${dim("·")} ${effortTag(finding)} ${dim("·")} ${confidenceTag(finding)}`,
+    );
+    for (const line of finding.measured) out.push(...wrap(`${dim("·")} ${line}`, INDENT));
+    if (finding.receipts && finding.receipts.length > 0) {
+      out.push("");
+      for (const line of finding.receipts) out.push(`${INDENT}${dim(line)}`);
     }
-    out.push(`${INDENT}${yellow(wasteLine(finding))}`);
-    out.push(...wrap(`Fix: ${finding.fix}`, INDENT));
+    out.push("");
+    out.push(...wrap(`${bold("Do this:")} ${finding.fix}`, INDENT));
     if (verbose && finding.detail) {
       out.push(`${INDENT}${dim("—")}`);
       for (const detail of finding.detail) out.push(`${INDENT}${dim(detail)}`);
@@ -94,9 +107,17 @@ export function renderAudit(audit: Audit, previous: RunRecord | null, verbose: b
     out.push("");
   });
 
-  if (audit.findings.length > 3) {
-    const rest = audit.findings.slice(3);
-    out.push(dim(`+ ${rest.length} smaller ${plural(rest.length, "finding")}: ${rest.map((f) => f.title.toLowerCase()).join(", ")}`));
+  const rest = audit.findings.slice(3);
+  if (rest.length > 0) {
+    out.push(
+      dim(`+ ${rest.length} smaller: ${rest.map((f) => `${f.title.toLowerCase()} (${money(f.wastedUsd)})`).join(", ")}`),
+    );
+    out.push("");
+  }
+
+  const quickest = [...audit.findings].filter((f) => f.effort === "one-time").sort((a, b) => b.wastedUsd - a.wastedUsd)[0];
+  if (quickest) {
+    out.push(...wrap(`${green("Start here:")} ${quickest.title.toLowerCase()} — ${money(quickest.wastedUsd)}, one config change, never think about it again.`, ""));
     out.push("");
   }
 
@@ -104,6 +125,11 @@ export function renderAudit(audit: Audit, previous: RunRecord | null, verbose: b
   out.push(...trend(audit, previous));
 
   if (verbose) {
+    out.push("");
+    out.push(dim("Spend by project"));
+    for (const project of audit.projects.slice(0, 8)) {
+      out.push(dim(`${INDENT}${money(project.usd).padStart(7)}  ${project.name} · ${project.tasks} ${plural(project.tasks, "task")}`));
+    }
     out.push("");
     out.push(dim("Score"));
     for (const component of audit.scoreBreakdown) {
@@ -122,7 +148,7 @@ export function renderAudit(audit: Audit, previous: RunRecord | null, verbose: b
   }
 
   out.push("");
-  out.push(dim(`Verified numbers come from your own session logs. Savings marked ~ are estimates.`));
+  out.push(dim("Dollar figures are list-price equivalents for the tokens you actually used."));
   out.push(dim(`Saved to ${displayHome()} · nothing left this machine`));
   out.push("");
   return out.join("\n");

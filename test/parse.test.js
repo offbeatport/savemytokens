@@ -116,3 +116,72 @@ test("sessions with no assistant turns are skipped", async () => {
   const { file } = writeFixture("empty", [humanPrompt("empty", "p1", "hello")]);
   assert.equal(await parseClaudeSession(file, fs.statSync(file)), null);
 });
+
+test("a self-contained prompt after unrelated work is flagged as dead carry", async () => {
+  const records = [
+    humanPrompt("s2", "p1", "refactor the auth module to use the new session store"),
+    assistantTurn("s2", "m1", { input: 2, output: 200, cacheWrite: 90_000, cacheRead: 0 }, [
+      toolUse("t1", "Edit", { file_path: "/tmp/demo/src/auth.ts", old_string: "a", new_string: "b" }),
+    ]),
+    toolResult("s2", "t1", "ok", { filePath: "/tmp/demo/src/auth.ts" }),
+    humanPrompt("s2", "p2", "add a dark mode toggle to the settings page header"),
+  ];
+  for (let i = 2; i <= 8; i++) {
+    records.push(
+      assistantTurn("s2", `m${i}`, { input: 2, output: 150, cacheWrite: 1_000, cacheRead: 120_000 }, [
+        toolUse(`t${i}`, "Edit", { file_path: "/tmp/demo/src/settings.tsx", old_string: "a", new_string: "b" }),
+      ]),
+    );
+    records.push(toolResult("s2", `t${i}`, "ok", { filePath: "/tmp/demo/src/settings.tsx" }));
+  }
+  const { file } = writeFixture("s2", records);
+  const evidence = await parseClaudeSession(file, fs.statSync(file));
+  const [first, second] = evidence.tasks;
+  assert.equal(first.carriedIsDead, false, "the first task carries nothing");
+  assert.equal(second.selfContained, true);
+  assert.equal(second.touchedPriorFiles, false);
+  assert.equal(second.carriedIsDead, true);
+  assert.ok(second.carriedUsd > 0);
+  assert.ok(second.usd > 0);
+});
+
+test("a follow-up prompt is never counted as dead carry", async () => {
+  const records = [
+    humanPrompt("s3", "p1", "refactor the auth module to use the new session store"),
+    assistantTurn("s3", "m1", { input: 2, output: 200, cacheWrite: 90_000, cacheRead: 0 }, [
+      toolUse("t1", "Edit", { file_path: "/tmp/demo/src/auth.ts", old_string: "a", new_string: "b" }),
+    ]),
+    toolResult("s3", "t1", "ok", { filePath: "/tmp/demo/src/auth.ts" }),
+    humanPrompt("s3", "p2", "ok now do the same for the other ones, all of them please"),
+  ];
+  for (let i = 2; i <= 8; i++) {
+    records.push(
+      assistantTurn("s3", `m${i}`, { input: 2, output: 150, cacheWrite: 1_000, cacheRead: 120_000 }, [
+        toolUse(`t${i}`, "Edit", { file_path: "/tmp/demo/src/other.ts", old_string: "a", new_string: "b" }),
+      ]),
+    );
+    records.push(toolResult("s3", `t${i}`, "ok", { filePath: "/tmp/demo/src/other.ts" }));
+  }
+  const { file } = writeFixture("s3", records);
+  const evidence = await parseClaudeSession(file, fs.statSync(file));
+  const second = evidence.tasks[1];
+  assert.equal(second.selfContained, false, "anaphoric prompts depend on prior context");
+  assert.equal(second.carriedIsDead, false);
+});
+
+test("usage-limit lockouts are counted once per episode", async () => {
+  const limit = (id) =>
+    assistantTurn("s4", id, { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 }, [
+      { type: "text", text: "You've hit your session limit · resets 1pm" },
+    ], { isApiErrorMessage: true, model: "<synthetic>" });
+  const { file } = writeFixture("s4", [
+    humanPrompt("s4", "p1", "build the thing"),
+    assistantTurn("s4", "m1", { input: 2, output: 100, cacheWrite: 10_000, cacheRead: 0 }, [{ type: "text", text: "ok" }]),
+    limit("e1"),
+    limit("e2"),
+    limit("e3"),
+  ]);
+  const evidence = await parseClaudeSession(file, fs.statSync(file));
+  assert.equal(evidence.apiErrors, 3);
+  assert.equal(evidence.rateLimitHits, 1, "three retries of one lockout are one episode");
+});

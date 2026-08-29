@@ -12,6 +12,13 @@ export function bytes(chars: number): string {
   return `${(chars / (1_024 * 1_024)).toFixed(1)} MB`;
 }
 
+export function money(value: number): string {
+  if (value >= 1000) return `$${Math.round(value).toLocaleString("en-US")}`;
+  if (value >= 10) return `$${Math.round(value)}`;
+  if (value >= 1) return `$${value.toFixed(1)}`;
+  return `$${value.toFixed(2)}`;
+}
+
 export function percent(ratio: number, digits = 0): string {
   return `${(ratio * 100).toFixed(digits)}%`;
 }
