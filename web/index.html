@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SaveMyTokens</title>
+    <meta name="description" content="Get more done. Find what wastes tokens in your AI coding sessions." />
+    <meta property="og:title" content="SaveMyTokens" />
+    <meta property="og:description" content="Get more done." />
+    <link rel="icon" href="data:," />
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #000;
+        --paper: #fff;
+        --muted: #666;
+        --rule: #ddd;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          color-scheme: dark;
+          --ink: #fff;
+          --paper: #000;
+          --muted: #999;
+          --rule: #333;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      body {
+        background: var(--paper);
+        color: var(--ink);
+        font: 16px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+      }
+      main {
+        width: 100%;
+        max-width: 34rem;
+      }
+      h1 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin: 0;
+        letter-spacing: -0.01em;
+      }
+      p {
+        margin: 0.25rem 0 0;
+      }
+      .tagline {
+        font-size: 1.25rem;
+      }
+      code {
+        display: block;
+        margin: 2.5rem 0;
+        padding: 1rem 1.25rem;
+        border: 1px solid var(--rule);
+        font: inherit;
+        user-select: all;
+      }
+      .note {
+        color: var(--muted);
+        font-size: 0.875rem;
+      }
+      .note a {
+        color: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>SaveMyTokens</h1>
+      <p class="tagline">Get more done.</p>
+      <code>npx savemytokens</code>
+      <p class="note">
+        Finds what wastes tokens in your Claude Code sessions, and what to change. Runs locally.
+        Nothing is uploaded.
+      </p>
+      <p class="note">
+        <a href="https://github.com/offbeatport/savemytokens">source</a> ·
+        <a href="https://www.npmjs.com/package/savemytokens">npm</a>
+      </p>
+    </main>
+  </body>
+</html>

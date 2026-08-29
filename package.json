@@ -1,0 +1,47 @@
+{
+  "name": "savemytokens",
+  "version": "0.1.0",
+  "description": "Find what wastes tokens in your AI coding sessions, and what to change. Local, private, zero setup.",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "tokens",
+    "context",
+    "llm",
+    "cost",
+    "audit",
+    "cli"
+  ],
+  "homepage": "https://savemytokens.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/offbeatport/savemytokens.git"
+  },
+  "bugs": {
+    "url": "https://github.com/offbeatport/savemytokens/issues"
+  },
+  "license": "MIT",
+  "author": "Offbeatport",
+  "type": "module",
+  "bin": {
+    "savemytokens": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "node --experimental-strip-types src/cli.ts",
+    "test": "npm run build && node --test test/*.test.js",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}
