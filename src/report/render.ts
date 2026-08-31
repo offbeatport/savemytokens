@@ -1,9 +1,18 @@
 import type { Audit, Finding, RunRecord, TaskSummary } from "../core/types.js";
-import { bold, dim, green, red, yellow } from "../util/ansi.js";
-import { compactNumber, money, percent, plural, shortDate } from "../util/fmt.js";
+import { bold, dim, green, padEndVisible, padStartVisible, red, visibleWidth } from "../util/ansi.js";
+import { bar, compactNumber, money, percent, plural, shortDate, sparkline } from "../util/fmt.js";
 import { displayHome } from "../storage/paths.js";
+import { pricingNote } from "../core/pricing.js";
 
 const INDENT = "   ";
+const BAR_WIDTH = 8;
+
+export interface RenderInput {
+  audit: Audit;
+  previous: RunRecord | null;
+  history?: RunRecord[];
+  verbose?: boolean;
+}
 
 function width(): number {
   const columns = process.stdout.columns ?? 80;
@@ -27,30 +36,63 @@ export function wrap(text: string, indent: string, max = width()): string[] {
   return lines;
 }
 
-function taskLine(task: TaskSummary, columns: number): string {
-  const project = (task.project || "").split("/").pop() || "unknown";
-  const head = `${money(task.usd).padStart(6)}  ${project.padEnd(14).slice(0, 14)}`;
-  const room = Math.max(24, columns - head.length - 8);
-  const prompt = task.prompt.length > room ? `${task.prompt.slice(0, room - 1)}…` : task.prompt;
-  return `${head} ${prompt}  ${dim(`${task.turns}t`)}`;
+function clip(text: string, max: number): string {
+  const visible = visibleWidth(text);
+  if (visible <= max) return text;
+  return `${text.slice(0, Math.max(0, text.length - (visible - max) - 1))}…`;
 }
 
-function confidenceTag(finding: Finding): string {
-  return finding.confidence === "measured" ? dim("measured") : dim("estimated");
+function hanging(text: string, indent: string, marker: string, columns: number): string[] {
+  const lines = wrap(text, "", columns - indent.length - visibleWidth(marker));
+  return lines.map((line, index) =>
+    index === 0 ? `${indent}${marker}${line}` : `${indent}${" ".repeat(visibleWidth(marker))}${line}`,
+  );
 }
 
-function effortTag(finding: Finding): string {
-  return finding.effort === "one-time" ? green("one-time fix") : yellow("habit");
+function rail(left: string, right: string, columns: number): string[] {
+  const gap = columns - visibleWidth(left) - visibleWidth(right);
+  if (gap >= 2) return [`${left}${" ".repeat(gap)}${right}`];
+  return [left, `${INDENT}${right}`];
 }
 
-function trend(audit: Audit, previous: RunRecord | null): string[] {
-  if (!previous) return [dim("First run — future runs compare against this baseline.")];
+function taskRows(tasks: TaskSummary[], columns: number): string[] {
+  const top = tasks.slice(0, 5);
+  if (top.length === 0) return [];
+  const max = Math.max(...top.map((t) => t.usd));
+  const amounts = top.map((t) => money(t.usd));
+  const projects = top.map((t) => (t.project || "").split("/").pop() || "unknown");
+  const moneyWidth = Math.max(...amounts.map((a) => a.length));
+  const projectWidth = Math.min(14, Math.max(...projects.map((p) => p.length)));
+  const turnsWidth = Math.max(...top.map((t) => `${t.turns}t`.length));
+
+  return top.map((task, index) => {
+    const amount = padStartVisible(amounts[index] ?? "", moneyWidth);
+    const meter = padEndVisible(dim(bar(task.usd, max, BAR_WIDTH)), BAR_WIDTH);
+    const project = padEndVisible((projects[index] ?? "").slice(0, projectWidth), projectWidth);
+    const turns = padStartVisible(dim(`${task.turns}t`), turnsWidth);
+    const fixed = moneyWidth + BAR_WIDTH + projectWidth + turnsWidth + INDENT.length + 8;
+    const room = Math.max(20, columns - fixed);
+    const prompt = task.prompt.length > room ? `${task.prompt.slice(0, room - 1)}…` : task.prompt;
+    return `${INDENT}${amount}  ${meter}  ${project}  ${padEndVisible(prompt, room)}  ${turns}`;
+  });
+}
+
+function trendLine(audit: Audit, previous: RunRecord | null, history: RunRecord[]): string {
+  const scores = history
+    .filter((run) => run.scope.days === audit.scope.days && (run.scope.project ?? null) === (audit.scope.project ?? null))
+    .slice(-16)
+    .map((run) => run.score);
+  const spark = sparkline([...scores, audit.score]);
+  const head = `${bold("Efficiency:")} ${bold(`${audit.score}/100`)}`;
+  if (!previous) return `${head}  ${dim("first run — this is your baseline")}`;
   const delta = audit.score - previous.score;
-  const arrow = delta > 0 ? green(`↑ ${delta}`) : delta < 0 ? red(`↓ ${delta}`) : dim("→ no change");
-  return [`${dim("Previous:")} ${previous.score}/100  ${arrow} ${dim(`(${shortDate(previous.ranAt)})`)}`];
+  const marker = delta > 0 ? green(`+${delta}`) : delta < 0 ? red(String(delta)) : dim("no change");
+  const trail = spark ? `${dim(spark)}  ` : "";
+  return `${head}  ${trail}${marker} ${dim(`since ${shortDate(previous.ranAt)}`)}`;
 }
 
-export function renderAudit(audit: Audit, previous: RunRecord | null, verbose: boolean): string {
+export function renderAudit(input: RenderInput): string {
+  const { audit, previous, history = [], verbose = false } = input;
   const columns = width();
   const out: string[] = ["", bold("SaveMyTokens"), ""];
 
@@ -62,46 +104,53 @@ export function renderAudit(audit: Audit, previous: RunRecord | null, verbose: b
   }
 
   const wasted = audit.findings.reduce((sum, f) => sum + f.wastedUsd, 0);
-  const headline = `You ran ${audit.totals.tasks} ${plural(audit.totals.tasks, "task")} worth ${bold(money(audit.totals.usd))}`;
   const lockouts =
     audit.rateLimitHits > 0
       ? ` and hit your usage limit ${bold(String(audit.rateLimitHits))} ${plural(audit.rateLimitHits, "time")}`
       : "";
-  out.push(`${headline}${lockouts}.`);
-  if (audit.findings.length > 0) {
-    out.push(`About ${bold(money(Math.min(wasted, audit.totals.usd)))} of that bought you nothing.`);
-  } else {
-    out.push("Nothing measurably wasteful in this window.");
-  }
-  const scope = [
-    `${audit.scope.days} ${plural(audit.scope.days, "day")}`,
-    `${audit.totals.sessions} ${plural(audit.totals.sessions, "session")}`,
-    `${compactNumber(audit.totals.freshTokens)} new tokens`,
-    `${compactNumber(audit.totals.cacheReadTokens)} re-read`,
-  ];
-  out.push(dim(scope.join(" · ")));
+  out.push(
+    `You ran ${audit.totals.tasks} ${plural(audit.totals.tasks, "task")} worth ${bold(money(audit.totals.usd))}${lockouts}.`,
+  );
+  out.push(
+    audit.findings.length > 0
+      ? `About ${bold(money(Math.min(wasted, audit.totals.usd)))} of that bought you nothing.`
+      : "Nothing measurably wasteful in this window.",
+  );
+  out.push(
+    dim(
+      [
+        `${audit.scope.days} ${plural(audit.scope.days, "day")}`,
+        `${audit.totals.sessions} ${plural(audit.totals.sessions, "session")}`,
+        `${compactNumber(audit.totals.freshTokens)} new tokens`,
+        `${compactNumber(audit.totals.cacheReadTokens)} re-read`,
+      ].join(" · "),
+    ),
+  );
   out.push("");
 
-  if (audit.topTasks.length > 0) {
-    out.push(bold("Your most expensive tasks"));
-    for (const task of audit.topTasks.slice(0, 5)) out.push(`${INDENT}${taskLine(task, columns - 3)}`);
+  const rows = taskRows(audit.topTasks, columns);
+  if (rows.length > 0) {
+    out.push(bold("Most expensive tasks"));
+    out.push(...rows);
     out.push("");
   }
 
-  const shown = audit.findings.slice(0, 3);
-  shown.forEach((finding, index) => {
-    out.push(
-      `${index + 1}. ${bold(finding.title)}  ${bold(money(finding.wastedUsd))} ${dim("·")} ${effortTag(finding)} ${dim("·")} ${confidenceTag(finding)}`,
-    );
-    for (const line of finding.measured) out.push(...wrap(`${dim("·")} ${line}`, INDENT));
-    if (finding.receipts && finding.receipts.length > 0) {
+  audit.findings.slice(0, 3).forEach((finding, index) => {
+    const meta = [
+      bold(money(finding.wastedUsd)),
+      finding.effort === "one-time" ? green("one-time fix") : dim("habit"),
+      dim(finding.confidence),
+    ].join(dim(" · "));
+    out.push(...rail(`${index + 1}. ${bold(finding.title)}`, meta, columns));
+    for (const line of finding.measured) out.push(...hanging(line, INDENT, dim("· "), columns));
+    if (finding.receipts?.length) {
       out.push("");
-      for (const line of finding.receipts) out.push(`${INDENT}${dim(line)}`);
+      for (const line of finding.receipts) out.push(`${INDENT}${dim(clip(line, columns - INDENT.length))}`);
     }
     out.push("");
-    out.push(...wrap(`${bold("Do this:")} ${finding.fix}`, INDENT));
+    out.push(...hanging(`${bold("Do this:")} ${finding.fix}`, INDENT, "", columns));
     if (verbose && finding.detail) {
-      out.push(`${INDENT}${dim("—")}`);
+      out.push("");
       for (const detail of finding.detail) out.push(`${INDENT}${dim(detail)}`);
     }
     out.push("");
@@ -110,25 +159,32 @@ export function renderAudit(audit: Audit, previous: RunRecord | null, verbose: b
   const rest = audit.findings.slice(3);
   if (rest.length > 0) {
     out.push(
-      dim(`+ ${rest.length} smaller: ${rest.map((f) => `${f.title.toLowerCase()} (${money(f.wastedUsd)})`).join(", ")}`),
+      ...wrap(dim(`+ ${rest.length} smaller: ${rest.map((f) => `${f.title.toLowerCase()} ${money(f.wastedUsd)}`).join(", ")}`), ""),
     );
     out.push("");
   }
 
-  const quickest = [...audit.findings].filter((f) => f.effort === "one-time").sort((a, b) => b.wastedUsd - a.wastedUsd)[0];
+  const quickest = audit.findings.filter((f) => f.effort === "one-time").sort((a, b) => b.wastedUsd - a.wastedUsd)[0];
   if (quickest) {
-    out.push(...wrap(`${green("Start here:")} ${quickest.title.toLowerCase()} — ${money(quickest.wastedUsd)}, one config change, never think about it again.`, ""));
+    out.push(
+      ...wrap(
+        `${green("Start here:")} ${quickest.title.toLowerCase()} — ${money(quickest.wastedUsd)}, one config change, then never think about it again.`,
+        "",
+      ),
+    );
     out.push("");
   }
 
-  out.push(`${bold("Efficiency:")} ${audit.score}/100`);
-  out.push(...trend(audit, previous));
+  out.push(trendLine(audit, previous, history));
 
   if (verbose) {
     out.push("");
     out.push(dim("Spend by project"));
+    const maxProject = Math.max(...audit.projects.map((p) => p.usd), 0);
     for (const project of audit.projects.slice(0, 8)) {
-      out.push(dim(`${INDENT}${money(project.usd).padStart(7)}  ${project.name} · ${project.tasks} ${plural(project.tasks, "task")}`));
+      const amount = padStartVisible(money(project.usd), 7);
+      const meter = padEndVisible(bar(project.usd, maxProject, BAR_WIDTH), BAR_WIDTH);
+      out.push(dim(`${INDENT}${amount}  ${meter}  ${project.name} · ${project.tasks} ${plural(project.tasks, "task")}`));
     }
     out.push("");
     out.push(dim("Score"));
@@ -139,16 +195,17 @@ export function renderAudit(audit: Audit, previous: RunRecord | null, verbose: b
     out.push("");
     out.push(dim("Models"));
     for (const model of audit.models.slice(0, 6)) {
+      const context = model.usage.input + model.usage.cacheWrite + model.usage.cacheRead;
       out.push(
         dim(
-          `${INDENT}${model.model} · ${model.turns} ${plural(model.turns, "turn")} · in ${compactNumber(model.usage.input + model.usage.cacheWrite + model.usage.cacheRead)} · out ${compactNumber(model.usage.output)}`,
+          `${INDENT}${model.model} · ${model.turns} ${plural(model.turns, "turn")} · in ${compactNumber(context)} · out ${compactNumber(model.usage.output)}`,
         ),
       );
     }
   }
 
   out.push("");
-  out.push(dim("Dollar figures are list-price equivalents for the tokens you actually used."));
+  out.push(dim(pricingNote()));
   out.push(dim(`Saved to ${displayHome()} · nothing left this machine`));
   out.push("");
   return out.join("\n");
@@ -156,21 +213,22 @@ export function renderAudit(audit: Audit, previous: RunRecord | null, verbose: b
 
 export function renderHistory(runs: RunRecord[]): string {
   if (runs.length === 0) return `\n${bold("SaveMyTokens")}\n\nNo runs recorded yet. Run: npx savemytokens\n`;
-  const out: string[] = ["", bold("SaveMyTokens"), "", dim("date              score   waste   scope"), ""];
-  for (const run of runs.slice(-20)) {
+  const recent = runs.slice(-20);
+  const out: string[] = ["", bold("SaveMyTokens"), "", dim("date               score   waste   scope"), ""];
+  for (const run of recent) {
     const scope = `${run.scope.days}d${run.scope.project ? " · " + (run.scope.project.split("/").pop() ?? "") : ""}`;
     out.push(
-      `${shortDate(run.ranAt).padEnd(17)} ${String(run.score).padStart(3)}/100  ${percent(run.wasteRatio).padStart(5)}   ${dim(scope)}`,
+      `${shortDate(run.ranAt).padEnd(18)} ${String(run.score).padStart(3)}/100  ${percent(run.wasteRatio).padStart(5)}   ${dim(scope)}`,
     );
   }
-  const first = runs[0];
-  const last = runs[runs.length - 1];
-  if (first && last && runs.length > 1) {
+  const spark = sparkline(recent.map((run) => run.score));
+  const first = recent[0];
+  const last = recent[recent.length - 1];
+  if (spark && first && last) {
     const delta = last.score - first.score;
+    const marker = delta > 0 ? green(`+${delta}`) : delta < 0 ? red(String(delta)) : dim("0");
     out.push("");
-    out.push(
-      `${dim("Change since first run:")} ${delta > 0 ? green(`+${delta}`) : delta < 0 ? red(String(delta)) : dim("0")} points`,
-    );
+    out.push(`${dim(spark)}  ${marker} ${dim("points since the first run shown")}`);
   }
   out.push("");
   return out.join("\n");

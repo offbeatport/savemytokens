@@ -15,32 +15,32 @@ whether the change actually worked.
 ```
 SaveMyTokens
 
-You ran 228 tasks worth $1,038 and hit your usage limit 14 times.
-About $233 of that bought you nothing.
-7 days · 32 sessions · 65M new tokens · 2.4B re-read
+You ran 414 tasks worth $1,506 and hit your usage limit 14 times.
+About $386 of that bought you nothing.
+7 days · 36 sessions · 75M new tokens · 3.3B re-read
 
-Your most expensive tasks
-      $61  picsuper       Build a new app, using 1. This stack: TanSta…  273t
-      $49  webinvoke      I want you to implement BuyDiff.com with thi…  286t
-      $39  cslopslop      ok, I want you to extract the ui library int…  271t
+Most expensive tasks
+   $61  ▇▇▇▇▇▇▇▇  picsuper   Build a new app, using 1. This stack: TanS…  273t
+   $49  ▇▇▇▇▇▇    webinvoke  I want you to implement BuyDiff.com with t…  286t
+   $39  ▇▇▇▇▇     cslopslop  ok, I want you to extract the ui library i…  271t
 
-1. Finished work still riding along in context  $92 · habit · measured
-   · 39 tasks started with more than 80k tokens of earlier work in context
+1. Finished work still riding along in context         $181 · habit · measured
+   · 76 tasks started with more than 80k tokens of earlier work already in
+     context
    · none of them re-opened a single file from that earlier work, and their
      prompts named their own subject
-   · that context was re-read on every turn: 301M tokens
+   · that context was re-read on every turn: 530M tokens
 
-      $40  cslopslop · "Update Chat agent window scroolbar. It is light…" — carried 985k tokens through 81 turns
-      $16  cslopslop · "When I first load the app and press the scan ho…" — carried 916k tokens through 34 turns
+     $40  cslopslop    carried 985k × 81t  "Update Chat agent window scroolba…
+     $16  cslopslop    carried 916k × 34t  "When I first load the app and pre…
 
    Do this: Press Ctrl+C and start a new session (or /clear) when the next
    thing you type is not about the last thing you did.
 
-Start here: hook output injected into context — $19, one config change,
+Start here: hook output injected into context — $34, one config change, then
 never think about it again.
 
-Efficiency: 79/100
-Previous: 74/100  ↑ 5
+Efficiency: 75/100  ▂▄▅▇  +4 since 2026-08-29 09:57
 ```
 
 ## This is not a usage dashboard

@@ -34,7 +34,7 @@ export async function runAudit(options: Options): Promise<Audit | null> {
   if (options.json) {
     process.stdout.write(JSON.stringify({ audit, previous }, null, 2) + "\n");
   } else {
-    process.stdout.write(renderAudit(audit, previous, options.verbose));
+    process.stdout.write(renderAudit({ audit, previous, history: runs, verbose: options.verbose }));
     for (const pending of pendingDetected()) {
       process.stdout.write(dim(`${pending.label} found, but skipped: ${pending.reason}.\n`));
     }

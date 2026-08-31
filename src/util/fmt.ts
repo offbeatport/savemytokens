@@ -23,6 +23,25 @@ export function percent(ratio: number, digits = 0): string {
   return `${(ratio * 100).toFixed(digits)}%`;
 }
 
+const SPARK = "▁▂▃▄▅▆▇█";
+
+export function bar(value: number, max: number, width = 8): string {
+  if (max <= 0 || value <= 0) return "";
+  const filled = Math.round((value / max) * width);
+  return "▇".repeat(Math.max(1, Math.min(width, filled)));
+}
+
+export function sparkline(values: number[]): string {
+  if (values.length < 3) return "";
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  if (max === min) return "▄".repeat(values.length);
+  const span = max - min;
+  return values
+    .map((value) => SPARK[Math.min(SPARK.length - 1, Math.floor(((value - min) / span) * (SPARK.length - 1)))] ?? " ")
+    .join("");
+}
+
 export function shortPath(value: string, max = 44): string {
   if (value.length <= max) return value;
   const parts = value.split("/").filter(Boolean);

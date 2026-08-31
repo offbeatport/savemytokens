@@ -25,8 +25,7 @@ function finding(agg: Aggregate, input: Omit<Finding, "wasteRatio" | "wastedUsd"
 
 function receipt(task: TaskSummary, amount: number, note: string): string {
   const project = (task.project || "").split("/").pop() || "unknown";
-  const prompt = task.prompt.length > 58 ? `${task.prompt.slice(0, 58)}…` : task.prompt;
-  return `${money(amount).padStart(6)}  ${project} · "${prompt}" — ${note}`;
+  return `${money(amount).padStart(5)}  ${project.padEnd(11).slice(0, 11)}  ${note.padEnd(18)}  "${task.prompt}"`;
 }
 
 const deadCarry: Detector = (agg) => {
@@ -47,7 +46,7 @@ const deadCarry: Detector = (agg) => {
       `that context was re-read on every turn: ${compactNumber(dead.tokens)} tokens`,
     ],
     receipts: dead.tasks.slice(0, 3).map((t) =>
-      receipt(t, t.carriedUsd, `carried ${compactNumber(t.carriedContext)} tokens through ${t.turns} turns`),
+      receipt(t, t.carriedUsd, `carried ${compactNumber(t.carriedContext)} × ${t.turns}t`),
     ),
     fix:
       `Press Ctrl+C and start a new session (or /clear) when the next thing you type is not about the last thing you did. ` +
