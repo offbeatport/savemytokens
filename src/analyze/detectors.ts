@@ -71,7 +71,12 @@ const hookNoise: Detector = (agg) => {
       `${events} hook ${plural(events, "event")} printed ${bytes(agg.hooks.reduce((s, h) => s + h.chars, 0))} into context`,
       `worst: ${top.key} — the same bytes repeated ${top.extra.events}×`,
     ],
-    fix: `Edit ~/.claude/settings.json once: send the ${top.key} hook's stdout to /dev/null. Hook stdout is written into the transcript, so every later turn in that session pays to re-read it.`,
+    receipts: [
+      top.extra.command ? `hook command: ${top.extra.command}` : "",
+      top.extra.sample ? `every call pastes: ${top.extra.sample}…` : "",
+      "read that payload — if the model has no use for it, it is pure cost",
+    ].filter(Boolean),
+    fix: `Hook stdout is written into the transcript, so every later turn re-reads it. If that payload above is for your terminal or your notifications rather than for the model, silence it: append \` >/dev/null\` to the ${top.key} hook command in ~/.claude/settings.json. Keep it if the model actually acts on it.`,
     detail: agg.hooks.slice(0, 5).map((h) => `${h.key} · ${h.extra.events}× · ${bytes(h.chars)}`),
   });
 };

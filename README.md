@@ -80,8 +80,17 @@ and never uploads anything. Observe first, prove value, then decide whether you 
 
 ## What it measures
 
-Every measurement comes from your own transcripts under `~/.claude/projects` — including the
-nested subagent transcripts most tools miss.
+Every measurement comes from transcripts already on your disk.
+
+| Agent | Source | State |
+| --- | --- | --- |
+| Claude Code | `~/.claude/projects` incl. nested `subagents/` transcripts most tools miss | supported |
+| Codex | `~/.codex/sessions/**/rollout-*.jsonl` | supported |
+| Gemini CLI | `~/.gemini` | detected, skipped — logs prompts but no token counts |
+| Grok | `~/.grok` | detected, skipped — local store is a title/cwd search index, no token counts |
+
+An agent that does not write token counts to disk cannot be audited, and the tool says so rather
+than inventing numbers.
 
 The unit is the **task** — one thing you asked for, and every turn it took to finish. Findings are
 attached to tasks you can recognise, priced in dollars, and tagged `one-time fix` or `habit`.
@@ -136,8 +145,13 @@ The report always separates the two, and so should you:
   overlap, so the headline combines them as `largest + 50% of the rest`, capped at 45%, and the
   list is ranked by dollars weighted by certainty — a measured finding outranks a larger estimate.
 
-Dollar figures are list-price equivalents (Opus 5 at $5/$25 per MTok, cache write 1.25×, cache read
-0.1×) for the tokens you actually used. On a subscription you do not pay them directly — they are
+Dollar figures are list-price equivalents for the tokens you actually used, from a table in
+`src/core/pricing.ts` stamped with its source date (Anthropic 2026-06-24, OpenAI 2026-08-31).
+Prices drift; override any model with `~/.savemytokens/pricing.json`:
+
+```json
+{ "claude-opus-5": { "input": 5, "output": 25, "cacheRead": 0.5, "cacheWrite": 6.25 } }
+``` On a subscription you do not pay them directly — they are
 the size of the thing, and the usage-limit count is what it costs you in practice.
 
 Estimates are never presented as facts.

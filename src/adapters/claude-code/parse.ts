@@ -42,6 +42,8 @@ interface Bucket {
   maxChars: number;
   edits: number;
   signature: string;
+  sample: string;
+  command: string;
   wastedChars: number;
   wastedCount: number;
   cost: LifetimeCost;
@@ -67,7 +69,7 @@ interface TaskState extends TaskSummary {
 function bucket(map: Map<string, Bucket>, key: string, tool: string): Bucket {
   let b = map.get(key);
   if (!b) {
-    b = { key, tool, count: 0, chars: 0, maxChars: 0, edits: 0, signature: "", wastedChars: 0, wastedCount: 0, cost: new LifetimeCost() };
+    b = { key, tool, count: 0, chars: 0, maxChars: 0, edits: 0, signature: "", sample: "", command: "", wastedChars: 0, wastedCount: 0, cost: new LifetimeCost() };
     map.set(key, b);
   }
   return b;
@@ -460,6 +462,10 @@ export async function parseClaudeSession(file: string, stat: fs.Stats): Promise<
             const seen = hookHashes.get(fingerprint) ?? 0;
             hookHashes.set(fingerprint, seen + 1);
             const b = bucket(hooks, name, "hook");
+            if (!b.sample) {
+              b.sample = payload.replace(/\s+/g, " ").slice(0, 110);
+              b.command = String(attachment.command ?? "");
+            }
             b.count++;
             b.chars += chars;
             if (seen > 0) {
@@ -614,6 +620,8 @@ export async function parseClaudeSession(file: string, stat: fs.Stats): Promise<
       events: b.count,
       chars: b.chars,
       weighted: b.weighted,
+      sample: b.sample,
+      command: b.command,
     })),
     attachments: [...attachments.entries()].map(([type, v]) => ({ type, events: v.events, chars: v.chars })),
     writes: resolved.writes.map((b) => ({

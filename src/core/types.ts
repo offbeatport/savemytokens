@@ -1,6 +1,6 @@
 export const EVIDENCE_SCHEMA = 4;
 
-export type AdapterId = "claude-code" | "codex" | "gemini";
+export type AdapterId = "claude-code" | "codex" | "gemini" | "grok";
 
 export type Confidence = "measured" | "estimated";
 
@@ -62,6 +62,8 @@ export interface HookBucket {
   events: number;
   chars: number;
   weighted: number;
+  sample: string;
+  command: string;
 }
 
 export interface AttachmentBucket {

@@ -4,12 +4,17 @@ import path from "node:path";
 import type { AdapterId } from "../core/types.js";
 import type { Adapter } from "./types.js";
 
-function pendingAdapter(id: AdapterId, label: string, dataDir: string): Adapter {
+export interface PendingAdapter extends Adapter {
+  reason: string;
+}
+
+function pendingAdapter(id: AdapterId, label: string, dataDir: string, reason: string): PendingAdapter {
   return {
     id,
     label,
     supported: false,
     dataDir,
+    reason,
     detect(): boolean {
       try {
         return fs.statSync(dataDir).isDirectory();
@@ -26,5 +31,18 @@ function pendingAdapter(id: AdapterId, label: string, dataDir: string): Adapter 
   };
 }
 
-export const codexAdapter = pendingAdapter("codex", "Codex", path.join(os.homedir(), ".codex", "sessions"));
-export const geminiAdapter = pendingAdapter("gemini", "Gemini CLI", path.join(os.homedir(), ".gemini", "tmp"));
+export const geminiAdapter = pendingAdapter(
+  "gemini",
+  "Gemini CLI",
+  path.join(os.homedir(), ".gemini"),
+  "it logs prompts but no token counts, so there is nothing to measure",
+);
+
+export const grokAdapter = pendingAdapter(
+  "grok",
+  "Grok",
+  path.join(os.homedir(), ".grok"),
+  "its local store is a title/cwd search index with no token counts",
+);
+
+export const pendingAdapters: PendingAdapter[] = [geminiAdapter, grokAdapter];

@@ -35,10 +35,10 @@ export async function runAudit(options: Options): Promise<Audit | null> {
     process.stdout.write(JSON.stringify({ audit, previous }, null, 2) + "\n");
   } else {
     process.stdout.write(renderAudit(audit, previous, options.verbose));
-    const pending = pendingDetected();
-    if (pending.length > 0) {
-      process.stdout.write(dim(`${pending.map((a) => a.label).join(" and ")} data detected — adapters land after v1.\n\n`));
+    for (const pending of pendingDetected()) {
+      process.stdout.write(dim(`${pending.label} found, but skipped: ${pending.reason}.\n`));
     }
+    if (pendingDetected().length > 0) process.stdout.write("\n");
   }
 
   if (options.save) saveRun(audit);

@@ -26,6 +26,8 @@ export interface OutputAgg {
 
 export interface HookAgg {
   events: number;
+  sample: string;
+  command: string;
 }
 
 export interface WriteAgg {
@@ -198,9 +200,14 @@ export function aggregate(corpus: Corpus): Aggregate {
 
     for (const hook of session.hooks) {
       if (hook.weighted <= 0) continue;
-      hooks.add(hook.name, hook.weighted, hook.events, hook.chars, { events: hook.events }, (a, b) => ({
-        events: a.events + b.events,
-      }));
+      hooks.add(
+        hook.name,
+        hook.weighted,
+        hook.events,
+        hook.chars,
+        { events: hook.events, sample: hook.sample ?? "", command: hook.command ?? "" },
+        (x, y) => ({ events: x.events + y.events, sample: x.sample || y.sample, command: x.command || y.command }),
+      );
     }
 
     for (const write of session.writes) {

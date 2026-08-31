@@ -96,7 +96,14 @@ export function mergeSidechain(base: SessionEvidence, extra: SessionEvidence): S
     base.hooks,
     extra.hooks,
     (h) => h.name,
-    (a, b) => ({ name: a.name, events: a.events + b.events, chars: a.chars + b.chars, weighted: a.weighted + b.weighted }),
+    (a, b) => ({
+      name: a.name,
+      events: a.events + b.events,
+      chars: a.chars + b.chars,
+      weighted: a.weighted + b.weighted,
+      sample: a.sample || b.sample,
+      command: a.command || b.command,
+    }),
     (h) => h.weighted,
   );
 
