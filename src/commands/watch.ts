@@ -6,6 +6,7 @@ import { saveRun } from "../storage/store.js";
 import { bold, dim, green, red, yellow } from "../util/ansi.js";
 import { percent, plural } from "../util/fmt.js";
 import type { Options } from "../cli-options.js";
+import { defaultProject } from "./audit.js";
 
 const SCORE_STEP = 2;
 
@@ -33,7 +34,7 @@ export async function runWatch(options: Options): Promise<void> {
   let stopping = false;
 
   const tick = async (): Promise<void> => {
-    const corpus = await collect({ days: options.days, project: options.project });
+    const corpus = await collect({ days: options.days, project: defaultProject(options) });
     const audit = analyze(corpus);
 
     if (!baseline) {

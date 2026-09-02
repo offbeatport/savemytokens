@@ -2,25 +2,29 @@ export interface Options {
   command: string;
   days: number;
   project: string | null;
+  projectExplicit: boolean;
   json: boolean;
   verbose: boolean;
   save: boolean;
   interval: number;
+  dryRun: boolean;
   help: boolean;
   version: boolean;
 }
 
-const COMMANDS = new Set(["audit", "watch", "history", "privacy", "fix", "help"]);
+const COMMANDS = new Set(["audit", "install", "uninstall", "watch", "history", "privacy", "help"]);
 
 export function parseArgs(argv: string[]): Options {
   const options: Options = {
     command: "audit",
     days: 7,
     project: null,
+    projectExplicit: false,
     json: false,
     verbose: false,
     save: true,
     interval: 60,
+    dryRun: false,
     help: false,
     version: false,
   };
@@ -41,14 +45,19 @@ export function parseArgs(argv: string[]): Options {
       }
       case "--here":
         options.project = process.cwd();
+        options.projectExplicit = true;
         break;
       case "--project": {
         const value = argv[++i];
-        if (value) options.project = value;
+        if (value) {
+          options.project = value;
+          options.projectExplicit = true;
+        }
         break;
       }
       case "--all":
         options.project = null;
+        options.projectExplicit = true;
         break;
       case "--json":
         options.json = true;
@@ -59,6 +68,9 @@ export function parseArgs(argv: string[]): Options {
         break;
       case "--no-save":
         options.save = false;
+        break;
+      case "--dry-run":
+        options.dryRun = true;
         break;
       case "--interval": {
         const value = Number(argv[++i]);

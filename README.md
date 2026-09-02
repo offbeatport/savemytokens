@@ -13,35 +13,62 @@ that bought you nothing, and tells you what to change. Then it remembers, so the
 whether the change actually worked.
 
 ```
-SaveMyTokens
+$1,771 in 7 days · $439 wasted  all projects · 567 tasks
+hit your usage limit 14 times
 
-You ran 414 tasks worth $1,506 and hit your usage limit 14 times.
-About $386 of that bought you nothing.
-7 days · 36 sessions · 75M new tokens · 3.3B re-read
+  $61  ▇▇▇▇▇▇▇▇  picsuper   Build a new app, using 1. This stack: TanStack St…
+  $49  ▇▇▇▇▇▇    webinvoke  I want you to implement BuyDiff.com with this ui …
+  $39  ▇▇▇▇▇     cslopslop  ok, I want you to extract the ui library into it'…
 
-Most expensive tasks
-   $61  ▇▇▇▇▇▇▇▇  picsuper   Build a new app, using 1. This stack: TanS…  273t
-   $49  ▇▇▇▇▇▇    webinvoke  I want you to implement BuyDiff.com with t…  286t
-   $39  ▇▇▇▇▇     cslopslop  ok, I want you to extract the ui library i…  271t
+Finished work still riding along in context — $196
+  · 68 tasks started with more than 80k tokens of earlier work already in context
+  · none of them re-opened a single file from that earlier work, and their
+    prompts named their own subject
 
-1. Finished work still riding along in context         $181 · habit · measured
-   · 76 tasks started with more than 80k tokens of earlier work already in
-     context
-   · none of them re-opened a single file from that earlier work, and their
-     prompts named their own subject
-   · that context was re-read on every turn: 530M tokens
+  $40  cslopslop  carried 985k × 81t  "Update Chat agent window scroolbar…"
+  $16  cslopslop  carried 916k × 34t  "When I first load the app and press…"
 
-     $40  cslopslop    carried 985k × 81t  "Update Chat agent window scroolba…
-     $16  cslopslop    carried 916k × 34t  "When I first load the app and pre…
+  Do this: Press Ctrl+C and start a new session (or /clear) when the next thing
+  you type is not about the last thing you did.
 
-   Do this: Press Ctrl+C and start a new session (or /clear) when the next
-   thing you type is not about the last thing you did.
+3 smaller findings worth $71 · npx savemytokens -v
 
-Start here: hook output injected into context — $34, one config change, then
-never think about it again.
-
-Efficiency: 75/100  ▂▄▅▇  +4 since 2026-08-29 09:57
+Do this:  npx savemytokens install   → warns you before the next one
 ```
+
+By default it scopes to the project you are standing in; `--all` widens it.
+
+## What `install` does
+
+Findings split by who has to act. You only ever see yours; the rest are handled for you.
+
+| | fixed by | how |
+| --- | --- | --- |
+| dead carry, hook noise, repeated reads, failed commands | **you** | shown in the report, one action each |
+| oversized output, cheap turns at expensive context, write churn | **Claude** | `install` writes the rules into `~/.claude/CLAUDE.md` |
+
+The rules block is fenced with `<!-- savemytokens:start -->`, so `uninstall` removes exactly it and
+leaves the rest of your CLAUDE.md byte-identical.
+
+## The hook
+
+`npx savemytokens install` adds one `UserPromptSubmit` hook. When you start a new task while
+carrying finished work, Claude Code tells you before the money is spent:
+
+```
+[savemytokens] This reads as a new task and 459k tokens of earlier work are still
+in context, about $2.30 per 10 turns from here.
+```
+
+It is **advisory only** and cannot break a session:
+
+- **fail-open** — every path ends in `exit 0`, with a 5s timeout
+- **never blocks** a prompt, never edits a file, never makes a network call
+- **reversible** — `npx savemytokens uninstall` removes exactly the entry whose command points at
+  `nudge.cjs`, and your settings are backed up to `~/.savemytokens/settings.backup.json` first
+- **`--dry-run`** prints the exact JSON that would be added, and writes nothing
+- it stays quiet on follow-up prompts ("ok, now the other ones"), below 150k context, and more
+  than once per 30 minutes in a session
 
 ## This is not a usage dashboard
 

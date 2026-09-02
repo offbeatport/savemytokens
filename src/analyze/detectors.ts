@@ -36,6 +36,7 @@ const deadCarry: Detector = (agg) => {
   if (!worst) return null;
   return finding(agg, {
     id: "dead-carry",
+    actor: "you",
     title: "Finished work still riding along in context",
     confidence: "measured",
     effort: "habit",
@@ -62,6 +63,7 @@ const hookNoise: Detector = (agg) => {
   const events = agg.hooks.reduce((sum, h) => sum + h.extra.events, 0);
   return finding(agg, {
     id: "hook-noise",
+    actor: "you",
     title: "Hook output injected into context",
     confidence: "estimated",
     effort: "one-time",
@@ -89,6 +91,7 @@ const repeatedReads: Detector = (agg) => {
   if (!top || redundantReads === 0) return null;
   return finding(agg, {
     id: "repeated-reads",
+    actor: "you",
     title: "The same file sent again, unchanged",
     confidence: "estimated",
     effort: "one-time",
@@ -122,6 +125,7 @@ const largeOutput: Detector = (agg) => {
   };
   return finding(agg, {
     id: "large-output",
+    actor: "claude",
     title: "Oversized command output",
     confidence: "estimated",
     effort: "habit",
@@ -143,6 +147,7 @@ const failedTools: Detector = (agg) => {
   if (!top || total === 0) return null;
   return finding(agg, {
     id: "failed-tools",
+    actor: "you",
     title: "Failed and interrupted commands",
     confidence: "estimated",
     effort: "habit",
@@ -163,6 +168,7 @@ const writeChurn: Detector = (agg) => {
   if (!top) return null;
   return finding(agg, {
     id: "write-churn",
+    actor: "claude",
     title: "Files rewritten whole instead of edited",
     confidence: "estimated",
     effort: "habit",
@@ -180,6 +186,7 @@ const coldCache: Detector = (agg) => {
   if (agg.coldSessions < 3) return null;
   return finding(agg, {
     id: "cold-cache",
+    actor: "you",
     title: "Sessions dropped before the cache paid off",
     confidence: "measured",
     effort: "habit",
@@ -200,6 +207,7 @@ const highContextRoundTrips: Detector = (agg) => {
   const avgContext = trivialTurns > 0 ? Math.round(trivialWeighted / trivialTurns / 0.1) : 0;
   return finding(agg, {
     id: "roundtrips",
+    actor: "claude",
     title: "Cheap actions taken at expensive context",
     confidence: "estimated",
     effort: "habit",

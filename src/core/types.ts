@@ -158,6 +158,8 @@ export interface FindingEvidenceLine {
 
 export type FixEffort = "one-time" | "habit";
 
+export type FixActor = "you" | "claude";
+
 export interface Finding {
   id: string;
   title: string;
@@ -167,6 +169,7 @@ export interface Finding {
   wasteRatio: number;
   confidence: Confidence;
   effort: FixEffort;
+  actor: FixActor;
   fix: string;
   receipts?: string[];
   detail?: string[];

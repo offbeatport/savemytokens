@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import { parseArgs } from "./cli-options.js";
 import { runAudit } from "./commands/audit.js";
+import { runInstall, runUninstall } from "./commands/install.js";
 import { runPrivacy } from "./commands/privacy.js";
 import { runWatch } from "./commands/watch.js";
 import { renderHistory } from "./report/render.js";
@@ -19,26 +20,18 @@ function version(): string {
 
 function help(): string {
   return `
-${bold("SaveMyTokens")} — find what wastes tokens in your AI coding sessions.
+${bold("savemytokens")} — what your AI coding sessions wasted, and the one thing to change.
 
-${bold("Usage")}
-  npx savemytokens              audit the last 7 days
-  npx savemytokens watch        observe continuously, report regressions
-  npx savemytokens history      score over time
-  npx savemytokens privacy      what is read, stored, and never sent
+  npx savemytokens             audit this project, or all of them if you are not in one
+  npx savemytokens install     warn you when a new task drags finished work along
+  npx savemytokens uninstall   remove that hook
 
-${bold("Options")}
-  -d, --days <n>    window to analyse (default 7)
-      --here        only this project
-      --project <p> only the given project directory
-      --json        machine-readable output
-  -v, --verbose     per-file detail and score breakdown
-      --interval <s> watch poll seconds (default 60)
-      --no-save     do not write to ~/.savemytokens
-  -h, --help        this text
-      --version     print version
+  -d, --days <n>   window to analyse (default 7)
+      --all        every project, not just this one
+  -v, --verbose    every finding, per-file detail, spend by project
+      --json       machine-readable
 
-${dim("Everything runs locally. No account, no daemon, no upload.")}
+${dim("Everything runs locally. No account, no daemon, no upload. See what it stores: savemytokens privacy")}
 `;
 }
 
@@ -55,6 +48,12 @@ async function main(): Promise<void> {
   }
 
   switch (options.command) {
+    case "install":
+      runInstall(options.dryRun);
+      return;
+    case "uninstall":
+      runUninstall();
+      return;
     case "watch":
       await runWatch(options);
       return;
@@ -63,13 +62,6 @@ async function main(): Promise<void> {
       return;
     case "privacy":
       runPrivacy(version());
-      return;
-    case "fix":
-      process.stdout.write(
-        `\n${bold("SaveMyTokens")}\n\n` +
-          `\`fix\` is not in v1 on purpose. v1 only measures — it never changes your setup.\n` +
-          `Apply the fixes from \`npx savemytokens\` yourself, then run it again and watch the score move.\n\n`,
-      );
       return;
     default:
       await runAudit(options);
