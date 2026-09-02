@@ -125,7 +125,7 @@ attached to tasks you can recognise, priced in dollars, and tagged `one-time fix
 | Detector | What it finds |
 | --- | --- |
 | `dead-carry` | tasks that began with finished work still in context and never re-opened a file from it |
-| `hook-noise` | hooks printing identical stdout into the transcript on every tool call |
+| `hook-noise` | hooks printing identical **plain-text** stdout into the transcript on every tool call. Structured JSON output (a `terminalSequence` notification, for instance) is consumed by Claude Code and never reaches the model, so it is not counted |
 | `repeated-reads` | the same file content re-sent unchanged, in one session or across its subagents |
 | `large-output` | tool results over 10 KB that then ride along in context for the rest of the session |
 | `roundtrips` | turns that did one cheap thing while re-reading the entire conversation |

@@ -94,6 +94,24 @@ function blockChars(content: unknown): number {
   return 0;
 }
 
+function isStructuredOutput(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return false;
+  try {
+    JSON.parse(trimmed);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function injectedHookOutput(attachment: Record<string, any>): string {
+  const content = String(attachment.content || "");
+  if (content) return content;
+  const stdout = String(attachment.stdout || "");
+  return isStructuredOutput(stdout) ? "" : stdout;
+}
+
 function blockText(content: unknown): string {
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
@@ -454,7 +472,7 @@ export async function parseClaudeSession(file: string, stat: fs.Stats): Promise<
         const type: string = attachment.type;
         let chars = 0;
         if (type === "hook_success") {
-          const payload = String(attachment.content || "") + String(attachment.stdout || "");
+          const payload = injectedHookOutput(attachment);
           chars = payload.length;
           if (chars > 0) {
             const name = String(attachment.hookName ?? "hook");

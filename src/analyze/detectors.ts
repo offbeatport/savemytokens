@@ -77,7 +77,9 @@ const hookNoise: Detector = (agg) => {
       top.extra.sample ? `every call pastes: ${top.extra.sample}…` : "",
       "read that payload — if the model has no use for it, it is pure cost",
     ].filter(Boolean),
-    fix: `Hook stdout is written into the transcript, so every later turn re-reads it. If that payload above is for your terminal or your notifications rather than for the model, silence it: append \` >/dev/null\` to the ${top.key} hook command in ~/.claude/settings.json. Keep it if the model actually acts on it.`,
+    fix: top.extra.command.includes("CLAUDE_PLUGIN_ROOT")
+      ? `That hook belongs to a plugin, not to your settings.json, so you cannot pipe it away there. Turn the plugin off in the enabledPlugins block of ~/.claude/settings.json, or raise it with the plugin author. Its plain-text stdout lands in the transcript and is re-read on every later turn.`
+      : `Hook stdout that is not structured JSON lands in the transcript, so every later turn re-reads it. If that payload is for your terminal rather than for the model, append \` >/dev/null\` to the ${top.key} hook command in ~/.claude/settings.json. Keep it if the model acts on it.`,
     detail: agg.hooks.slice(0, 5).map((h) => `${h.key} · ${h.extra.events}× · ${bytes(h.chars)}`),
   });
 };

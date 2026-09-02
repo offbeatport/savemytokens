@@ -117,6 +117,34 @@ test("sessions with no assistant turns are skipped", async () => {
   assert.equal(await parseClaudeSession(file, fs.statSync(file)), null);
 });
 
+function hookSession(session, stdout) {
+  const records = [humanPrompt(session, "p1", "build the thing")];
+  for (let i = 1; i <= 6; i++) {
+    records.push(
+      assistantTurn(session, `m${i}`, { input: 2, output: 100, cacheWrite: 1_000, cacheRead: 50_000 }, [
+        { type: "text", text: "ok" },
+      ]),
+    );
+    records.push(hookAttachment(session, "PostToolUse:Bash", stdout));
+  }
+  return records;
+}
+
+test("hook stdout that is structured JSON never counts as context", async () => {
+  const notification = JSON.stringify({ terminalSequence: "notify;warp://cli-agent" });
+  const { file } = writeFixture("s5", hookSession("s5", notification));
+  const evidence = await parseClaudeSession(file, fs.statSync(file));
+  assert.equal(evidence.hooks.length, 0, "a terminal notification never reaches the model");
+});
+
+test("plain-text hook stdout does count as context", async () => {
+  const { file } = writeFixture("s6", hookSession("s6", "lint: 0 problems in 42 files"));
+  const evidence = await parseClaudeSession(file, fs.statSync(file));
+  const hook = evidence.hooks.find((h) => h.name === "PostToolUse:Bash");
+  assert.ok(hook, "plain stdout does land in the transcript");
+  assert.equal(hook.events, 6);
+});
+
 test("a self-contained prompt after unrelated work is flagged as dead carry", async () => {
   const records = [
     humanPrompt("s2", "p1", "refactor the auth module to use the new session store"),
