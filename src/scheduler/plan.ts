@@ -9,6 +9,8 @@ import {
   deferredProjects,
   loadClaimants,
   loadConfig,
+  loadProjects,
+  upsertProject,
   loadQuota,
   policyNames,
   saveConfig,
@@ -17,6 +19,7 @@ import {
   windowBounds,
   type ClaimantPlanView,
   type Config,
+  type ProjectView,
   type DeferredItem,
   type SchedulePlanView,
   type WindowKey,
@@ -87,37 +90,37 @@ export function buildPlan(now = Date.now(), withSweep = true, window: WindowKey 
 const RECENT_LIMIT = 6;
 const PARKED_LIMIT = 4;
 
-function live(view: ClaimantPlanView): boolean {
-  return view.state === "active" || view.state === "needs-more";
-}
-
 export interface WorkingSet {
-  active: ClaimantPlanView[];
-  recent: ClaimantPlanView[];
-  parked: ClaimantPlanView[];
+  active: ProjectView[];
+  recent: ProjectView[];
+  parked: ProjectView[];
   hidden: number;
 }
 
-function byInterest(a: ClaimantPlanView, b: ClaimantPlanView): number {
-  return (
-    Number(b.claimant.pinned) - Number(a.claimant.pinned) ||
-    b.claimant.lastSeen - a.claimant.lastSeen ||
-    b.observed - a.observed
-  );
+function byInterest(a: ProjectView, b: ProjectView): number {
+  return Number(b.settings.pinned) - Number(a.settings.pinned) || b.lastSeen - a.lastSeen || b.observed - a.observed;
 }
 
 export function workingSet(plan: SchedulePlanView, full = false): WorkingSet {
-  const active = plan.claimants.filter((view) => view.bucket === "active").sort((a, b) => byInterest(a, b) || b.observed - a.observed);
-  const idleAll = plan.claimants.filter((view) => view.bucket !== "active" && !view.claimant.parked).sort(byInterest);
-  const parkedAll = plan.claimants.filter((view) => view.bucket !== "active" && view.claimant.parked).sort(byInterest);
+  const active = plan.projects
+    .filter((view) => view.bucket === "active")
+    .sort((a, b) => byInterest(a, b) || b.observed - a.observed);
+  const idleAll = plan.projects
+    .filter((view) => view.bucket !== "active" && !view.settings.parked)
+    .sort(byInterest);
+  const parkedAll = plan.projects.filter((view) => view.bucket !== "active" && view.settings.parked).sort(byInterest);
   const recent = full ? idleAll : idleAll.slice(0, RECENT_LIMIT);
   const parked = full ? parkedAll : [];
-  return {
-    active,
-    recent,
-    parked,
-    hidden: idleAll.length - recent.length + (parkedAll.length - parked.length),
-  };
+  return { active, recent, parked, hidden: idleAll.length - recent.length + (parkedAll.length - parked.length) };
+}
+
+export function visibleRows(plan: SchedulePlanView, full = false): ProjectView[] {
+  const set = workingSet(plan, full);
+  return [...set.active, ...set.recent, ...set.parked];
+}
+
+export function activeViews(plan: SchedulePlanView): ProjectView[] {
+  return workingSet(plan).active;
 }
 
 export function selectionIndex(ids: string[], selectedId: string | null, previousIndex: number): number {
@@ -129,31 +132,25 @@ export function selectionIndex(ids: string[], selectedId: string | null, previou
   return Math.max(0, Math.min(previousIndex, ids.length - 1));
 }
 
-export function visibleRows(plan: SchedulePlanView, full = false): ClaimantPlanView[] {
-  const set = workingSet(plan, full);
-  return [...set.active, ...set.recent, ...set.parked];
+export function setShare(project: string, share: number | null, adapter = "claude-code"): void {
+  upsertProject(adapter, project, { share: share === null ? null : Math.max(0, Math.min(1, share)) });
 }
 
-export function activeViews(plan: SchedulePlanView): ClaimantPlanView[] {
-  return workingSet(plan).active;
+export function setPriority(project: string, priority: Priority, adapter = "claude-code"): void {
+  upsertProject(adapter, project, { priority });
 }
 
-export function setShare(id: string, share: number | null, adapter = "claude-code"): void {
-  upsertClaimant(adapter, id, { share: share === null ? null : Math.max(0, Math.min(1, share)) });
-}
-
-export function setPriority(id: string, priority: Priority, adapter = "claude-code"): void {
-  upsertClaimant(adapter, id, { priority });
-}
-
-export function setState(id: string, state: ClaimantState, adapter = "claude-code"): void {
-  upsertClaimant(adapter, id, { state, endedAt: state === "done" ? Date.now() : null });
+export function setState(project: string, state: ClaimantState, adapter = "claude-code"): void {
+  for (const claimant of loadClaimants(adapter)) {
+    if ((claimant.project || claimant.label) !== project) continue;
+    upsertClaimant(adapter, claimant.id, { state, endedAt: state === "done" ? Date.now() : null });
+  }
 }
 
 export function equalize(adapter = "claude-code"): void {
-  for (const claimant of loadClaimants(adapter)) {
-    if (claimant.share === null) continue;
-    upsertClaimant(adapter, claimant.id, { share: null });
+  for (const project of loadProjects(adapter)) {
+    if (project.share === null) continue;
+    upsertProject(adapter, project.project, { share: null });
   }
 }
 
@@ -225,12 +222,13 @@ export function saveCustomAdvice(project: string, text: string): void {
   saveConfig(config);
 }
 
-export function setPinned(id: string, pinned: boolean, adapter = "claude-code"): void {
-  upsertClaimant(adapter, id, { pinned });
+export function setPinned(project: string, pinned: boolean, adapter = "claude-code"): void {
+  upsertProject(adapter, project, { pinned });
 }
 
-export function setParked(id: string, parked: boolean, adapter = "claude-code"): void {
-  upsertClaimant(adapter, id, { parked, ...(parked ? { state: "done" as ClaimantState } : {}) });
+export function setParked(project: string, parked: boolean, adapter = "claude-code"): void {
+  upsertProject(adapter, project, { parked });
+  if (parked) setState(project, "done", adapter);
 }
 
 export function setPolicy(name: string, project: string | null): boolean {
@@ -247,23 +245,19 @@ export function forgetDeferred(project: string, adapter = "claude-code"): void {
 }
 
 export interface ResolvedClaimant {
-  view: ClaimantPlanView;
+  view: ProjectView;
   matches: number;
 }
 
 export function resolveClaimant(plan: SchedulePlanView, term: string): ResolvedClaimant | null {
   const needle = term.trim().toLowerCase();
   if (!needle) return null;
-  const pool = plan.claimants;
-  const exact = pool.filter((view) => view.claimant.id === term || view.claimant.label.toLowerCase() === needle);
-  const partial = pool.filter(
-    (view) => view.claimant.id.startsWith(term) || view.claimant.label.toLowerCase().includes(needle),
-  );
+  const pool = plan.projects;
+  const exact = pool.filter((view) => view.project === term || view.label.toLowerCase() === needle);
+  const partial = pool.filter((view) => view.label.toLowerCase().includes(needle) || view.project.toLowerCase().includes(needle));
   const candidates = exact.length > 0 ? exact : partial;
   if (candidates.length === 0) return null;
-  const ranked = [...candidates].sort(
-    (a, b) => Number(live(b)) - Number(live(a)) || b.observed - a.observed,
-  );
+  const ranked = [...candidates].sort((a, b) => Number(b.bucket === "active") - Number(a.bucket === "active") || b.observed - a.observed);
   const view = ranked[0];
   if (!view) return null;
   return { view, matches: candidates.length };

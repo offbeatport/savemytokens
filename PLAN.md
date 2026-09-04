@@ -133,8 +133,13 @@ footnote says so.
 
 ### Allocation
 
-- Default: even split across running sessions.
-- `←`/`→` pins a target; `p` cycles priority; `e` clears every pin back to an even split.
+Allocation is per **project**, not per session. A session id changes every time you `/clear` or
+resume, so a target pinned to one evaporates the moment you restart; a project is the thing you
+actually have an opinion about. A project's allocation is split across its live sessions in
+proportion to what they are burning, and sessions are the drill-down behind ⏎.
+
+- Default: even split across running projects.
+- `←`/`→` pins an allocation; `p` cycles priority; `e` clears every pin back to an even split.
 - Spare capacity goes to the highest-priority tier first, split evenly inside it, and only reaches a
   lower tier once the tier above is done or hits its cap.
 - A session that finishes releases **only the share it did not consume**. What it used stays

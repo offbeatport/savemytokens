@@ -7,7 +7,7 @@ import {
   meterBar,
   paint,
   pressureRole,
-  type ClaimantPlanView,
+  type ProjectView,
   type Theme,
 } from "../runtime/kernel.mjs";
 import { padEndVisible, padStartVisible, visibleWidth } from "../util/ansi.js";
@@ -35,21 +35,9 @@ function clip(text: string, max: number): string {
   return visibleWidth(text) <= max ? text : `${text.slice(0, Math.max(0, max - 1))}…`;
 }
 
-export function labelsFor(views: ClaimantPlanView[]): Map<string, string> {
-  const counts = new Map<string, number>();
-  for (const view of views) counts.set(view.claimant.label, (counts.get(view.claimant.label) ?? 0) + 1);
+export function labelsFor(views: ProjectView[]): Map<string, string> {
   const labels = new Map<string, string>();
-  for (const view of views) {
-    const base = view.claimant.label || view.claimant.id.slice(0, 8);
-    const started = new Date(view.claimant.startedAt);
-    const stamp = `${String(started.getHours()).padStart(2, "0")}:${String(started.getMinutes()).padStart(2, "0")}`;
-    labels.set(view.claimant.id, (counts.get(view.claimant.label) ?? 0) > 1 ? `${base} ${stamp}` : base);
-  }
-  const stamped = new Map<string, number>();
-  for (const label of labels.values()) stamped.set(label, (stamped.get(label) ?? 0) + 1);
-  for (const [id, label] of labels) {
-    if ((stamped.get(label) ?? 0) > 1) labels.set(id, `${label}·${id.slice(0, 4)}`);
-  }
+  for (const view of views) labels.set(view.project, view.label);
   return labels;
 }
 
@@ -75,21 +63,55 @@ function capacityRow(control: ControlPlan, context: ViewContext): string[] {
 }
 
 function columnWidths(context: ViewContext): { label: number; prompt: number } {
-  const label = Math.min(24, Math.max(10, ...[...context.labels.values()].map((value) => value.length), 10));
-  const prompt = Math.max(12, context.columns - label - 50);
+  const label = Math.min(26, Math.max(14, ...[...context.labels.values()].map((value) => value.length + 2), 14));
+  const prompt = Math.max(14, context.columns - label - 40);
   return { label, prompt };
 }
 
 function headerRow(context: ViewContext, widths: { label: number; prompt: number }, columns: string[]): string {
   const { theme, color } = context;
-  const cells = [`    ${padEndVisible("session", widths.label)}`];
-  if (columns.includes("target")) cells.push(padStartVisible("target", 6));
-  if (columns.includes("used")) cells.push(padStartVisible("used", 5));
-  if (columns.includes("share")) cells.push(padStartVisible("share", 5));
+  const cells = [`   ${padEndVisible("project", widths.label)}`];
+  if (columns.includes("allocation")) cells.push(padStartVisible("allocation", 10));
+  if (columns.includes("used")) cells.push(padEndVisible("used of it", 15));
+  if (columns.includes("share")) cells.push(padStartVisible("share", 6));
+  if (columns.includes("tokens")) cells.push(padStartVisible("tokens", 7));
   if (columns.includes("priority")) cells.push(padEndVisible("priority", 8));
-  if (columns.includes("of target")) cells.push(padEndVisible("of target", TARGET_COL));
   if (columns.includes("last prompt")) cells.push("last prompt");
   return paint(theme, "dim", cells.join(" "), color);
+}
+
+function row(
+  view: ProjectView,
+  index: number,
+  context: ViewContext,
+  widths: { label: number; prompt: number },
+  columns: string[],
+): string {
+  const { theme, color } = context;
+  const role = pressureRole(view.pressure.value);
+  const cursor = context.interactive && context.selected === index ? paint(theme, "accent", "❯", color) : " ";
+  const pin = view.settings.pinned ? paint(theme, "accent", "★", color) : " ";
+  const sessions = view.liveSessions > 1 ? paint(theme, "dim", ` ${view.liveSessions}`, color) : "  ";
+  const label = padEndVisible(clip(view.label, widths.label - 2), widths.label - 2);
+  const allocation = padStartVisible(percentLabel(view.allocation.target * 100, 5), 10);
+  const used = padEndVisible(
+    `${smallBar(view.pressure.value, BAR_CELLS, theme, color, role)} ${padStartVisible(paint(theme, role, percentLabel(view.pressure.value * 100, 4), color), 4)}`,
+    15,
+  );
+  const share = padStartVisible(paint(theme, "dim", percentLabel(view.observed * 100, 5), color), 6);
+  const tokens = padStartVisible(paint(theme, "dim", compactNumber(view.usage.tokens), color), 7);
+  const priority = padEndVisible(
+    paint(theme, view.settings.priority === "high" ? "accent" : "dim", view.settings.priority.toUpperCase(), color),
+    8,
+  );
+  const cells = [`${cursor}${pin} ${label}${sessions}`];
+  if (columns.includes("allocation")) cells.push(allocation);
+  if (columns.includes("used")) cells.push(used);
+  if (columns.includes("share")) cells.push(share);
+  if (columns.includes("tokens")) cells.push(tokens);
+  if (columns.includes("priority")) cells.push(priority);
+  if (columns.includes("last prompt")) cells.push(paint(theme, "dim", clip(view.prompt || "—", widths.prompt), color));
+  return cells.join(" ");
 }
 
 function idleHeaderRow(context: ViewContext, widths: { label: number; prompt: number }): string {
@@ -97,13 +119,13 @@ function idleHeaderRow(context: ViewContext, widths: { label: number; prompt: nu
   return paint(
     theme,
     "dim",
-    `    ${padEndVisible("session", widths.label)} ${padStartVisible("last turn", 10)} ${padStartVisible("share", 5)}  last prompt`,
+    `   ${padEndVisible("project", widths.label)} ${padStartVisible("last turn", 10)}  last prompt`,
     color,
   );
 }
 
 function idleRow(
-  view: ClaimantPlanView,
+  view: ProjectView,
   index: number,
   context: ViewContext,
   widths: { label: number; prompt: number },
@@ -111,58 +133,12 @@ function idleRow(
 ): string {
   const { theme, color } = context;
   const cursor = context.interactive && context.selected === index ? paint(theme, "accent", "❯", color) : " ";
-  const pin = view.claimant.pinned ? paint(theme, "accent", "★", color) : " ";
-  const label = padEndVisible(clip(context.labels.get(view.claimant.id) ?? view.claimant.label, widths.label), widths.label);
-  const when = padStartVisible(ago(view.claimant.lastSeen, now), 10);
-  const share = padStartVisible(percentLabel(view.observed * 100, 4), 5);
-  const tag = view.claimant.parked ? paint(theme, "dim", " parked", color) : "";
-  const prompt = clip(view.claimant.prompt || "—", widths.prompt + TARGET_COL - (view.claimant.parked ? 1 : 7));
-  return `${cursor}${pin}· ${paint(theme, "dim", `${label} ${when} ${share}  ${prompt}`, color)}${tag}`;
-}
-
-function row(
-  view: ClaimantPlanView,
-  index: number,
-  context: ViewContext,
-  widths: { label: number; prompt: number },
-  now: number,
-  columns: string[],
-): string {
-  const { theme, color } = context;
-  const live = view.bucket === "active";
-  const role = live ? pressureRole(view.pressure.value) : "dim";
-  const cursor = context.interactive && context.selected === index ? paint(theme, "accent", "❯", color) : " ";
-  const pin = view.claimant.pinned ? paint(theme, "accent", "★", color) : " ";
-  const mark = paint(
-    theme,
-    view.state === "blocked" ? "danger" : live ? "ok" : "dim",
-    live ? STATE_MARK[view.state] ?? "•" : "·",
-    color,
-  );
-  const label = padEndVisible(clip(context.labels.get(view.claimant.id) ?? view.claimant.label, widths.label), widths.label);
-  const target = padStartVisible(live ? percentLabel(view.allocation.target * 100, 5) : paint(theme, "dim", "0%", color), 6);
-  const used = padStartVisible(
-    live ? paint(theme, role, percentLabel(view.attributedPercent ?? 0, 4), color) : paint(theme, "dim", "0%", color),
-    5,
-  );
-  const share = padStartVisible(paint(theme, "dim", percentLabel(view.observed * 100, 4), color), 5);
-  const priority = padEndVisible(
-    live
-      ? paint(theme, view.claimant.priority === "high" ? "accent" : "dim", view.claimant.priority.toUpperCase(), color)
-      : paint(theme, "dim", ago(view.claimant.lastSeen, now), color),
-    8,
-  );
-  const spent = live
-    ? `${padStartVisible(paint(theme, role, percentLabel(view.pressure.value * 100, 4), color), 4)} ${smallBar(view.pressure.value, BAR_CELLS, theme, color, role)}`
-    : padEndVisible(paint(theme, "dim", "—", color), TARGET_COL);
-  const cells = [`${cursor}${pin}${mark} ${label}`];
-  if (columns.includes("target")) cells.push(target);
-  if (columns.includes("used")) cells.push(used);
-  if (columns.includes("share")) cells.push(share);
-  if (columns.includes("priority")) cells.push(priority);
-  if (columns.includes("of target")) cells.push(padEndVisible(spent, TARGET_COL));
-  if (columns.includes("last prompt")) cells.push(paint(theme, "dim", clip(view.claimant.prompt || "—", widths.prompt), color));
-  return cells.join(" ");
+  const pin = view.settings.pinned ? paint(theme, "accent", "★", color) : " ";
+  const label = padEndVisible(clip(view.label, widths.label), widths.label);
+  const when = padStartVisible(ago(view.lastSeen, now), 10);
+  const tag = view.settings.parked ? paint(theme, "dim", " parked", color) : "";
+  const prompt = clip(view.prompt || "—", widths.prompt + 12);
+  return `${cursor}${pin} ${paint(theme, "dim", `${label} ${when}  ${prompt}`, color)}${tag}`;
 }
 
 function sectionTitle(name: string, count: number, context: ViewContext): string {
@@ -173,14 +149,15 @@ function sectionTitle(name: string, count: number, context: ViewContext): string
 function footerNote(control: ControlPlan, context: ViewContext): string[] {
   const { theme, color } = context;
   const set = workingSet(control.schedule, context.expanded);
+  const sessions = set.active.reduce((sum, view) => sum + view.liveSessions, 0);
   const spare = Math.round(control.schedule.unusedPool * 100);
   const out = [
-    `  ${paint(theme, "dim", `${set.active.length} ${set.active.length === 1 ? "session is" : "sessions are"} sharing this window${spare > 0 ? `, ${spare}% of it unclaimed` : ""}.`, color)}`,
+    `  ${paint(theme, "dim", `${set.active.length} ${set.active.length === 1 ? "project" : "projects"} sharing this window across ${sessions} ${sessions === 1 ? "session" : "sessions"}${spare > 0 ? `, ${spare}% unclaimed` : ""}.`, color)}`,
   ];
   const drift = control.unattributed ?? 0;
   if (drift >= UNATTRIBUTED_FLOOR) {
     out.push(
-      `  ${paint(theme, "warn", `${Math.round(drift)}% of the window was spent outside these sessions`, color)} ${paint(theme, "dim", "— claude.ai, another machine, or usage SaveMyTokens was not running for", color)}`,
+      `  ${paint(theme, "warn", `${Math.round(drift)}% of the window was spent outside these projects`, color)} ${paint(theme, "dim", "— claude.ai, another machine, or usage SaveMyTokens was not running for", color)}`,
     );
   }
   return out;
@@ -196,7 +173,7 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
   let printed = 0;
   const budget = context.expanded ? Number.MAX_SAFE_INTEGER : Math.max(6, context.rows - 13);
 
-  const section = (name: string, views: ClaimantPlanView[], idle: boolean): void => {
+  const section = (name: string, views: ProjectView[], idle: boolean): void => {
     if (views.length === 0) return;
     out.push("");
     out.push(sectionTitle(name, views.length, context));
@@ -206,7 +183,7 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
         index += 1;
         continue;
       }
-      out.push(idle ? idleRow(view, index, context, widths, now) : row(view, index, context, widths, now, columns));
+      out.push(idle ? idleRow(view, index, context, widths, now) : row(view, index, context, widths, columns));
       index += 1;
       printed += 1;
     }
@@ -215,11 +192,10 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
   section("ACTIVE", set.active, false);
   section("RECENT", [...set.recent, ...set.parked], true);
 
-  const shown = printed;
   const total = set.active.length + set.recent.length + set.parked.length + set.hidden;
-  if (total > shown) {
+  if (total > printed) {
     out.push("");
-    out.push(`  ${paint(context.theme, "dim", `+${total - shown} more`, context.color)}`);
+    out.push(`  ${paint(context.theme, "dim", `+${total - printed} more`, context.color)}`);
   }
 
   out.push("");
@@ -233,64 +209,61 @@ export function detailRows(control: ControlPlan, context: ViewContext): string[]
   const view = rows[Math.max(0, Math.min(context.selected, rows.length - 1))];
   if (!view) return [`  ${paint(theme, "dim", "nothing to show", color)}`];
 
-  const record = loadMeter(control.provider.id, view.claimant.id);
-  const label = context.labels.get(view.claimant.id) ?? view.claimant.label;
   const width = Math.min(46, Math.max(20, context.columns - 26));
   const strip = Math.min(66, Math.max(20, context.columns - 10));
   const from = control.schedule.bounds.from;
   const to = control.schedule.bounds.to;
   const live = view.bucket === "active";
+  const buckets = view.sessions.flatMap((session) => loadMeter(control.provider.id, session.claimant.id).buckets);
 
   const out = [
-    `  ${paint(theme, "accent", label, color)} ${paint(theme, "dim", `· ${view.bucket}${view.claimant.pinned ? " · pinned" : ""}${view.claimant.parked ? " · parked" : ""}${live ? ` · ${view.claimant.priority}` : ""}`, color)}`,
-    `  ${paint(theme, "dim", clip(view.claimant.project || "unknown project", context.columns - 4), color)}`,
+    `  ${paint(theme, "accent", view.label, color)} ${paint(theme, "dim", `· ${view.bucket}${view.settings.pinned ? " · pinned" : ""}${view.settings.parked ? " · parked" : ""} · ${view.settings.priority}`, color)}`,
+    `  ${paint(theme, "dim", clip(view.project, context.columns - 4), color)}`,
     "",
   ];
 
   if (live) {
-    out.push(`  ${paint(theme, "dim", "target", color)} ${meterBar(theme, view.allocation.target, width, "accent", color)} ${percentLabel(view.allocation.target * 100)}`);
+    out.push(`  ${paint(theme, "dim", "allocation", color)} ${meterBar(theme, view.allocation.target, width, "accent", color)} ${percentLabel(view.allocation.target * 100)}`);
     out.push(
-      `  ${paint(theme, "dim", "used  ", color)} ${meterBar(theme, (view.attributedPercent ?? 0) / 100, width, pressureRole(view.pressure.value), color)} ${percentLabel(view.attributedPercent ?? 0)}`,
-    );
-    out.push(
-      `  ${paint(theme, "dim", "spent ", color)} ${smallBar(view.pressure.value, width, theme, color, pressureRole(view.pressure.value))} ${percentLabel(view.pressure.value * 100)} ${paint(theme, "dim", "of its target", color)}`,
+      `  ${paint(theme, "dim", "used of it", color)} ${smallBar(view.pressure.value, width, theme, color, pressureRole(view.pressure.value))} ${percentLabel(view.pressure.value * 100)}`,
     );
   } else {
-    out.push(`  ${paint(theme, "dim", `no live session — last turn ${ago(view.claimant.lastSeen, control.schedule.now)}, holding no share`, color)}`);
+    out.push(`  ${paint(theme, "dim", `nothing running — last turn ${ago(view.lastSeen, control.schedule.now)}, holding no allocation`, color)}`);
   }
 
   out.push("");
   out.push(
-    `  ${paint(theme, "dim", "measured", color)} ${percentLabel(view.observed * 100)} ${paint(theme, "dim", `of the tokens on disk · ${compactNumber(view.usage.tokens)} tokens · ${view.usage.requests} requests this window`, color)}`,
-  );
-  out.push(
-    `  ${paint(theme, "dim", "started ", color)} ${new Date(view.claimant.startedAt).toTimeString().slice(0, 5)} ${paint(theme, "dim", `· last turn ${ago(view.claimant.lastSeen, control.schedule.now)}`, color)}`,
+    `  ${paint(theme, "dim", "of the window", color)} ${percentLabel(view.attributedPercent ?? 0)} ${paint(theme, "dim", `· ${percentLabel(view.observed * 100)} of measured tokens · ${compactNumber(view.usage.tokens)} tokens · ${view.usage.requests} requests`, color)}`,
   );
   out.push("");
   out.push(`  ${paint(theme, "dim", "when it burned", color)}`);
-  out.push(`  ${heatStrip(record.buckets, from, to, strip, theme, color)}`);
-  out.push(`  ${paint(theme, "accent", miniSpark(record.buckets, from, to, strip), color)}`);
+  out.push(`  ${heatStrip(buckets, from, to, strip, theme, color)}`);
+  out.push(`  ${paint(theme, "accent", miniSpark(buckets, from, to, strip), color)}`);
   out.push(
     `  ${paint(theme, "dim", `${new Date(from).toTimeString().slice(0, 5)}${" ".repeat(Math.max(1, strip - 11))}${new Date(to).toTimeString().slice(0, 5)}`, color)}`,
   );
 
-  const prompts = Array.isArray(record.prompts) ? record.prompts.slice(-5).reverse() : [];
   out.push("");
-  out.push(`  ${paint(theme, "dim", "recent prompts", color)}`);
-  if (prompts.length === 0) out.push(`    ${paint(theme, "dim", "none captured yet", color)}`);
-  for (const prompt of prompts) out.push(`    ${paint(theme, "dim", clip(prompt, context.columns - 8), color)}`);
+  out.push(`  ${paint(theme, "accent", `SESSIONS ${view.sessions.length}`, color)}`);
+  for (const session of view.sessions.slice(0, 8)) {
+    const alive = session.bucket === "active";
+    const mark = paint(theme, alive ? "ok" : "dim", alive ? "•" : "·", color);
+    const when = alive
+      ? paint(theme, "dim", `${percentLabel(session.allocation.target * 100)} of the window`, color)
+      : paint(theme, "dim", ago(session.claimant.lastSeen, control.schedule.now), color);
+    out.push(
+      `    ${mark} ${padEndVisible(session.claimant.id.slice(0, 8), 9)} ${padEndVisible(when, 18)} ${paint(theme, "dim", clip(session.claimant.prompt || "—", context.columns - 36), color)}`,
+    );
+    if (!alive) {
+      out.push(`      ${paint(theme, "dim", clip(`claude --resume ${session.claimant.id}`, context.columns - 8), color)}`);
+    }
+  }
 
-  const deferred = control.deferred.find((group) => group.project === view.claimant.project);
+  const deferred = control.deferred.find((group) => group.project === view.project);
   if (deferred && deferred.items.length > 0) {
     out.push("");
     out.push(`  ${paint(theme, "warn", "deferred here", color)}`);
     for (const item of deferred.items.slice(-4)) out.push(`    ${paint(theme, "dim", clip(item.text, context.columns - 8), color)}`);
-  }
-
-  if (!live) {
-    out.push("");
-    out.push(`  ${paint(theme, "dim", "resume it with", color)}`);
-    out.push(`    ${paint(theme, "accent", clip(`cd ${view.claimant.project} && claude --resume ${view.claimant.id}`, context.columns - 8), color)}`);
   }
 
   return out;
@@ -303,9 +276,9 @@ export function helpOverlay(control: ControlPlan, context: ViewContext): string[
   return [
     `  ${paint(theme, "accent", "keys", color)}`,
     "",
-    "    ↑↓        select a session",
-    "    ⏎         open it · esc goes back",
-    "    ←→        move its target share by 5 points",
+    "    ↑↓        select a project",
+    "    ⏎         open it, and see its sessions · esc goes back",
+    "    ←→        move its allocation by 5 points",
     "    u         unpin the target, back to an even split",
     "    p         priority: high → normal → low",
     "    e         equalize — clear every pinned target",
@@ -323,10 +296,9 @@ export function helpOverlay(control: ControlPlan, context: ViewContext): string[
     "",
     `  ${paint(theme, "accent", "the columns", color)}`,
     "",
-    `    ${paint(theme, "dim", "target    the share you want it to aim for — your decision, not a measurement", color)}`,
-    `    ${paint(theme, "dim", "used      how much of the whole window it has spent", color)}`,
-    `    ${paint(theme, "dim", "share     its part of the tokens measured on disk", color)}`,
-    `    ${paint(theme, "dim", "of target how much of its own target share it has spent · » means over", color)}`,
+    `    ${paint(theme, "dim", "allocation  how much of the window you want this project to get", color)}`,
+    `    ${paint(theme, "dim", "used of it  how much of that allocation it has spent · » means over", color)}`,
+    `    ${paint(theme, "dim", "a project's allocation is split across its live sessions by what they burn", color)}`,
     "",
     `    ${paint(theme, "dim", "5h and 7d are Anthropic's numbers. share is measured from your transcripts.", color)}`,
     `    ${paint(theme, "dim", "\"spent outside these sessions\" is window that moved while none of them had a turn:", color)}`,

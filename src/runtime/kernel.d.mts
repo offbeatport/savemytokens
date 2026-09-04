@@ -182,6 +182,11 @@ export function quotaFile(adapter: string): string;
 export function loadClaimant(adapter: string, id: string): ClaimantRecord | null;
 export function upsertClaimant(adapter: string, id: string, patch?: Partial<ClaimantRecord>): ClaimantRecord;
 export function loadClaimants(adapter: string): ClaimantRecord[];
+export const PROJECT_DIR: string;
+export function projectKey(project: string): string;
+export function loadProject(adapter: string, project: string): ProjectSettings;
+export function upsertProject(adapter: string, project: string, patch?: Partial<ProjectSettings>): ProjectSettings;
+export function loadProjects(adapter: string): ProjectSettings[];
 export function effectiveState(claimant: ClaimantRecord, now?: number, strict?: boolean): ClaimantState;
 export function isStale(claimant: ClaimantRecord, now?: number, strict?: boolean): boolean;
 export function heartbeatsLive(claimants: ClaimantRecord[], now?: number): boolean;
@@ -243,6 +248,37 @@ export interface ClaimantPlanView {
   attributedPercent: number | null;
 }
 
+export interface SessionView extends ClaimantPlanView {
+  project: string;
+}
+
+export interface ProjectSettings {
+  schema: number;
+  project: string;
+  label: string;
+  share: number | null;
+  priority: Priority;
+  cap: number | null;
+  pinned: boolean;
+  parked: boolean;
+}
+
+export interface ProjectView {
+  project: string;
+  label: string;
+  settings: ProjectSettings;
+  sessions: SessionView[];
+  allocation: Allocation;
+  observed: number;
+  usage: { tokens: number; weighted: number; requests: number };
+  lastSeen: number;
+  bucket: ClaimantBucket;
+  attributedPercent: number | null;
+  pressure: Pressure;
+  prompt: string;
+  liveSessions: number;
+}
+
 export interface SchedulePlanView {
   adapter: string;
   key: WindowKey;
@@ -251,6 +287,7 @@ export interface SchedulePlanView {
   live: QuotaWindow | null;
   bounds: { from: number; to: number; anchored: boolean };
   windowId: number;
+  projects: ProjectView[];
   claimants: ClaimantPlanView[];
   unusedPool: number;
   totalWeighted: number;

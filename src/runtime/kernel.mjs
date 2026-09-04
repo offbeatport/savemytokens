@@ -9,6 +9,7 @@ export const QUOTA_DIR = path.join(HOME, "quota");
 export const THEME_DIR = path.join(HOME, "themes");
 export const HOOKS_DIR = path.join(HOME, "hooks");
 export const DEFER_DIR = path.join(HOME, "deferred");
+export const PROJECT_DIR = path.join(HOME, "projects");
 export const CONFIG_FILE = path.join(HOME, "config.json");
 
 export const FIVE_HOUR_MS = 5 * 60 * 60 * 1000;
@@ -69,13 +70,26 @@ export const DEFAULT_CONFIG = {
   layout: { hud: "allocation" },
   policy: "finish",
   policyFor: {},
-  columns: ["target", "used", "share", "priority", "of target", "last prompt"],
+  columns: ["allocation", "used", "priority", "last prompt"],
   hud: { segments: ["project", "target", "used", "priority", "5h", "reset"] },
   preserveFor: {},
   customAdvice: {},
   wrappedStatusLine: null,
   contribute: false,
 };
+
+const COLUMN_RENAMES = { target: "allocation", "of target": "used", used: null, share: "share" };
+
+function migrateColumns(stored) {
+  if (!Array.isArray(stored) || stored.length === 0) return DEFAULT_CONFIG.columns;
+  if (stored.every((name) => COLUMNS.includes(name))) return stored;
+  const out = [];
+  for (const name of stored) {
+    const mapped = name in COLUMN_RENAMES ? COLUMN_RENAMES[name] : name;
+    if (mapped && COLUMNS.includes(mapped) && !out.includes(mapped)) out.push(mapped);
+  }
+  return out.length > 0 ? out : DEFAULT_CONFIG.columns;
+}
 
 export function loadConfig() {
   const stored = readJson(CONFIG_FILE, null);
@@ -85,7 +99,7 @@ export function loadConfig() {
     ...stored,
     theme: { ...DEFAULT_CONFIG.theme, ...(stored.theme || {}) },
     layout: { ...DEFAULT_CONFIG.layout, ...(stored.layout || {}) },
-    columns: Array.isArray(stored.columns) && stored.columns.length > 0 ? stored.columns : DEFAULT_CONFIG.columns,
+    columns: migrateColumns(stored.columns),
     hud: {
       segments:
         Array.isArray(stored.hud?.segments) && stored.hud.segments.length > 0
@@ -201,6 +215,35 @@ export function effectiveState(claimant, now = Date.now(), strict = false) {
   if (claimant.endedAt) return "done";
   if (isStale(claimant, now, strict)) return "done";
   return claimant.state;
+}
+
+export function projectKey(project) {
+  return String(project || "unknown").replace(/[^a-zA-Z0-9]/g, "-").slice(-90);
+}
+
+function blankProject(project) {
+  return { schema: 1, project, label: project ? project.split("/").filter(Boolean).pop() : "unknown", share: null, priority: "normal", cap: null, pinned: false, parked: false };
+}
+
+export function loadProject(adapter, project) {
+  const stored = readJson(path.join(PROJECT_DIR, adapter, `${projectKey(project)}.json`), null);
+  return { ...blankProject(project), ...(stored && typeof stored === "object" ? stored : {}) };
+}
+
+export function upsertProject(adapter, project, patch = {}) {
+  const next = { ...loadProject(adapter, project), ...patch, project };
+  writeJson(path.join(PROJECT_DIR, adapter, `${projectKey(project)}.json`), next);
+  return next;
+}
+
+export function loadProjects(adapter) {
+  const dir = path.join(PROJECT_DIR, adapter);
+  const out = [];
+  for (const name of listJson(dir)) {
+    const stored = readJson(path.join(dir, name), null);
+    if (stored && typeof stored === "object" && stored.project) out.push({ ...blankProject(stored.project), ...stored });
+  }
+  return out;
 }
 
 export function saveQuota(adapter, reading) {
@@ -620,44 +663,104 @@ export function schedule(adapter, now = Date.now(), key = "five_hour", quotaOver
 
   const live = liveWindow(quota, key, now);
   const strict = heartbeatsLive(claimants, now);
-  const entries = claimants.map((claimant) => {
-    const observed = total > 0 ? usage.get(claimant.id).weighted / total : 0;
+  const groups = new Map();
+
+  for (const claimant of claimants) {
+    const project = claimant.project || claimant.label || claimant.id;
+    let group = groups.get(project);
+    if (!group) {
+      group = { project, settings: loadProject(adapter, project), sessions: [], observed: 0, weighted: 0, tokens: 0, requests: 0, lastSeen: 0 };
+      groups.set(project, group);
+    }
+    const window = usage.get(claimant.id);
+    const observed = total > 0 ? window.weighted / total : 0;
+    const state = effectiveState(claimant, now, strict);
+    group.sessions.push({ claimant, window, observed, state, bucket: bucketFor(claimant, now, strict) });
+    group.observed += observed;
+    group.weighted += window.weighted;
+    group.tokens += window.tokens;
+    group.requests += window.requests;
+    group.lastSeen = Math.max(group.lastSeen, claimant.lastSeen ?? 0);
+  }
+
+  const entries = [...groups.values()].map((group) => {
+    const running = group.sessions.some((session) => session.bucket === "active");
     return {
-      id: claimant.id,
-      share: claimant.share,
-      priority: claimant.priority,
-      state: effectiveState(claimant, now, strict),
-      consumed: live ? (live.usedPercent / 100) * observed : 0,
-      cap: claimant.cap,
+      id: group.project,
+      share: group.settings.share,
+      priority: group.settings.priority,
+      state: running ? "active" : "done",
+      consumed: live ? (live.usedPercent / 100) * group.observed : 0,
+      cap: group.settings.cap,
     };
   });
 
-  const eligible = entries.filter((entry) => entry.state === "active" || entry.state === "needs-more").length;
+  const eligible = entries.filter((entry) => entry.state === "active").length;
   const { targets, unusedPool } = allocate(entries);
 
-  const views = claimants.map((claimant) => {
-    const allocation = targets.get(claimant.id) ?? {
-      claimantId: claimant.id,
+  const projects = [...groups.values()].map((group) => {
+    const allocation = targets.get(group.project) ?? {
+      claimantId: group.project,
       target: 0,
       pinned: false,
       pool: 0,
       released: true,
     };
-    const window = usage.get(claimant.id);
-    const observed = total > 0 ? window.weighted / total : 0;
+    const running = group.sessions.filter((session) => session.bucket === "active");
+    const liveWeight = running.reduce((sum, session) => sum + session.window.weighted, 0);
+    const sessions = group.sessions
+      .map((session) => {
+        const alive = session.bucket === "active";
+        const slice = alive
+          ? liveWeight > 0
+            ? session.window.weighted / liveWeight
+            : 1 / Math.max(1, running.length)
+          : 0;
+        const target = allocation.target * slice;
+        const pressure =
+          live || eligible > 1
+            ? pressureFor(session.observed, target, live ? live.usedPercent : null)
+            : { value: 0, basis: "share" };
+        return {
+          claimant: session.claimant,
+          allocation: { claimantId: session.claimant.id, target, pinned: allocation.pinned, pool: 0, released: !alive },
+          usage: session.window,
+          observed: session.observed,
+          state: session.state,
+          bucket: session.bucket,
+          stale: isStale(session.claimant, now, strict),
+          pressure,
+          attributedPercent: live ? live.usedPercent * session.observed : null,
+          project: group.project,
+        };
+      })
+      .sort((a, b) => b.observed - a.observed);
+
+    const bucket = sessions.some((session) => session.bucket === "active")
+      ? "active"
+      : group.settings.parked
+        ? "parked"
+        : sessions.some((session) => session.bucket === "recent")
+          ? "recent"
+          : "parked";
+
     return {
-      claimant,
+      project: group.project,
+      label: group.settings.label || group.project.split("/").filter(Boolean).pop() || group.project,
+      settings: group.settings,
+      sessions,
       allocation,
-      usage: window,
-      observed,
-      state: effectiveState(claimant, now, strict),
-      bucket: bucketFor(claimant, now, strict),
-      stale: isStale(claimant, now, strict),
+      observed: group.observed,
+      usage: { tokens: group.tokens, weighted: group.weighted, requests: group.requests },
+      lastSeen: group.lastSeen,
+      bucket,
+      attributedPercent: live ? live.usedPercent * group.observed : null,
       pressure:
         live || eligible > 1
-          ? pressureFor(observed, allocation.target, live ? live.usedPercent : null)
+          ? pressureFor(group.observed, allocation.target, live ? live.usedPercent : null)
           : { value: 0, basis: "share" },
-      attributedPercent: live ? live.usedPercent * observed : null,
+      prompt: sessions[0]?.claimant.prompt ?? "",
+      liveSessions: sessions.filter((session) => session.bucket === "active").length,
     };
   });
 
@@ -670,7 +773,8 @@ export function schedule(adapter, now = Date.now(), key = "five_hour", quotaOver
     live,
     bounds,
     windowId: bounds.anchored ? bounds.to : Math.floor(now / span) * span,
-    claimants: views,
+    projects,
+    claimants: projects.flatMap((project) => project.sessions),
     unusedPool,
     totalWeighted: total,
     lockouts: lockouts.sort((a, b) => a - b),
@@ -938,8 +1042,8 @@ export const HUD_PRESETS = {
 export const HUD_LAYOUTS = Object.keys(HUD_PRESETS);
 export const DEFAULT_HUD_SEGMENTS = HUD_PRESETS.allocation;
 
-export const COLUMNS = ["target", "used", "share", "priority", "of target", "last prompt"];
-export const DEFAULT_COLUMNS = COLUMNS;
+export const COLUMNS = ["allocation", "used", "share", "tokens", "priority", "last prompt"];
+export const DEFAULT_COLUMNS = ["allocation", "used", "priority", "last prompt"];
 
 function hudMeter(theme, ratio, width, role, enabled, filled = "\u2588", empty = "\u2591") {
   const cells = Math.max(4, width);

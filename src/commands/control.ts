@@ -135,14 +135,30 @@ function toJson(control: ControlPlan): string {
       unusedPool: control.schedule.unusedPool,
       unattributedPercent: control.unattributed,
       deferred: control.deferred,
-      claimants: control.schedule.claimants.map((view) => ({
+      projects: control.schedule.projects.map((view) => ({
+        project: view.project,
+        label: view.label,
+        bucket: view.bucket,
+        liveSessions: view.liveSessions,
+        target: view.allocation.target,
+        pinnedTarget: view.allocation.pinned,
+        priority: view.settings.priority,
+        pinned: view.settings.pinned,
+        parked: view.settings.parked,
+        observed: view.observed,
+        attributedPercent: view.attributedPercent,
+        pressure: view.pressure,
+        tokens: view.usage.tokens,
+        prompt: view.prompt,
+        sessions: view.sessions.map((session) => session.claimant.id),
+      })),
+      sessions: control.schedule.claimants.map((view) => ({
         id: view.claimant.id,
         label: view.claimant.label,
         project: view.claimant.project,
         state: view.state,
-        priority: view.claimant.priority,
+        bucket: view.bucket,
         target: view.allocation.target,
-        pinned: view.allocation.pinned,
         observed: view.observed,
         attributedPercent: view.attributedPercent,
         pressure: view.pressure,
@@ -150,9 +166,6 @@ function toJson(control: ControlPlan): string {
         weighted: view.usage.weighted,
         prompt: view.claimant.prompt,
         stale: view.stale,
-        bucket: view.bucket,
-        pinned_by_user: view.claimant.pinned,
-        parked: view.claimant.parked,
         heartbeat: view.claimant.heartbeat ?? 0,
       })),
     },
@@ -272,11 +285,11 @@ export async function runControl(options: Options): Promise<void> {
   const settle = (): void => {
     const list = rows();
     selected = selectionIndex(
-      list.map((view) => view.claimant.id),
+      list.map((view) => view.project),
       selectedId,
       selected,
     );
-    selectedId = list[selected]?.claimant.id ?? null;
+    selectedId = list[selected]?.project ?? null;
   };
   const context = () => contextFor(control, selected, true, expanded);
 
@@ -430,27 +443,27 @@ export async function runControl(options: Options): Promise<void> {
           break;
         case "up":
           selected = Math.max(0, selected - 1);
-          selectedId = rows()[selected]?.claimant.id ?? null;
+          selectedId = rows()[selected]?.project ?? null;
           break;
         case "down":
           selected = Math.min(Math.max(0, rows().length - 1), selected + 1);
-          selectedId = rows()[selected]?.claimant.id ?? null;
+          selectedId = rows()[selected]?.project ?? null;
           break;
         case "share":
           if (view) {
-            setShare(view.claimant.id, view.allocation.target + action.delta, control.provider.id);
+            setShare(view.project, view.allocation.target + action.delta, control.provider.id);
             refresh();
           }
           break;
         case "unpin":
           if (view) {
-            setShare(view.claimant.id, null, control.provider.id);
+            setShare(view.project, null, control.provider.id);
             refresh();
           }
           break;
         case "priority":
           if (view) {
-            setPriority(view.claimant.id, cyclePriority(view.claimant.priority), control.provider.id);
+            setPriority(view.project, cyclePriority(view.settings.priority), control.provider.id);
             refresh();
           }
           break;
@@ -460,19 +473,19 @@ export async function runControl(options: Options): Promise<void> {
           break;
         case "state":
           if (view) {
-            setState(view.claimant.id, action.state, control.provider.id);
+            setState(view.project, action.state, control.provider.id);
             refresh();
           }
           break;
         case "pin":
           if (view) {
-            setPinned(view.claimant.id, !view.claimant.pinned, control.provider.id);
+            setPinned(view.project, !view.settings.pinned, control.provider.id);
             refresh();
           }
           break;
         case "park":
           if (view) {
-            setParked(view.claimant.id, !view.claimant.parked, control.provider.id);
+            setParked(view.project, !view.settings.parked, control.provider.id);
             refresh();
           }
           break;

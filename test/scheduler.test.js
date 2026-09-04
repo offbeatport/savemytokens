@@ -86,6 +86,14 @@ function plan(box) {
   return JSON.parse(execFileSync("node", [CLI, "status", "--json"], { env: box.env, encoding: "utf8" }));
 }
 
+function project(box, index = 0) {
+  return plan(box).projects[index];
+}
+
+function session(box, index = 0) {
+  return plan(box).sessions[index];
+}
+
 test("the status line is the only place the published window is captured from", () => {
   const box = sandbox();
   appendTurns(box, [turn(box, "m1", 1000, Date.now() - 60_000)]);
@@ -147,15 +155,15 @@ test("DONE releases the unused share back to the pool", () => {
   runStatusLine(box, rateLimits(40));
   runHook(box, "prompt", { prompt: "implement the provider fallback chain end to end" });
 
-  const before = plan(box).claimants[0];
-  assert.equal(before.state, "active");
-  assert.ok(before.target > 0.9, "the only running session holds the window");
+  const before = project(box);
+  assert.equal(before.bucket, "active");
+  assert.ok(before.target > 0.9, "the only running project holds the window");
 
   appendTurns(box, [turn(box, "m2", 1000, Date.now() - 30_000, "All finished.\n\nSMT: DONE")]);
   runHook(box, "stop", {});
 
   const after = plan(box);
-  assert.equal(after.claimants[0].state, "done");
+  assert.equal(after.sessions[0].state, "done");
   assert.ok(after.unusedPool > 0.5, "the share it never used goes back to the pool");
 });
 
@@ -164,15 +172,15 @@ test("metering is incremental and never counts a turn twice", () => {
   const now = Date.now();
   appendTurns(box, [turn(box, "m1", 1000, now - 120_000), turn(box, "m1", 1000, now - 120_000)]);
   runHook(box, "prompt", { prompt: "implement the provider fallback chain end to end" });
-  const first = plan(box).claimants[0].tokens;
+  const first = session(box).tokens;
   assert.equal(first, 1000, "a repeated message id is one turn");
 
   runHook(box, "prompt", { prompt: "same again" });
-  assert.equal(plan(box).claimants[0].tokens, 1000, "re-running the hook re-reads nothing");
+  assert.equal(session(box).tokens, 1000, "re-running the hook re-reads nothing");
 
   appendTurns(box, [turn(box, "m2", 500, now - 60_000)]);
   runHook(box, "prompt", { prompt: "and now the next one" });
-  assert.equal(plan(box).claimants[0].tokens, 1500, "only the new turn is added");
+  assert.equal(session(box).tokens, 1500, "only the new turn is added");
 });
 
 test("usage outside the published window is not counted against it", () => {
@@ -180,7 +188,7 @@ test("usage outside the published window is not counted against it", () => {
   const now = Date.now();
   appendTurns(box, [turn(box, "old", 9_000_000, now - 6 * 60 * 60 * 1000), turn(box, "new", 1000, now - 60_000)]);
   runStatusLine(box, rateLimits(20));
-  assert.equal(plan(box).claimants[0].tokens, 1000, "the six-hour-old turn is outside the 5h window");
+  assert.equal(session(box).tokens, 1000, "the six-hour-old turn is outside the 5h window");
 });
 
 test("the dead carry warning survives as part of the same hook", () => {
@@ -241,24 +249,24 @@ test("the policy decides how early and how hard the advice lands", () => {
   assert.doesNotMatch(quiet, /target share of the current Claude window/, "off injects nothing");
 });
 
-test("share, priority and release work without the TUI", () => {
+test("share, priority and release work on a project without the TUI", () => {
   const box = sandbox();
   appendTurns(box, [turn(box, "m1", 1000, Date.now() - 60_000)]);
   runHook(box, "prompt", { prompt: "implement the provider fallback chain end to end" });
 
   const set = execFileSync("node", [CLI, "share", "webinvoke", "40"], { env: box.env, encoding: "utf8" });
   assert.match(set, /Set webinvoke target to 40%/);
-  assert.equal(Math.round(plan(box).claimants[0].target * 100), 40);
-  assert.equal(plan(box).claimants[0].pinned, true);
+  assert.equal(Math.round(project(box).target * 100), 40);
+  assert.equal(project(box).pinnedTarget, true);
 
   execFileSync("node", [CLI, "priority", "webinvoke", "high"], { env: box.env, encoding: "utf8" });
-  assert.equal(plan(box).claimants[0].priority, "high");
+  assert.equal(project(box).priority, "high");
 
   execFileSync("node", [CLI, "share", "webinvoke", "auto"], { env: box.env, encoding: "utf8" });
-  assert.equal(plan(box).claimants[0].pinned, false);
+  assert.equal(project(box).pinnedTarget, false);
 
   execFileSync("node", [CLI, "release", "webinvoke"], { env: box.env, encoding: "utf8" });
-  assert.equal(plan(box).claimants[0].state, "done");
+  assert.equal(session(box).state, "done");
 
   let missing = "";
   let failed = false;
@@ -269,7 +277,7 @@ test("share, priority and release work without the TUI", () => {
     missing = String(error.stdout ?? "");
   }
   assert.ok(failed, "an unknown session is an error exit, so scripts can react");
-  assert.match(missing, /No session matching/);
+  assert.match(missing, /No project matching/);
 });
 
 test("a spend limit is rendered as its own resource when a gateway reports one", () => {
@@ -326,9 +334,9 @@ test("Codex is metered from its own rollout files, with no hook anywhere", () =>
   assert.equal(out.resources[0].capacity.confidence, "published", "the rollout publishes the window");
   assert.equal(out.resources[0].usedPercent, 9);
   assert.equal(out.resources[1].usedPercent, 21);
-  assert.equal(out.claimants.length, 1);
-  assert.equal(out.claimants[0].label, "codexproj");
-  assert.equal(out.claimants[0].tokens, 5500);
+  assert.equal(out.projects.length, 1);
+  assert.equal(out.projects[0].label, "codexproj");
+  assert.equal(out.projects[0].tokens, 5500);
   assert.deepEqual(out.enforcement, [], "Codex has no hook, so it declares no enforcement at all");
 });
 
@@ -353,7 +361,7 @@ test("the window can be switched to the weekly one", () => {
   runStatusLine(box, rateLimits(30, 70));
   const week = JSON.parse(execFileSync("node", [CLI, "status", "--7d", "--json"], { env: box.env, encoding: "utf8" }));
   assert.equal(week.window.key, "seven_day");
-  assert.equal(week.claimants[0].tokens, 1000, "a six-hour-old turn is inside the weekly window");
+  assert.equal(week.sessions[0].tokens, 1000, "a six-hour-old turn is inside the weekly window");
 });
 
 test("small drift stays quiet", () => {
@@ -394,36 +402,33 @@ test("window movement while nothing local ran is reported separately", () => {
   assert.equal(Math.round(out.unattributedPercent), 8, "the 8 points that moved with no local usage are called out");
 
   const text = execFileSync("node", [CLI, "status"], { env: box.env, encoding: "utf8" });
-  assert.match(text, /8% of the window was spent outside these sessions/);
+  assert.match(text, /8% of the window was spent outside these projects/);
   assert.doesNotMatch(text, /another machine, or claude\.ai$/m, "it no longer asserts a cause it cannot prove");
   assert.doesNotMatch(text, /these hold a share/, "section headers carry no explanation");
 });
 
-test("only active sessions hold a share; parking hands it back", () => {
+test("only running projects hold an allocation; parking hands it back", () => {
   const box = sandbox();
   appendTurns(box, [turn(box, "m1", 1000, Date.now() - 60_000)]);
   runStatusLine(box, rateLimits(40));
   runHook(box, "prompt", { prompt: "implement the provider fallback chain end to end" });
 
   const before = plan(box);
-  assert.equal(before.claimants[0].bucket, "active");
-  assert.ok(before.claimants[0].target > 0.9);
+  assert.equal(before.projects[0].bucket, "active");
+  assert.ok(before.projects[0].target > 0.9);
 
   execFileSync("node", [CLI, "park", "webinvoke"], { env: box.env, encoding: "utf8" });
   const after = plan(box);
-  assert.equal(after.claimants[0].bucket, "parked");
-  assert.ok(
-    Math.abs(after.claimants[0].target - after.claimants[0].observed * 0.4) < 0.01,
-    "it keeps only what it used",
-  );
+  assert.equal(after.projects[0].bucket, "parked");
+  assert.ok(Math.abs(after.projects[0].target - after.projects[0].observed * 0.4) < 0.01, "it keeps only what it used");
 
   execFileSync("node", [CLI, "pin", "webinvoke"], { env: box.env, encoding: "utf8" });
-  assert.equal(plan(box).claimants[0].pinned_by_user, true);
+  assert.equal(project(box).pinned, true);
 
   runHook(box, "prompt", { prompt: "actually, carry on with the fallback chain after all" });
   const resumed = plan(box);
-  assert.equal(resumed.claimants[0].bucket, "active", "typing into a parked session resumes it");
-  assert.ok(resumed.claimants[0].target > 0.9, "and it takes a share again");
+  assert.equal(resumed.projects[0].bucket, "active", "typing into a parked project resumes it");
+  assert.ok(resumed.projects[0].target > 0.9, "and it takes an allocation again");
 });
 
 test("a sandboxed run refuses to edit the real Claude settings", () => {
@@ -467,4 +472,87 @@ test("a stale session cannot erase a live window", () => {
 
   const line = runStatusLine(box, {});
   assert.match(line, /5h/, "with no rate limits at all the last good reading is still shown");
+});
+
+test("a project's allocation is split across its live sessions by what they burn", () => {
+  const box = sandbox();
+  const now = Date.now();
+  const second = "s-2";
+  const secondPath = path.join(path.dirname(box.transcript), `${second}.jsonl`);
+  fs.writeFileSync(
+    secondPath,
+    [
+      JSON.stringify({
+        type: "assistant",
+        sessionId: second,
+        cwd: box.project,
+        timestamp: new Date(now - 60_000).toISOString(),
+        message: {
+          id: "b1",
+          model: "claude-opus-5",
+          content: [],
+          usage: { input_tokens: 3000, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+        },
+      }),
+    ].join("\n") + "\n",
+  );
+  appendTurns(box, [turn(box, "m1", 1000, now - 60_000)]);
+
+  runStatusLine(box, rateLimits(40));
+  execFileSync("node", [STATUSLINE], {
+    env: box.env,
+    input: JSON.stringify({
+      session_id: second,
+      transcript_path: secondPath,
+      cwd: box.project,
+      workspace: { current_dir: box.project },
+      model: { id: "claude-opus-5", display_name: "Opus" },
+      ...rateLimits(40),
+    }),
+    encoding: "utf8",
+  });
+
+  const out = plan(box);
+  assert.equal(out.projects.length, 1, "two sessions in one folder are one project");
+  const only = out.projects[0];
+  assert.equal(only.label, "webinvoke");
+  assert.equal(only.liveSessions, 2);
+  assert.ok(only.target > 0.9, "the project holds the whole window");
+
+  const sessions = out.sessions.filter((session) => session.project === box.project);
+  assert.equal(sessions.length, 2);
+  const total = sessions.reduce((sum, session) => sum + session.target, 0);
+  assert.ok(Math.abs(total - only.target) < 0.01, "the sessions' targets add up to the project's");
+  const busiest = sessions.slice().sort((a, b) => b.tokens - a.tokens)[0];
+  const quietest = sessions.slice().sort((a, b) => a.tokens - b.tokens)[0];
+  assert.ok(busiest.target > quietest.target, "the one burning more gets more of it");
+});
+
+test("setting an allocation on a project outlives the session that was running", () => {
+  const box = sandbox();
+  appendTurns(box, [turn(box, "m1", 1000, Date.now() - 60_000)]);
+  runStatusLine(box, rateLimits(40));
+  execFileSync("node", [CLI, "share", "webinvoke", "40"], { env: box.env, encoding: "utf8" });
+  assert.equal(Math.round(project(box).target * 100), 40);
+
+  const fresh = "s-restarted";
+  const freshPath = path.join(path.dirname(box.transcript), `${fresh}.jsonl`);
+  fs.writeFileSync(
+    freshPath,
+    JSON.stringify({
+      type: "assistant",
+      sessionId: fresh,
+      cwd: box.project,
+      timestamp: new Date(Date.now() - 30_000).toISOString(),
+      message: {
+        id: "c1",
+        model: "claude-opus-5",
+        content: [],
+        usage: { input_tokens: 500, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+      },
+    }) + "\n",
+  );
+
+  const after = project(box);
+  assert.equal(Math.round(after.target * 100), 40, "a restarted session inherits the project's allocation");
 });

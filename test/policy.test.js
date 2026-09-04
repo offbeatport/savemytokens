@@ -329,30 +329,31 @@ test("the cursor follows the session, not the row it happened to be on", async (
 test("m lifts the caps, not just the screen budget", async () => {
   const { workingSet } = await import("../dist/scheduler/plan.js");
   const now = Date.now();
-  const make = (id, bucket, minsAgo) => ({
-    claimant: { id, label: id, project: `/tmp/${id}`, pinned: false, parked: false, lastSeen: now - minsAgo * 60000, startedAt: now - 7200000, priority: "normal", prompt: "" },
+  const make = (id, bucket, minsAgo, parked = false) => ({
+    project: `/tmp/${id}`,
+    label: id,
+    settings: { project: `/tmp/${id}`, label: id, share: null, priority: "normal", cap: null, pinned: false, parked },
+    sessions: [],
     allocation: { claimantId: id, target: 0, pinned: false, pool: 0, released: true },
-    usage: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0, requests: 0, tokens: 0, weighted: 0 },
     observed: 0,
-    state: "done",
+    usage: { tokens: 0, weighted: 0, requests: 0 },
+    lastSeen: now - minsAgo * 60000,
     bucket,
-    stale: true,
-    pressure: { value: 0, basis: "share" },
     attributedPercent: 0,
+    pressure: { value: 0, basis: "share" },
+    prompt: "",
+    liveSessions: 0,
   });
 
-  const claimants = [
-    ...Array.from({ length: 9 }, (_, i) => make(`recent${i}`, "recent", i + 1)),
-    ...Array.from({ length: 7 }, (_, i) => {
-      const view = make(`parked${i}`, "parked", 60 * 24 * (i + 2));
-      view.claimant.parked = true;
-      return view;
-    }),
-  ];
-  const plan = { claimants };
+  const plan = {
+    projects: [
+      ...Array.from({ length: 9 }, (_, i) => make(`recent${i}`, "recent", i + 1)),
+      ...Array.from({ length: 7 }, (_, i) => make(`parked${i}`, "parked", 60 * 24 * (i + 2), true)),
+    ],
+  };
 
   const collapsed = workingSet(plan, false);
-  assert.equal(collapsed.recent.length, 6, "idle sessions are trimmed to six");
+  assert.equal(collapsed.recent.length, 6, "idle projects are trimmed to six");
   assert.equal(collapsed.parked.length, 0, "parked ones are out of the way entirely");
   assert.equal(collapsed.hidden, 10, "three idle and seven parked are waiting behind m");
 

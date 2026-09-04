@@ -25,15 +25,15 @@ export function runSet(options: Options): void {
   const command = options.command;
 
   if (!target) {
-    fail(`Which session? ${dim(`try: npx savemytokens ${command} <project|session id> ${command === "release" ? "" : "<value>"}`)}`);
+    fail(`Which project? ${dim(`try: npx savemytokens ${command} <project> ${command === "release" ? "" : "<value>"}`)}`);
     return;
   }
 
   const control = buildPlan(Date.now(), true, options.window, options.adapter);
   const found = resolveClaimant(control.schedule, target);
   if (!found) {
-    const known = control.schedule.claimants.map((view) => view.claimant.label).filter(Boolean);
-    fail(`No session matching ${bold(target)}. ${known.length > 0 ? dim(`Known: ${[...new Set(known)].join(", ")}`) : ""}`);
+    const known = control.schedule.projects.map((view) => view.label).filter(Boolean);
+    fail(`No project matching ${bold(target)}. ${known.length > 0 ? dim(`Known: ${[...new Set(known)].join(", ")}`) : ""}`);
     return;
   }
   const { view, matches } = found;
@@ -45,8 +45,8 @@ export function runSet(options: Options): void {
       return;
     }
     if (value === "auto" || value === "even") {
-      setShare(view.claimant.id, null, control.provider.id);
-      process.stdout.write(`\n${green("Unpinned")} ${bold(view.claimant.label)} — it takes an even split again${note}\n\n`);
+      setShare(view.project, null, control.provider.id);
+      process.stdout.write(`\n${green("Unpinned")} ${bold(view.label)} — it takes an even split again${note}\n\n`);
       return;
     }
     const percent = Number(String(value).replace("%", ""));
@@ -54,13 +54,13 @@ export function runSet(options: Options): void {
       fail(`${bold(String(value))} is not a percentage between 0 and 100.`);
       return;
     }
-    setShare(view.claimant.id, percent / 100, control.provider.id);
+    setShare(view.project, percent / 100, control.provider.id);
     const after = buildPlan(Date.now(), false, options.window, options.adapter);
-    const updated = after.schedule.claimants.find((row) => row.claimant.id === view.claimant.id);
+    const updated = after.schedule.projects.find((row) => row.project === view.project);
     const actual = updated ? percentOf(updated.allocation.target) : `${Math.round(percent)}%`;
     const clamped = updated && Math.abs(updated.allocation.target * 100 - percent) > 0.5;
     process.stdout.write(
-      `\n${green("Set")} ${bold(view.claimant.label)} target to ${bold(actual)}${note}\n${
+      `\n${green("Set")} ${bold(view.label)} target to ${bold(actual)}${note}\n${
         clamped ? yellow(`  asked for ${Math.round(percent)}%, but the window is already committed elsewhere\n`) : ""
       }\n`,
     );
@@ -69,10 +69,10 @@ export function runSet(options: Options): void {
 
   if (command === "pin" || command === "park") {
     const on = String(value ?? "on").toLowerCase() !== "off";
-    if (command === "pin") setPinned(view.claimant.id, on, control.provider.id);
-    else setParked(view.claimant.id, on, control.provider.id);
+    if (command === "pin") setPinned(view.project, on, control.provider.id);
+    else setParked(view.project, on, control.provider.id);
     process.stdout.write(
-      `\n${green(on ? (command === "pin" ? "Pinned" : "Parked") : "Cleared")} ${bold(view.claimant.label)}${note}\n${dim(command === "pin" ? "  it stays visible even when it goes quiet" : "  it drops out of the working set until you resume it")}\n\n`,
+      `\n${green(on ? (command === "pin" ? "Pinned" : "Parked") : "Cleared")} ${bold(view.label)}${note}\n${dim(command === "pin" ? "  it stays visible even when it goes quiet" : "  it drops out of the working set until you resume it")}\n\n`,
     );
     return;
   }
@@ -83,8 +83,8 @@ export function runSet(options: Options): void {
       fail(`Priority is one of ${PRIORITIES.join(", ")}.`);
       return;
     }
-    setPriority(view.claimant.id, priority, control.provider.id);
-    process.stdout.write(`\n${green("Set")} ${bold(view.claimant.label)} to ${bold(priority.toUpperCase())}${note}\n\n`);
+    setPriority(view.project, priority, control.provider.id);
+    process.stdout.write(`\n${green("Set")} ${bold(view.label)} to ${bold(priority.toUpperCase())}${note}\n\n`);
     return;
   }
 
@@ -93,10 +93,10 @@ export function runSet(options: Options): void {
     fail(`State is one of ${Object.keys(STATES).join(", ")}.`);
     return;
   }
-  setState(view.claimant.id, state, control.provider.id);
+  setState(view.project, state, control.provider.id);
   const released = state === "done" || state === "blocked";
   process.stdout.write(
-    `\n${green("Marked")} ${bold(view.claimant.label)} ${bold(state)}${note}\n${
+    `\n${green("Marked")} ${bold(view.label)} ${bold(state)}${note}\n${
       released ? dim("  its unused share goes back to the pool\n") : ""
     }\n`,
   );
