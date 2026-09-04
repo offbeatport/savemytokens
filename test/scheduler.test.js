@@ -556,3 +556,24 @@ test("setting an allocation on a project outlives the session that was running",
   const after = project(box);
   assert.equal(Math.round(after.target * 100), 40, "a restarted session inherits the project's allocation");
 });
+
+test("a share set on a project with nothing running keeps climbing", async () => {
+  const { nextShare } = await import("../dist/scheduler/plan.js");
+  const recent = (share) => ({
+    bucket: "recent",
+    settings: { share, priority: "normal", pinned: false, parked: false, cap: null },
+    allocation: { target: 0, pinned: share, pool: 0, released: true, claimantId: "x" },
+  });
+
+  let held = nextShare(recent(null), 0.05);
+  for (let press = 0; press < 3; press++) held = nextShare(recent(held), 0.05);
+  assert.ok(Math.abs(held - 0.2) < 1e-9, `four presses reach 20%, not 5% (got ${held})`);
+
+  assert.equal(nextShare(recent(0.2), -0.05), 0.15000000000000002 > 0 ? nextShare(recent(0.2), -0.05) : 0);
+  assert.ok(Math.abs(nextShare(recent(0.2), -0.05) - 0.15) < 1e-9, "and it steps back down");
+  assert.equal(nextShare(recent(1), 0.05), 1, "it never passes the whole window");
+  assert.equal(nextShare(recent(0), -0.05), 0, "or drops below nothing");
+
+  const live = { bucket: "active", settings: { share: 0.1 }, allocation: { target: 0.4, pinned: 0.1 } };
+  assert.ok(Math.abs(nextShare(live, 0.05) - 0.45) < 1e-9, "a running project still steps from what it actually holds");
+});

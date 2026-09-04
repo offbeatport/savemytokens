@@ -60,16 +60,37 @@ function capacityRow(control: ControlPlan, context: ViewContext): string[] {
       `  ${paint(theme, "warn", "no published window", color)} ${paint(theme, "dim", "· install the status line and Anthropic's own numbers appear here", color)}`,
     ];
   }
-  const parts = published.map((resource) => {
-    const used = resource.usedPercent ?? 0;
-    const key = resource.id.split(":")[1] ?? "";
-    const name = key === "five_hour" ? "5h" : key === "seven_day" ? "7d" : "spend";
-    const reset = resource.window.resetsAt
-      ? paint(theme, "dim", `resets in ${formatCountdown(resource.window.resetsAt, now)} (${formatReset(resource.window.resetsAt, now)})`, color)
-      : "";
-    return `${paint(theme, "dim", name, color)} ${meterBar(theme, used / 100, 12, pressureRole(used / 100), color)} ${paint(theme, pressureRole(used / 100), percentLabel(used), color)} ${reset}`;
-  });
-  return [`  ${parts.join("    ")}`];
+  const levels: Array<{ bar: number; reset: "clock" | "long" | "short" | "none"; gap: number }> = [
+    { bar: 12, reset: "clock", gap: 4 },
+    { bar: 12, reset: "long", gap: 4 },
+    { bar: 10, reset: "short", gap: 3 },
+    { bar: 6, reset: "short", gap: 2 },
+    { bar: 0, reset: "none", gap: 2 },
+  ];
+  const build = (level: { bar: number; reset: "clock" | "long" | "short" | "none"; gap: number }): string => {
+    const parts = published.map((resource) => {
+      const used = resource.usedPercent ?? 0;
+      const key = resource.id.split(":")[1] ?? "";
+      const name = key === "five_hour" ? "5h" : key === "seven_day" ? "7d" : "spend";
+      const countdown = resource.window.resetsAt ? formatCountdown(resource.window.resetsAt, now) : "";
+      const reset =
+        !countdown || level.reset === "none"
+          ? ""
+          : level.reset === "clock"
+            ? ` ${paint(theme, "dim", `resets in ${countdown} (${formatReset(resource.window.resetsAt ?? 0, now)})`, color)}`
+            : level.reset === "long"
+              ? ` ${paint(theme, "dim", `resets in ${countdown}`, color)}`
+              : ` ${paint(theme, "dim", countdown, color)}`;
+      const bar = level.bar > 0 ? ` ${meterBar(theme, used / 100, level.bar, pressureRole(used / 100), color)}` : "";
+      return `${paint(theme, "dim", name, color)}${bar} ${paint(theme, pressureRole(used / 100), percentLabel(used), color)}${reset}`;
+    });
+    return `  ${parts.join(" ".repeat(level.gap))}`;
+  };
+  for (const level of levels) {
+    const line = build(level);
+    if (visibleWidth(line) <= context.columns) return [line];
+  }
+  return [clip(build(levels[levels.length - 1] as (typeof levels)[number]), context.columns)];
 }
 
 const COLUMN_WIDTH: Record<string, number> = {
@@ -80,24 +101,44 @@ const COLUMN_WIDTH: Record<string, number> = {
   priority: 8,
 };
 
-function columnWidths(context: ViewContext, columns: string[]): { label: number; prompt: number; bar: number; used: number } {
-  const bar = barCellsFor(context.columns);
-  const usedWidth = bar + 8;
-  let fixed = 3;
-  for (const name of columns) {
-    const width = name === "used" ? usedWidth : COLUMN_WIDTH[name];
-    if (width) fixed += width + 1;
-  }
-  const wanted = Math.min(26, Math.max(14, ...[...context.labels.values()].map((value) => value.length + 2), 14));
-  const room = Math.max(8, context.columns - fixed);
-  const wantsPrompt = columns.includes("last prompt");
-  const label = Math.max(8, Math.min(wanted, wantsPrompt ? Math.max(8, room - 15) : room));
-  const spare = room - label - 1;
-  const prompt = wantsPrompt && spare >= 14 ? spare : 0;
-  return { label, prompt, bar, used: usedWidth };
+const DROP_ORDER = ["tokens", "share", "priority", "allocation"];
+const MIN_LABEL = 8;
+
+interface Widths {
+  label: number;
+  prompt: number;
+  bar: number;
+  used: number;
+  columns: string[];
 }
 
-function headerRow(context: ViewContext, widths: { label: number; prompt: number; bar: number; used: number }, columns: string[]): string {
+function columnWidths(context: ViewContext, wanted: string[]): Widths {
+  const bar = barCellsFor(context.columns);
+  const usedWidth = bar + 8;
+  const spanOf = (list: string[]): number => {
+    let total = 3;
+    for (const name of list) {
+      const width = name === "used" ? usedWidth : COLUMN_WIDTH[name];
+      if (width) total += width + 1;
+    }
+    return total;
+  };
+  let columns = [...wanted];
+  for (const drop of DROP_ORDER) {
+    if (spanOf(columns) + MIN_LABEL <= context.columns) break;
+    columns = columns.filter((name) => name !== drop);
+  }
+  const fixed = spanOf(columns);
+  const ideal = Math.min(26, Math.max(14, ...[...context.labels.values()].map((value) => value.length + 2), 14));
+  const room = Math.max(MIN_LABEL, context.columns - fixed);
+  const wantsPrompt = columns.includes("last prompt");
+  const label = Math.max(MIN_LABEL, Math.min(ideal, wantsPrompt ? Math.max(MIN_LABEL, room - 15) : room));
+  const spare = room - label - 1;
+  const prompt = wantsPrompt && spare >= 14 ? spare : 0;
+  return { label, prompt, bar, used: usedWidth, columns };
+}
+
+function headerRow(context: ViewContext, widths: Widths, columns: string[]): string {
   const { theme, color } = context;
   const cells = [`   ${padEndVisible(clip("PROJECT", widths.label), widths.label)}`];
   if (columns.includes("allocation")) cells.push(padStartVisible("ALLOCATION", 10));
@@ -113,7 +154,7 @@ function row(
   view: ProjectView,
   index: number,
   context: ViewContext,
-  widths: { label: number; prompt: number; bar: number; used: number },
+  widths: Widths,
   columns: string[],
 ): string {
   const { theme, color } = context;
@@ -149,7 +190,7 @@ function row(
   return cells.join(" ");
 }
 
-function idleHeaderRow(context: ViewContext, widths: { label: number; prompt: number; bar: number; used: number }): string {
+function idleHeaderRow(context: ViewContext, widths: Widths): string {
   const { theme, color } = context;
   return paintHead(theme, `   ${padEndVisible("PROJECT", widths.label)} ${padStartVisible("LAST TURN", 10)}  LAST PROMPT`, color);
 }
@@ -158,7 +199,7 @@ function idleRow(
   view: ProjectView,
   index: number,
   context: ViewContext,
-  widths: { label: number; prompt: number; bar: number; used: number },
+  widths: Widths,
   now: number,
 ): string {
   const { theme, color } = context;
@@ -167,11 +208,11 @@ function idleRow(
   const pin = view.settings.pinned ? paint(theme, "accent", theme.tui?.pin ?? "★", color) : " ";
   const label = padEndVisible(clip(view.label, widths.label), widths.label);
   const when = padStartVisible(ago(view.lastSeen, now), 10);
-  const reserved = view.settings.share != null && view.settings.share > 0 ? ` ${percentLabel(view.settings.share * 100, 4)} held` : "";
-  const tag = view.settings.parked ? " parked" : reserved;
-  const room = Math.max(10, context.columns - widths.label - 18 - tag.length);
-  const prompt = clip(view.prompt || "—", room);
-  return `${cursor}${pin} ${paint(theme, "dim", `${label} ${when}  ${prompt}${tag}`, color)}`;
+  const reserved = view.settings.share != null && view.settings.share > 0 ? `${percentLabel(view.settings.share * 100, 4)} held` : "";
+  const tag = view.settings.parked ? "parked" : reserved;
+  const room = Math.max(10, context.columns - widths.label - 18 - (tag ? tag.length + 2 : 0));
+  const prompt = padEndVisible(clip(view.prompt || "—", room), tag ? room : 0);
+  return `${cursor}${pin} ${paint(theme, "dim", `${label} ${when}  ${prompt}${tag ? `  ${tag}` : ""}`, color)}`;
 }
 
 function sectionTitle(name: string, count: number, context: ViewContext): string {
@@ -184,14 +225,16 @@ function footerNote(control: ControlPlan, context: ViewContext): string[] {
   const set = workingSet(control.schedule, context.expanded);
   const sessions = set.active.reduce((sum, view) => sum + view.liveSessions, 0);
   const spare = Math.round(control.schedule.unusedPool * 100);
-  const out = [
-    `  ${paint(theme, "dim", `${set.active.length} ${set.active.length === 1 ? "project" : "projects"} sharing this window across ${sessions} ${sessions === 1 ? "session" : "sessions"}${spare > 0 ? `, ${spare}% unclaimed` : ""}.`, color)}`,
-  ];
+  const room = Math.max(10, context.columns - 2);
+  const long = `${set.active.length} ${set.active.length === 1 ? "project" : "projects"} sharing this window across ${sessions} ${sessions === 1 ? "session" : "sessions"}${spare > 0 ? `, ${spare}% unclaimed` : ""}.`;
+  const short = `${set.active.length}p · ${sessions}s${spare > 0 ? ` · ${spare}% unclaimed` : ""}`;
+  const out = [`  ${paint(theme, "dim", long.length <= room ? long : short, color)}`];
   const drift = control.unattributed ?? 0;
   if (drift >= UNATTRIBUTED_FLOOR) {
-    out.push(
-      `  ${paint(theme, "warn", `${Math.round(drift)}% of the window was spent outside these projects`, color)} ${paint(theme, "dim", "— claude.ai, another machine, or usage SaveMyTokens was not running for", color)}`,
-    );
+    const head = `${Math.round(drift)}% of the window was spent outside these projects`;
+    const tail = "— claude.ai, another machine, or usage SaveMyTokens was not running for";
+    const fits = head.length + 1 + tail.length <= room;
+    out.push(`  ${paint(theme, "warn", clip(head, room), color)}${fits ? ` ${paint(theme, "dim", tail, color)}` : ""}`);
   }
   return out;
 }
@@ -200,6 +243,7 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
   const set = workingSet(control.schedule, context.expanded);
   const columns = control.config.columns ?? [];
   const widths = columnWidths(context, columns);
+  const shown = widths.columns;
   const now = control.schedule.now;
   const out = [...capacityRow(control, context)];
   let index = 0;
@@ -210,13 +254,13 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
     if (views.length === 0) return;
     out.push("");
     out.push(sectionTitle(name, views.length, context));
-    out.push(idle ? idleHeaderRow(context, widths) : headerRow(context, widths, columns));
+    out.push(idle ? idleHeaderRow(context, widths) : headerRow(context, widths, shown));
     for (const view of views) {
       if (printed >= budget) {
         index += 1;
         continue;
       }
-      out.push(idle ? idleRow(view, index, context, widths, now) : row(view, index, context, widths, columns));
+      out.push(idle ? idleRow(view, index, context, widths, now) : row(view, index, context, widths, shown));
       index += 1;
       printed += 1;
     }

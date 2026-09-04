@@ -11,6 +11,7 @@ import {
   cyclePreset,
   cycleTheme,
   moveSegment,
+  nextShare,
   saveCustomAdvice,
   toggleColumn,
   togglePreserve,
@@ -71,11 +72,23 @@ function contextFor(control: ControlPlan, selected: number, interactive: boolean
 
 function header(control: ControlPlan, viewName: string, theme: Theme, color: boolean, columns: number): string {
   const windowLabel = control.schedule.key === "seven_day" ? "7d" : "5h";
-  const left = ` ${paint(theme, "accent", "SaveMyTokens", color)} ${paint(theme, "dim", `· ${control.provider.label} · ${windowLabel}`, color)}`;
   const read = control.schedule.quota ? `read ${ago(control.schedule.quota.at, control.schedule.now)}` : "no reading";
-  const right = `${paint(theme, "dim", read, color)}  ${paint(theme, "accent", viewName, color)} `;
-  const gap = Math.max(1, columns - visibleWidth(left) - visibleWidth(right));
-  return left + " ".repeat(gap) + right;
+  const lefts = [
+    ` ${paint(theme, "accent", "SaveMyTokens", color)} ${paint(theme, "dim", `· ${control.provider.label} · ${windowLabel}`, color)}`,
+    ` ${paint(theme, "accent", "SaveMyTokens", color)} ${paint(theme, "dim", `· ${windowLabel}`, color)}`,
+    ` ${paint(theme, "accent", "smt", color)}`,
+  ];
+  const rights = [
+    `${paint(theme, "dim", read, color)}  ${paint(theme, "accent", viewName, color)} `,
+    `${paint(theme, "accent", viewName, color)} `,
+  ];
+  for (const right of rights) {
+    for (const left of lefts) {
+      const gap = columns - visibleWidth(left) - visibleWidth(right);
+      if (gap >= 2) return left + " ".repeat(gap) + right;
+    }
+  }
+  return padEndVisible(lefts[lefts.length - 1] ?? "", columns);
 }
 
 export function boxed(lines: string[], theme: Theme, color: boolean, columns: number): string[] {
@@ -128,14 +141,28 @@ function fullScreen(
 function footerFor(control: ControlPlan, context: ViewContext, showHelp: boolean): string[] {
   const { theme, color } = context;
   if (showHelp) return [paint(theme, "dim", "  ? close help    q quit", color)];
-  return [
-    paint(
-      theme,
-      "dim",
-      "  ↑↓ select   ⏎ open   ←→ target   p priority   f pin   x park   P settings   ? help   q quit",
-      color,
-    ),
-  ];
+  return [paint(theme, "dim", keyHints(HINTS, context.columns), color)];
+}
+
+const HINTS = [
+  "↑↓ select",
+  "⏎ open",
+  "←→ target",
+  "p priority",
+  "f pin",
+  "x park",
+  "P settings",
+  "? help",
+  "q quit",
+];
+
+function keyHints(hints: string[], columns: number): string {
+  for (let keep = hints.length; keep > 1; keep--) {
+    const shown = [...hints.slice(0, keep - 1), hints[hints.length - 1] ?? ""];
+    const line = `  ${shown.join("   ")}`;
+    if (line.length <= columns) return line;
+  }
+  return `  ${hints[hints.length - 1] ?? ""}`;
 }
 
 function toJson(control: ControlPlan): string {
@@ -362,17 +389,24 @@ export async function runControl(options: Options): Promise<void> {
             : planRows(control, context);
     const footer =
       mode === "setup" && !showHelp
-        ? [paint(context.theme, "dim", "  ← → choose   enter confirm   q quit", context.color)]
+        ? [paint(context.theme, "dim", keyHints(["← → choose", "enter confirm", "q quit"], context.columns), context.color)]
         : mode === "detail" && !showHelp
-          ? [paint(context.theme, "dim", "  ←→ target   p priority   f pin   x park   d done   esc back   q quit", context.color)]
+          ? [
+              paint(
+                context.theme,
+                "dim",
+                keyHints(["↑↓ project", "←→ target", "p priority", "f pin", "x park", "d done", "esc back", "q quit"], context.columns),
+                context.color,
+              ),
+            ]
         : mode === "settings" && !showHelp
         ? [
             paint(
               context.theme,
               "dim",
               editing
-                ? "  type it   enter keep   esc cancel"
-                : "  ↑↓ move   space or enter toggles   ←→ change or reorder   esc back",
+                ? keyHints(["type it", "enter keep", "esc cancel"], context.columns)
+                : keyHints(["↑↓ move", "space or enter toggles", "←→ change or reorder", "esc back"], context.columns),
               context.color,
             ),
           ]
@@ -505,7 +539,7 @@ export async function runControl(options: Options): Promise<void> {
           break;
         case "share":
           if (view) {
-            setShare(view.project, view.allocation.target + action.delta, control.provider.id);
+            setShare(view.project, nextShare(view, action.delta), control.provider.id);
             refresh();
           }
           break;

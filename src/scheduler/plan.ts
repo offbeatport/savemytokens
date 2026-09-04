@@ -141,6 +141,12 @@ export function cleanShare(share: number | null): number | null {
   return rounded < 0.005 ? 0 : rounded;
 }
 
+export function nextShare(view: ProjectView, delta: number): number {
+  const held = view.settings.share;
+  const from = view.bucket === "active" || held == null ? view.allocation.target : held;
+  return Math.max(0, Math.min(1, from + delta));
+}
+
 export function setShare(project: string, share: number | null, adapter = "claude-code"): void {
   upsertProject(adapter, project, { share: cleanShare(share) });
 }
