@@ -387,15 +387,20 @@ function blockText(content) {
 }
 
 export function signalIn(content) {
-  const match = /SMT:\s*(DONE|NEEDS_MORE|BLOCKED)\b/.exec(blockText(content));
+  const lines = blockText(content)
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const last = lines[lines.length - 1] ?? "";
+  const match = /^SMT:\s*(DONE|NEEDS_MORE|BLOCKED)$/.exec(last);
   return match ? match[1] : null;
 }
 
 export function defersIn(content) {
   const out = [];
-  const pattern = /SMT:\s*DEFER\s+(.+)/g;
-  let match;
-  while ((match = pattern.exec(blockText(content))) !== null) {
+  for (const line of blockText(content).split("\n")) {
+    const match = /^\s*SMT:\s*DEFER\s+(.+)$/.exec(line);
+    if (!match) continue;
     const text = String(match[1]).replace(/\s+/g, " ").trim().slice(0, 140);
     if (text) out.push(text);
   }

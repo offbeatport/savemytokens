@@ -9,6 +9,7 @@ import {
   openingAdvice,
   policyFor,
   preserveText,
+  signalIn,
   stageFor,
 } from "../dist/runtime/kernel.mjs";
 import { actionFor, keyActions, splitKeys } from "../dist/scheduler/keys.js";
@@ -140,4 +141,23 @@ test("your own line is injected with the advice", () => {
   });
   assert.match(withCustom, /Always run pnpm test and push before you stop\.$/);
   assert.doesNotMatch(adviceFor(80, { target: 0.4, pressure: 0.85, basis: "budget", preserve: [] }), /pnpm test/);
+});
+
+test("the release signal only counts as the last line, not mid-sentence", () => {
+  const prose = [{ type: "text", text: "You can override any of it with SMT: DONE in a sentence." }];
+  assert.equal(signalIn(prose), null, "writing about the protocol must not trigger it");
+
+  const doc = [{ type: "text", text: "The table lists SMT: DONE, SMT: NEEDS_MORE and SMT: BLOCKED.\nStill working." }];
+  assert.equal(signalIn(doc), null);
+
+  const real = [{ type: "text", text: "Shipped the parser and the tests pass.\n\nSMT: DONE" }];
+  assert.equal(signalIn(real), "DONE");
+  assert.equal(signalIn([{ type: "text", text: "blocked on creds\n\nSMT: BLOCKED\n" }]), "BLOCKED");
+});
+
+test("deferred lines must start their own line", () => {
+  assert.deepEqual(defersIn([{ type: "text", text: "write it as SMT: DEFER something to skip it" }]), []);
+  assert.deepEqual(defersIn([{ type: "text", text: "  SMT: DEFER wire the retry path\nSMT: DONE" }]), [
+    "wire the retry path",
+  ]);
 });

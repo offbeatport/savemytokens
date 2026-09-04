@@ -55,7 +55,7 @@ function capacityLines(control: ControlPlan, options: ScheduleRenderOptions, now
 function rowFor(
   view: ClaimantPlanView,
   index: number,
-  widths: { label: number; prompt: number },
+  widths: { label: number; prompt: number; name: string },
   options: ScheduleRenderOptions,
   attributed: boolean,
 ): string {
@@ -68,7 +68,7 @@ function rowFor(
     STATE_MARK[view.state] ?? "•",
     color,
   );
-  const label = padEndVisible(clip(view.claimant.label || view.claimant.id.slice(0, 8), widths.label), widths.label);
+  const label = padEndVisible(clip(widths.name, widths.label), widths.label);
   const pinned = view.allocation.pinned ? paint(theme, "dim", "*", color) : " ";
   const running = view.state === "active" || view.state === "needs-more";
   const role = running ? pressureRole(view.pressure.value) : "dim";
@@ -104,8 +104,22 @@ export function renderSchedule(control: ControlPlan, options: ScheduleRenderOpti
   out.push("");
 
   const attributed = control.schedule.live !== null;
-  const labelWidth = Math.min(18, Math.max(9, ...views.map((view) => (view.claimant.label || "").length)));
-  const promptWidth = Math.max(16, columns - labelWidth - (attributed ? 42 : 34));
+  const seen = new Map<string, number>();
+  for (const view of views) seen.set(view.claimant.label, (seen.get(view.claimant.label) ?? 0) + 1);
+  const labels = new Map<string, string>();
+  for (const view of views) {
+    const base = view.claimant.label || view.claimant.id.slice(0, 8);
+    const started = new Date(view.claimant.startedAt);
+    const stamp = `${String(started.getHours()).padStart(2, "0")}:${String(started.getMinutes()).padStart(2, "0")}`;
+    labels.set(view.claimant.id, (seen.get(view.claimant.label) ?? 0) > 1 ? `${base} ${stamp}` : base);
+  }
+  const stamped = new Map<string, number>();
+  for (const label of labels.values()) stamped.set(label, (stamped.get(label) ?? 0) + 1);
+  for (const [id, label] of labels) {
+    if ((stamped.get(label) ?? 0) > 1) labels.set(id, `${label}·${id.slice(0, 4)}`);
+  }
+  const labelWidth = Math.min(22, Math.max(9, ...[...labels.values()].map((label) => label.length)));
+  const promptWidth = Math.max(16, columns - labelWidth - (attributed ? 38 : 30));
 
   out.push(
     paint(
@@ -121,7 +135,15 @@ export function renderSchedule(control: ControlPlan, options: ScheduleRenderOpti
     out.push(`    ${paint(theme, "dim", `No ${control.provider.label} sessions in this window.`, color)}`);
   }
   for (const [index, view] of views.entries()) {
-    out.push(rowFor(view, index, { label: labelWidth, prompt: promptWidth }, options, attributed));
+    out.push(
+      rowFor(
+        view,
+        index,
+        { label: labelWidth, prompt: promptWidth, name: labels.get(view.claimant.id) ?? view.claimant.label },
+        options,
+        attributed,
+      ),
+    );
   }
 
   out.push("");
