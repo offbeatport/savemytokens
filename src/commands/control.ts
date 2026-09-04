@@ -1,6 +1,6 @@
 import type { Options } from "../cli-options.js";
 import { detailRows, helpOverlay, labelsFor, planRows, type ViewContext } from "../report/views.js";
-import { PRESERVE_KINDS, renderSettings, selectableRows, settingsRows } from "../report/settings.js";
+import { PRESERVE_KINDS, renderSettings, selectableRows, settingsRows, type TightPreview } from "../report/settings.js";
 import { keyActions, splitKeys, type Action } from "../scheduler/keys.js";
 import {
   buildPlan,
@@ -91,6 +91,15 @@ export function boxed(lines: string[], theme: Theme, color: boolean, columns: nu
   return out;
 }
 
+function windowAround(lines: string[], room: number): string[] {
+  if (lines.length <= room) return lines;
+  const cursorLine = lines.findIndex((line) => line.includes("❯"));
+  if (cursorLine === -1) return lines.slice(0, room);
+  const half = Math.floor(room / 2);
+  const start = Math.max(0, Math.min(lines.length - room, cursorLine - half));
+  return lines.slice(start, start + room);
+}
+
 function fullScreen(
   control: ControlPlan,
   body: string[],
@@ -105,7 +114,7 @@ function fullScreen(
   const bottom = [rule, ...footer];
   const room = Math.max(1, rows - top.length - bottom.length - 1);
   const framed = center ? boxed(body, theme, color, columns) : body;
-  const shown = framed.slice(0, room);
+  const shown = center ? framed.slice(0, room) : windowAround(framed, room);
   const spare = Math.max(0, room - shown.length);
   const above: string[] = new Array(center ? Math.floor(spare / 2) : 0).fill("");
   const below: string[] = new Array(spare - above.length).fill("");
@@ -216,6 +225,31 @@ export function setupScreen(choice: boolean, theme: Theme, color: boolean, colum
   return lines.map((line) => centre(line, inner));
 }
 
+function tightPreview(control: ControlPlan): TightPreview {
+  const now = control.schedule.now;
+  const project =
+    control.schedule.projects.find((view) => view.bucket === "active") ?? control.schedule.projects[0];
+  const history = control.schedule.quota?.history ?? [];
+  const recent = history.filter((point) => typeof point.five_hour === "number" && point.at >= now - 45 * 60 * 1000);
+  const first = recent[0];
+  const last = recent[recent.length - 1];
+  const globalRate =
+    first && last && last.at > first.at
+      ? ((last.five_hour as number) - (first.five_hour as number)) / ((last.at - first.at) / 3_600_000)
+      : null;
+  const config = control.config;
+  return {
+    label: project?.label ?? "this project",
+    target: project?.allocation.target ?? 0,
+    usedPoints: project?.attributedPercent ?? 0,
+    pressure: project?.pressure.value ?? 0,
+    ratePerHour: globalRate === null ? null : globalRate * (project?.observed ?? 0),
+    now,
+    preserve: config.preserveFor[process.cwd()] ?? config.preserveFor.default ?? [],
+    custom: config.customAdvice[process.cwd()] ?? config.customAdvice.default ?? "",
+  };
+}
+
 function previewView(control: ControlPlan): HudView {
   const now = control.schedule.now;
   const bounds = windowBounds(control.schedule.quota, "five_hour", now);
@@ -309,6 +343,8 @@ export async function runControl(options: Options): Promise<void> {
               previewView(control),
               context.theme,
               context.color,
+              tightPreview(control),
+              context.columns,
             )
           : mode === "detail"
             ? detailRows(control, context)

@@ -1,5 +1,6 @@
 import {
   COLUMNS,
+  POLICIES as ALL_POLICIES,
   DEFAULT_COLUMNS,
   DEFAULT_HUD_SEGMENTS,
   HUD_SEGMENTS,
@@ -9,6 +10,7 @@ import {
   paint,
   policyNames,
   renderSegments,
+  stageText,
   userThemes,
   type Config,
   type HudView,
@@ -18,6 +20,34 @@ import { padEndVisible } from "../util/ansi.js";
 
 export const PRESERVE_KINDS = ["implementation", "tests", "end-to-end checks", "documentation", "exploration"];
 
+const COLUMN_ABOUT: Record<string, string> = {
+  allocation: "the share of the window you want this project to get",
+  used: "how much of that allocation it has spent",
+  share: "its part of the tokens measured on disk",
+  tokens: "tokens it burned in this window",
+  priority: "who gets spare capacity first",
+  "last prompt": "the last thing you typed there",
+};
+
+const SEGMENT_ABOUT: Record<string, string> = {
+  tag: "SMT, to mark our half of a wrapped status line",
+  project: "the project this session belongs to",
+  target: "its allocation, as a percentage of the window",
+  used: "how much of the window this session has spent",
+  share: "its part of the tokens measured on disk",
+  pair: "used and allocation together, as 21%/50%",
+  bar: "how far through its allocation it is",
+  priority: "HIGH, NORMAL or LOW",
+  "5h": "the 5-hour window Anthropic publishes",
+  "7d": "the weekly window",
+  spend: "a gateway spend limit, when you have one",
+  reset: "how long until the 5-hour window resets",
+  meter5h: "the 5-hour window drawn as a bar",
+  spark: "the shape of the window so far",
+  pace: "how far ahead or behind the clock you are",
+  empty: "when you run dry at this rate",
+};
+
 export type SettingRow =
   | { kind: "header"; label: string; hint?: string }
   | { kind: "blank" }
@@ -25,6 +55,9 @@ export type SettingRow =
   | { kind: "segment"; id: string }
   | { kind: "theme"; surface: "tui" | "hud" }
   | { kind: "policy" }
+  | { kind: "timeline" }
+  | { kind: "pace" }
+  | { kind: "stage"; at: number }
   | { kind: "preserve"; index: number }
   | { kind: "advice" }
   | { kind: "preview" };
@@ -49,6 +82,11 @@ export function settingsRows(config: Config): SettingRow[] {
   rows.push({ kind: "blank" });
   rows.push({ kind: "header", label: "WHEN IT GETS TIGHT", hint: "← → changes it" });
   rows.push({ kind: "policy" });
+  rows.push({ kind: "timeline" });
+  rows.push({ kind: "pace" });
+  const policy = ALL_POLICIES[config.policy] ?? ALL_POLICIES.finish;
+  for (const stage of policy?.stages ?? []) rows.push({ kind: "stage", at: stage.at });
+  rows.push({ kind: "blank" });
   for (let index = 0; index < PRESERVE_KINDS.length; index++) rows.push({ kind: "preserve", index });
   rows.push({ kind: "advice" });
   return rows;
@@ -72,13 +110,77 @@ export function withMoved(list: string[], id: string, delta: number): string[] {
 export function selectableRows(rows: SettingRow[]): number[] {
   const out: number[] = [];
   for (const [index, row] of rows.entries()) {
-    if (row.kind !== "header" && row.kind !== "blank" && row.kind !== "preview") out.push(index);
+    if (!["header", "blank", "preview", "timeline", "pace"].includes(row.kind)) out.push(index);
   }
+  return out;
+}
+
+function wrap(text: string, width: number): string[] {
+  const out: string[] = [];
+  let line = "";
+  for (const word of text.split(" ")) {
+    if (line.length === 0) line = word;
+    else if (line.length + 1 + word.length <= width) line += ` ${word}`;
+    else {
+      out.push(line);
+      line = word;
+    }
+  }
+  if (line) out.push(line);
   return out;
 }
 
 function themeNames(): string[] {
   return [...new Set([...builtinThemes(), ...userThemes()])];
+}
+
+export interface TightPreview {
+  label: string;
+  target: number;
+  usedPoints: number;
+  pressure: number;
+  ratePerHour: number | null;
+  now: number;
+  preserve: string[];
+  custom: string;
+}
+
+function clockAt(ms: number): string {
+  const at = new Date(ms);
+  return `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
+}
+
+function whenStage(at: number, tight: TightPreview): string {
+  if (!(tight.target > 0)) return "no allocation";
+  if (tight.pressure >= at / 100) return "now";
+  if (!tight.ratePerHour || tight.ratePerHour <= 0.05) return "not burning";
+  const needed = (at / 100) * tight.target * 100 - tight.usedPoints;
+  const hours = needed / tight.ratePerHour;
+  if (!Number.isFinite(hours) || hours < 0) return "now";
+  if (hours > 12) return "not today";
+  return `~${clockAt(tight.now + hours * 3_600_000)}`;
+}
+
+function timelineRow(config: Config, tight: TightPreview, width: number, theme: Theme, color: boolean): string[] {
+  const policy = ALL_POLICIES[config.policy] ?? ALL_POLICIES.finish;
+  const stages = policy?.stages ?? [];
+  const cells = Math.max(24, Math.min(width - 20, 56));
+  const marks = new Map<number, string>();
+  for (const stage of stages) marks.set(Math.round((stage.at / 100) * (cells - 1)), "┬");
+  const here = Math.max(0, Math.min(cells - 1, Math.round(Math.min(1, tight.pressure) * (cells - 1))));
+
+  let track = "";
+  for (let index = 0; index < cells; index++) {
+    if (marks.has(index)) track += paint(theme, "accent", "┬", color);
+    else track += paint(theme, index <= here ? "ok" : "track", index <= here ? "━" : "─", color);
+  }
+  const pointer = `${" ".repeat(here)}${paint(theme, "accent", "▲", color)}`;
+  const labels = stages.map((stage) => `${stage.at}% ${stage.actions.join("+")}`).join("   ");
+  return [
+    `      ${track}`,
+    `      ${pointer} ${paint(theme, "dim", `${tight.label} is at ${Math.round(tight.pressure * 100)}% of its allocation`, color)}`,
+    `      ${paint(theme, "dim", labels || "nothing is ever injected", color)}`,
+  ];
 }
 
 export function renderSettings(
@@ -90,6 +192,8 @@ export function renderSettings(
   preview: HudView,
   theme: Theme,
   color: boolean,
+  tight?: TightPreview,
+  width = 100,
 ): string[] {
   const columns = config.columns ?? DEFAULT_COLUMNS;
   const segments = config.hud?.segments ?? DEFAULT_HUD_SEGMENTS;
@@ -114,14 +218,21 @@ export function renderSettings(
     }
     if (row.kind === "column") {
       const on = columns.includes(row.id);
-      out.push(`  ${mark} ${on ? paint(theme, "ok", "◉", color) : paint(theme, "dim", "○", color)} ${row.id}`);
+      const about = COLUMN_ABOUT[row.id] ?? "";
+      out.push(
+        `  ${mark} ${on ? paint(theme, "ok", "◉", color) : paint(theme, "dim", "○", color)} ${padEndVisible(row.id, 12)} ${paint(theme, "dim", `— ${about}`, color)}`,
+      );
       continue;
     }
     if (row.kind === "segment") {
       const at = segments.indexOf(row.id);
       const on = at !== -1;
       const order = on ? paint(theme, "dim", String(at + 1).padStart(2), color) : "  ";
-      out.push(`  ${mark} ${on ? paint(theme, "ok", "◉", color) : paint(theme, "dim", "○", color)} ${order} ${on ? row.id : paint(theme, "dim", row.id, color)}`);
+      const name = padEndVisible(row.id, 9);
+      const about = SEGMENT_ABOUT[row.id] ?? "";
+      out.push(
+        `  ${mark} ${on ? paint(theme, "ok", "◉", color) : paint(theme, "dim", "○", color)} ${order} ${on ? name : paint(theme, "dim", name, color)} ${paint(theme, "dim", `— ${about}`, color)}`,
+      );
       continue;
     }
     if (row.kind === "theme") {
@@ -131,6 +242,37 @@ export function renderSettings(
         .map((name) => (name === current ? paint(theme, "accent", `[${name}]`, color) : paint(theme, "dim", name, color)))
         .join(" ");
       out.push(`  ${mark} ${padEndVisible(row.surface === "tui" ? "control centre" : "status line", 15)} ${rendered}`);
+      continue;
+    }
+    if (row.kind === "timeline") {
+      if (!tight) continue;
+      out.push(...timelineRow(config, tight, width, theme, color));
+      continue;
+    }
+    if (row.kind === "pace") {
+      if (!tight) continue;
+      const policy = ALL_POLICIES[config.policy] ?? ALL_POLICIES.finish;
+      const parts = (policy?.stages ?? []).map((stage) => `${stage.actions[0]} ${whenStage(stage.at, tight)}`);
+      out.push(`      ${paint(theme, "dim", parts.length > 0 ? `at this pace   ${parts.join("  ·  ")}` : "", color)}`);
+      continue;
+    }
+    if (row.kind === "stage") {
+      const policy = ALL_POLICIES[config.policy] ?? ALL_POLICIES.finish;
+      const stage = (policy?.stages ?? []).find((entry) => entry.at === row.at);
+      const head = `${padEndVisible(`${row.at}%`, 5)} ${paint(theme, here ? "accent" : "dim", (stage?.actions ?? []).join(" + "), color)}`;
+      out.push(`  ${mark} ${head}`);
+      if (here && tight) {
+        const text = stageText(row.at, {
+          target: tight.target,
+          observed: 0,
+          pressure: tight.pressure,
+          basis: "budget",
+          preserve: tight.preserve,
+          policy,
+          custom: tight.custom,
+        });
+        for (const line of wrap(text, Math.max(30, width - 14))) out.push(`        ${paint(theme, "dim", line, color)}`);
+      }
       continue;
     }
     if (row.kind === "policy") {

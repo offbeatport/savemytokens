@@ -312,6 +312,7 @@ export function deferredAdvice(items: DeferredItem[]): string;
 export function preserveText(preserve: string[]): string;
 export function openingAdvice(view: AdviceView): string;
 export function adviceFor(stage: number, view: AdviceView): string;
+export function stageText(stage: number, view: AdviceView): string;
 
 export function builtinThemes(): string[];
 export function userThemes(): string[];

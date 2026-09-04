@@ -549,3 +549,69 @@ test("left and right change things on the settings screen", () => {
   assert.deepEqual(actionFor("\u001b[A", "prefs", step), { kind: "up" });
   assert.deepEqual(actionFor(" ", "prefs", step), { kind: "toggleCurrent" });
 });
+
+test("the tight section shows the real text, when it fires, and where you are", async () => {
+  const { renderSettings, settingsRows, selectableRows } = await import("../dist/report/settings.js");
+  const { loadTheme, POLICIES } = await import("../dist/runtime/kernel.mjs");
+  const now = Date.now();
+
+  const config = {
+    version: 1,
+    createdAt: 1,
+    preferencesSetAt: 0,
+    offeredInstallAt: 0,
+    theme: { tui: "default", hud: "default" },
+    layout: { hud: "allocation" },
+    columns: ["allocation", "used", "priority", "last prompt"],
+    hud: { segments: ["project", "5h"] },
+    policy: "finish",
+    policyFor: {},
+    preserveFor: { default: ["tests"] },
+    customAdvice: {},
+    wrappedStatusLine: null,
+    contribute: false,
+  };
+  const tight = {
+    label: "webinvoke",
+    target: 0.5,
+    usedPoints: 20,
+    pressure: 0.4,
+    ratePerHour: 10,
+    now,
+    preserve: ["tests"],
+    custom: "",
+  };
+  const preview = { label: "webinvoke", target: 0.5, observed: 0.4, used: 20, pressure: 0.4, priority: "high", quota: {}, now };
+
+  const rows = settingsRows(config);
+  const stageRows = rows.filter((row) => row.kind === "stage");
+  assert.equal(stageRows.length, POLICIES.finish.stages.length, "one row per stage of the chosen policy");
+
+  const selectable = selectableRows(rows);
+  const firstStage = selectable.find((index) => rows[index].kind === "stage");
+  const painted = renderSettings(config, rows, firstStage, false, "", preview, loadTheme("default"), false, tight, 100);
+  const text = painted.join("\n");
+
+  assert.match(text, /Stay on completion of what was asked/, "the selected stage shows the words Claude will get");
+  assert.match(text, /at this pace/, "and when each stage lands at the current burn");
+  assert.match(text, /webinvoke is at 40% of its allocation/, "and where this project sits right now");
+  assert.match(text, /▲/, "the timeline marks it");
+
+  const idle = renderSettings(
+    config,
+    rows,
+    firstStage,
+    false,
+    "",
+    preview,
+    loadTheme("default"),
+    false,
+    { ...tight, ratePerHour: 0 },
+    100,
+  );
+  assert.match(idle.join("\n"), /not burning/, "with nothing burning it says so rather than inventing a time");
+
+  const columns = renderSettings(config, rows, selectable[0], false, "", preview, loadTheme("default"), false, tight, 100);
+  assert.match(columns.join("\n"), /allocation.*— the share of the window/, "columns explain themselves");
+  assert.match(columns.join("\n"), /5h.*— the 5-hour window Anthropic publishes/, "so do status line segments");
+});

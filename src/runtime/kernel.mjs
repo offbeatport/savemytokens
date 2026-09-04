@@ -904,6 +904,14 @@ export function openingAdvice(view) {
   return `[savemytokens] This session's target share of the current Claude window is ${target}%. Work inside it: prioritise completion, and preserve enough capacity for ${preserveText(view.preserve)}.${plan} When you stop, report one of SMT: DONE, SMT: NEEDS_MORE or SMT: BLOCKED on its own line.`;
 }
 
+export function stageText(stage, view) {
+  const policy = view.policy ?? POLICIES[DEFAULT_POLICY];
+  return actionsFor(stage, policy)
+    .map((action) => (ACTION_TEXT[action] ?? (() => ""))(view))
+    .filter(Boolean)
+    .join(" ");
+}
+
 export function adviceFor(stage, view) {
   const policy = view.policy ?? POLICIES[DEFAULT_POLICY];
   const target = Math.round(view.target * 100);
