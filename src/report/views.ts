@@ -111,8 +111,11 @@ function row(
   const sessions = view.liveSessions > 1 ? paint(theme, "dim", ` ${view.liveSessions}`, color) : "  ";
   const label = padEndVisible(clip(view.label, widths.label - 2), widths.label - 2);
   const allocation = padStartVisible(percentLabel(view.allocation.target * 100, 5), 10);
+  const starved = view.allocation.target <= 0;
   const used = padEndVisible(
-    `${smallBar(view.pressure.value, BAR_CELLS, theme, color, role)} ${padStartVisible(paint(theme, role, percentLabel(view.pressure.value * 100, 4), color), 4)}`,
+    starved
+      ? paint(theme, "dim", `[${".".repeat(BAR_CELLS)}]    —`, color)
+      : `${smallBar(view.pressure.value, BAR_CELLS, theme, color, role)} ${padStartVisible(paint(theme, role, percentLabel(view.pressure.value * 100, 4), color), 4)}`,
     15,
   );
   const share = padStartVisible(paint(theme, "dim", percentLabel(view.observed * 100, 5), color), 6);

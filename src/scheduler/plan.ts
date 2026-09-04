@@ -132,8 +132,15 @@ export function selectionIndex(ids: string[], selectedId: string | null, previou
   return Math.max(0, Math.min(previousIndex, ids.length - 1));
 }
 
+export function cleanShare(share: number | null): number | null {
+  if (share === null || !Number.isFinite(share)) return null;
+  const clamped = Math.max(0, Math.min(1, share));
+  const rounded = Math.round(clamped * 200) / 200;
+  return rounded < 0.005 ? 0 : rounded;
+}
+
 export function setShare(project: string, share: number | null, adapter = "claude-code"): void {
-  upsertProject(adapter, project, { share: share === null ? null : Math.max(0, Math.min(1, share)) });
+  upsertProject(adapter, project, { share: cleanShare(share) });
 }
 
 export function setPriority(project: string, priority: Priority, adapter = "claude-code"): void {

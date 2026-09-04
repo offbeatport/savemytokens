@@ -227,7 +227,12 @@ function blankProject(project) {
 
 export function loadProject(adapter, project) {
   const stored = readJson(path.join(PROJECT_DIR, adapter, `${projectKey(project)}.json`), null);
-  return { ...blankProject(project), ...(stored && typeof stored === "object" ? stored : {}) };
+  const record = { ...blankProject(project), ...(stored && typeof stored === "object" ? stored : {}) };
+  if (typeof record.share === "number") {
+    const rounded = Math.round(Math.max(0, Math.min(1, record.share)) * 200) / 200;
+    record.share = rounded < 0.005 ? 0 : rounded;
+  }
+  return record;
 }
 
 export function upsertProject(adapter, project, patch = {}) {

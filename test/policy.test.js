@@ -521,3 +521,14 @@ test("no row overflows the terminal, whatever columns are on", async () => {
     }
   }
 });
+
+test("an allocation never keeps floating point dust", async () => {
+  const { cleanShare } = await import("../dist/scheduler/plan.js");
+  assert.equal(cleanShare(1.3877787807814457e-17), 0, "dust from repeated subtraction becomes zero");
+  assert.equal(cleanShare(0.30000000000000004), 0.3);
+  assert.equal(cleanShare(0.4999), 0.5);
+  assert.equal(cleanShare(1.4), 1);
+  assert.equal(cleanShare(-0.2), 0);
+  assert.equal(cleanShare(null), null);
+  assert.equal(cleanShare(Number.NaN), null);
+});
