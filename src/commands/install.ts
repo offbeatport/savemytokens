@@ -317,9 +317,40 @@ export function runUninstall(purge: boolean): void {
       : "Nothing was installed.",
   );
   if (statusLineRestored) out.push(dim("Your own status line is back in place."));
-  out.push(dim(purged ? `Deleted ${HOME}.` : `Your local state in ${HOME} is untouched — remove it with --purge.`));
+  if (purged) {
+    out.push(dim(`Deleted ${HOME}.`));
+  } else {
+    const kept = describeState();
+    out.push("");
+    out.push(`${dim("Kept")}  ${HOME}${kept ? dim(`  (${kept})`) : ""}`);
+    out.push(dim("      Your allocations, priorities and deferred notes live here. Measured"));
+    out.push(dim("      usage rebuilds itself from transcripts; those settings do not."));
+    out.push("");
+    out.push(`      ${dim("npx savemytokens uninstall --purge")}`);
+  }
   out.push("");
   process.stdout.write(out.join("\n") + "\n");
+}
+
+function describeState(): string {
+  try {
+    const parts: string[] = [];
+    let bytes = 0;
+    const walk = (dir: string): void => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else bytes += fs.statSync(full).size;
+      }
+    };
+    walk(HOME);
+    parts.push(bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
+    const projects = fs.readdirSync(path.join(HOME, "projects", "claude-code")).filter((name) => name.endsWith(".json")).length;
+    if (projects > 0) parts.push(`${projects} ${projects === 1 ? "project" : "projects"}`);
+    return parts.join(" · ");
+  } catch {
+    return "";
+  }
 }
 
 export interface NudgeStats {
