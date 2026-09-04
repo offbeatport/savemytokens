@@ -389,7 +389,6 @@ function helpProse(text: string, context: ViewContext): string[] {
     }
   }
   if (line) out.push(`    ${paint(theme, "dim", line, color)}`);
-  out.push("");
   return out;
 }
 
@@ -402,10 +401,9 @@ export function helpOverlay(control: ControlPlan, context: ViewContext): string[
 
   const out: string[] = [`  ${paintHead(theme, "KEYS", color)}`, ""];
   for (const [key, what] of HELP_KEYS) {
-    const words = what.split(" ");
     const wrapped: string[] = [];
     let line = "";
-    for (const word of words) {
+    for (const word of what.split(" ")) {
       if (line.length === 0) line = word;
       else if (line.length + 1 + word.length <= room) line += ` ${word}`;
       else {
@@ -422,30 +420,39 @@ export function helpOverlay(control: ControlPlan, context: ViewContext): string[
 
   out.push(...helpSection("the three tables", context));
   out.push(...helpProse("ACTIVE is a Claude session open there right now. Only these spend the window, so only these hold an allocation.", context));
-  out.push(...helpProse("RECENT was worked on in the last day, with nothing running now. Set a target here and it waits for you.", context));
-  out.push(...helpProse("PARKED is older than that, or parked by hand with x.", context));
-  out.pop();
+  out.push("");
+  out.push(...helpProse("RECENT and PARKED hold nothing. A project turns ACTIVE by itself when you open Claude Code in it, and you cannot promote one by hand. What you can do is set its target now with the arrows: it waits there, and applies the moment a session starts.", context));
 
-  out.push(...helpSection("where the numbers come from", context));
-  out.push(...helpProse("5h and 7d are Anthropic's own numbers, read from the status line. Share is measured from the tokens in your transcripts.", context));
-  out.push(...helpProse("Allocation is what you asked for. Used of it is Anthropic's number split by measured share, so the split between rows is ours, not theirs.", context));
-  out.push(...helpProse("A project's allocation is divided across its live sessions by what each one burns.", context));
+  out.push(...helpSection("the status line", context));
+  out.push(
+    ...helpProse(
+      control.installed
+        ? "Installed. It is the only place Anthropic publishes your 5h and 7d usage, and it is what proves a session is still open, so without it nothing here is live. Change its shape with P."
+        : "Not installed, so nothing here is live. It is the only place Anthropic publishes your 5h and 7d usage, and it is what proves a session is still open. Run: npx savemytokens install",
+      context,
+    ),
+  );
+
+  out.push(...helpSection("the numbers", context));
+  out.push(...helpProse("5h and 7d are Anthropic's own. Share is measured from the tokens in your transcripts. Used of it is their number split by that share, so the split between rows is ours, not theirs.", context));
 
   const drift = control.unattributed ?? 0;
   if (drift >= UNATTRIBUTED_FLOOR) {
+    out.push("");
     out.push(...helpProse("Window spent outside these projects is claude.ai, another machine, or work done before SaveMyTokens was watching.", context));
   }
-  out.pop();
 
   out.push(...helpSection("when it gets tight", context));
   out.push(
     ...helpProse(
       stages
-        ? `Claude is told to wind down at ${stages}% of a project's target. Change it with P, or npx savemytokens policy.`
-        : "Nothing is ever said to Claude, because the policy is off. Change it with P, or npx savemytokens policy.",
+        ? `Claude is told to wind down at ${stages}% of a project's target. Change it with P.`
+        : "Nothing is ever said to Claude, because the policy is off. Change it with P.",
       context,
     ),
   );
-  out.pop();
+
+  out.push(...helpSection("anything else", context));
+  out.push(...helpProse("Questions, bugs and ideas: hello@offbeatport.com", context));
   return out;
 }

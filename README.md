@@ -18,13 +18,18 @@
 
 <br>
 
+## Get started
+
 ```sh
 npx savemytokens
 ```
 
-That opens the control centre and offers to install on first run. Four hooks and a status line go
-into Claude Code's `settings.json`, which is backed up first, and `npx savemytokens uninstall` takes
-them out again.
+That is the whole install. It opens the control centre and, on the first run, offers to add four
+hooks and a status line to Claude Code's `settings.json`, backing the file up first.
+
+**Say yes.** The status line is the only place Anthropic publishes your 5h and weekly usage, and it
+is what proves a session is still open, so nothing is live without it. Changed your mind?
+`npx savemytokens uninstall` takes every entry back out.
 
 <br>
 
@@ -143,4 +148,6 @@ bar the built-in themes have to clear.
 <div align="center">
 <br>
 <sub>No daemon · no account · nothing leaves your machine · MIT</sub>
+<br>
+<sub>Questions, bugs and ideas: <a href="mailto:hello@offbeatport.com">hello@offbeatport.com</a></sub>
 </div>

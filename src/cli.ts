@@ -50,6 +50,7 @@ ${bold("savemytokens")}: give every Claude Code session a target share of your C
       --codex      Codex instead of Claude Code (visibility only)
 
 ${dim("Everything runs locally. No account, no daemon, no upload. See what it stores: savemytokens privacy")}
+${dim("Questions, bugs and ideas: hello@offbeatport.com")}
 `;
 }
 
