@@ -56,9 +56,16 @@ function capacityRow(control: ControlPlan, context: ViewContext): string[] {
   const now = control.schedule.now;
   const published = control.resources.filter((resource) => resource.usedPercent !== null);
   if (published.length === 0) {
-    return [
-      `  ${paint(theme, "warn", "no published window", color)} ${paint(theme, "dim", "· install the status line and Anthropic's own numbers appear here", color)}`,
-    ];
+    const installed = control.installed;
+    const head = installed ? "waiting for the first reading" : "not installed";
+    const tails = installed
+      ? ["· it arrives the next time a Claude session draws its status line", "· wait for a Claude session to draw it", ""]
+      : ["· nothing is live until you run: npx savemytokens install", "· run: npx savemytokens install", ""];
+    for (const tail of tails) {
+      const line = `  ${paint(theme, "warn", head, color)}${tail ? ` ${paint(theme, "dim", tail, color)}` : ""}`;
+      if (visibleWidth(line) <= context.columns) return [line];
+    }
+    return [`  ${paint(theme, "warn", clip(head, context.columns - 2), color)}`];
   }
   const levels: Array<{ bar: number; reset: "clock" | "long" | "short" | "none"; gap: number }> = [
     { bar: 12, reset: "clock", gap: 4 },

@@ -311,7 +311,8 @@ test("the first-run dialog fits any terminal it is drawn in", async () => {
     const top = framed[0] ?? "";
     const bottom = framed[framed.length - 1] ?? "";
     assert.equal(top.length, bottom.length, "the box closes at the same width it opened");
-    assert.ok(framed.some((line) => line.includes("[ Yes ]")), "the default choice is visible");
+    assert.ok(framed.some((line) => line.includes("[ Install ]")), "the default choice is visible");
+    assert.ok(framed.some((line) => line.includes("Install SaveMyTokens?")), "and it names the product, not one of its parts");
   }
 });
 

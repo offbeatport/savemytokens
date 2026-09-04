@@ -235,25 +235,29 @@ function wrapPlain(text: string, width: number): string[] {
 }
 
 export function setupScreen(choice: boolean, theme: Theme, color: boolean, columns: number): string[] {
-  const yes = choice ? paint(theme, "ok", "[ Yes ]", color) : paint(theme, "dim", "  Yes  ", color);
+  const yes = choice ? paint(theme, "ok", "[ Install ]", color) : paint(theme, "dim", "  Install  ", color);
   const no = choice ? paint(theme, "dim", "  Not now  ", color) : paint(theme, "warn", "[ Not now ]", color);
-  const inner = Math.max(20, Math.min(columns - 10, 60));
-  const lines: string[] = [];
-  lines.push(...wrapPlain("Enable live Claude usage in your status bar?", inner).map((line) => paint(theme, "accent", line, color)));
-  lines.push("");
-  lines.push(...wrapPlain("Shows your 5h and weekly capacity, and this session's share of it.", inner));
-  lines.push(
-    ...wrapPlain("It adds four hooks and a status line to Claude Code's settings.json, backing that file up first.", inner).map(
-      (line) => paint(theme, "dim", line, color),
-    ),
-  );
-  lines.push("");
-  lines.push(`${yes}    ${no}`);
-  lines.push("");
-  lines.push(paint(theme, "dim", "← → choose · enter confirm", color));
-  lines.push("");
-  lines.push(...wrapPlain("Later, any time: npx savemytokens install · uninstall", inner).map((line) => paint(theme, "dim", line, color)));
-  return lines.map((line) => centre(line, inner));
+  const inner = Math.max(24, Math.min(columns - 10, 56));
+  const out: string[] = [];
+  const middle = (line: string): void => {
+    out.push(centre(line, inner));
+  };
+  const flush = (text: string, role: string): void => {
+    for (const line of wrapPlain(text, inner)) out.push(paint(theme, role, line, color));
+  };
+
+  middle(paint(theme, "accent", "Install SaveMyTokens?", color));
+  out.push("");
+  flush("It needs four hooks and a status line in Claude Code to see which sessions are open and how much of your window is left — the status line is the only place Anthropic publishes that number.", "fg");
+  out.push("");
+  flush("Without them it reads transcripts already on disk and nothing more: no live sessions, no window, nothing said to Claude.", "dim");
+  out.push("");
+  middle(`${yes}    ${no}`);
+  out.push("");
+  middle(paint(theme, "dim", "← → choose · enter confirm", color));
+  out.push("");
+  flush("settings.json is backed up first. Undo any time with: npx savemytokens uninstall", "dim");
+  return out;
 }
 
 function tightPreview(control: ControlPlan): TightPreview {
@@ -360,8 +364,8 @@ export async function runControl(options: Options): Promise<void> {
 
   const draw = (): void => {
     const context = contextFor(control, selected, true, expanded);
-    const actual = process.stdout.columns ?? context.columns;
-    if (actual < MIN_COLUMNS) {
+    const actual = process.stdout.columns ?? 0;
+    if (actual > 0 && actual < MIN_COLUMNS) {
       process.stdout.write(
         `${CLEAR}\n  ${paint(context.theme, "warn", `${actual} columns is too narrow`, context.color)}\n  ${paint(context.theme, "dim", `widen the terminal to ${MIN_COLUMNS} · q quits`, context.color)}\n`,
       );

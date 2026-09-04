@@ -1,8 +1,11 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { ClaimantState, EnforcementLevel, Priority, Provider, Resource } from "../core/resource.js";
 import { withMoved, withToggled } from "../report/settings.js";
 import { claudeCodeProvider } from "../adapters/claude-code/provider.js";
 import { codexProvider } from "../adapters/codex/provider.js";
 import {
+  HOOKS_DIR,
   FIVE_HOUR_MS,
   WINDOW_MS,
   clearDeferred,
@@ -38,6 +41,7 @@ export interface ControlPlan {
   unattributed: number | null;
   deferred: Array<{ project: string; items: DeferredItem[] }>;
   others: Array<{ id: string; label: string; resources: Resource[] }>;
+  installed: boolean;
 }
 
 export function providerFor(id: string): Provider {
@@ -86,6 +90,7 @@ export function buildPlan(now = Date.now(), withSweep = true, window: WindowKey 
     unattributed: unattributedPercent(plan),
     deferred: deferredProjects(provider.id, now),
     others,
+    installed: fs.existsSync(path.join(HOOKS_DIR, "statusline.mjs")),
   };
 }
 
