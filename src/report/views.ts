@@ -26,8 +26,15 @@ export interface ViewContext {
 }
 
 const STATE_MARK: Record<string, string> = { active: "•", "needs-more": "+", done: "✓", blocked: "!" };
-const BAR_CELLS = 6;
 const TARGET_COL = 13;
+
+function barCellsFor(columns: number): number {
+  if (columns >= 130) return 18;
+  if (columns >= 110) return 15;
+  if (columns >= 95) return 12;
+  if (columns >= 80) return 9;
+  return 6;
+}
 const UNATTRIBUTED_FLOOR = 5;
 
 function clip(text: string, max: number): string {
@@ -70,10 +77,12 @@ const COLUMN_WIDTH: Record<string, number> = {
   priority: 8,
 };
 
-function columnWidths(context: ViewContext, columns: string[]): { label: number; prompt: number } {
+function columnWidths(context: ViewContext, columns: string[]): { label: number; prompt: number; bar: number; used: number } {
+  const bar = barCellsFor(context.columns);
+  const usedWidth = bar + 8;
   let fixed = 3;
   for (const name of columns) {
-    const width = COLUMN_WIDTH[name];
+    const width = name === "used" ? usedWidth : COLUMN_WIDTH[name];
     if (width) fixed += width + 1;
   }
   const wanted = Math.min(26, Math.max(14, ...[...context.labels.values()].map((value) => value.length + 2), 14));
@@ -82,14 +91,14 @@ function columnWidths(context: ViewContext, columns: string[]): { label: number;
   const label = Math.max(8, Math.min(wanted, wantsPrompt ? Math.max(8, room - 15) : room));
   const spare = room - label - 1;
   const prompt = wantsPrompt && spare >= 14 ? spare : 0;
-  return { label, prompt };
+  return { label, prompt, bar, used: usedWidth };
 }
 
-function headerRow(context: ViewContext, widths: { label: number; prompt: number }, columns: string[]): string {
+function headerRow(context: ViewContext, widths: { label: number; prompt: number; bar: number; used: number }, columns: string[]): string {
   const { theme, color } = context;
   const cells = [`   ${padEndVisible(clip("project", widths.label), widths.label)}`];
   if (columns.includes("allocation")) cells.push(padStartVisible("allocation", 10));
-  if (columns.includes("used")) cells.push(padEndVisible("used of it", 15));
+  if (columns.includes("used")) cells.push(padEndVisible("used of it", widths.used));
   if (columns.includes("share")) cells.push(padStartVisible("share", 6));
   if (columns.includes("tokens")) cells.push(padStartVisible("tokens", 7));
   if (columns.includes("priority")) cells.push(padEndVisible("priority", 8));
@@ -101,7 +110,7 @@ function row(
   view: ProjectView,
   index: number,
   context: ViewContext,
-  widths: { label: number; prompt: number },
+  widths: { label: number; prompt: number; bar: number; used: number },
   columns: string[],
 ): string {
   const { theme, color } = context;
@@ -114,9 +123,9 @@ function row(
   const starved = view.allocation.target <= 0;
   const used = padEndVisible(
     starved
-      ? paint(theme, "dim", `[${".".repeat(BAR_CELLS)}]    —`, color)
-      : `${smallBar(view.pressure.value, BAR_CELLS, theme, color, role)} ${padStartVisible(paint(theme, role, percentLabel(view.pressure.value * 100, 4), color), 4)}`,
-    15,
+      ? paint(theme, "dim", `[${".".repeat(widths.bar)}]    —`, color)
+      : `${smallBar(view.pressure.value, widths.bar, theme, color, role)} ${padStartVisible(paint(theme, role, percentLabel(view.pressure.value * 100, 4), color), 4)}`,
+    widths.used,
   );
   const share = padStartVisible(paint(theme, "dim", percentLabel(view.observed * 100, 5), color), 6);
   const tokens = padStartVisible(paint(theme, "dim", compactNumber(view.usage.tokens), color), 7);
@@ -136,7 +145,7 @@ function row(
   return cells.join(" ");
 }
 
-function idleHeaderRow(context: ViewContext, widths: { label: number; prompt: number }): string {
+function idleHeaderRow(context: ViewContext, widths: { label: number; prompt: number; bar: number; used: number }): string {
   const { theme, color } = context;
   return paint(
     theme,
@@ -150,7 +159,7 @@ function idleRow(
   view: ProjectView,
   index: number,
   context: ViewContext,
-  widths: { label: number; prompt: number },
+  widths: { label: number; prompt: number; bar: number; used: number },
   now: number,
 ): string {
   const { theme, color } = context;

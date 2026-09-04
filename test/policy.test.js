@@ -424,7 +424,7 @@ test("the settings screen models columns, segments and their order", async () =>
   assert.ok(painted.some((line) => line.includes("[nord]")), "the chosen palette is marked");
 });
 
-test("no row overflows the terminal, whatever columns are on", async () => {
+test("bars grow with the terminal, and no row overflows it", async () => {
   const { planRows } = await import("../dist/report/views.js");
   const { loadTheme } = await import("../dist/runtime/kernel.mjs");
   const now = Date.now();
@@ -483,6 +483,7 @@ test("no row overflows the terminal, whatever columns are on", async () => {
     },
   };
 
+  const widest = new Map();
   const columnSets = [
     ["allocation", "used", "priority", "last prompt"],
     ["allocation", "used", "share", "tokens", "priority", "last prompt"],
@@ -512,14 +513,22 @@ test("no row overflows the terminal, whatever columns are on", async () => {
         expanded: true,
         labels: new Map(control.schedule.projects.map((p) => [p.project, p.label])),
       };
-      for (const line of planRows(control, context)) {
+      const lines = planRows(control, context);
+      for (const line of lines) {
         assert.ok(
           line.length <= width,
           `${columns.join("+")} at ${width} columns overflowed by ${line.length - width}: ${JSON.stringify(line.slice(0, 60))}`,
         );
       }
+      if (columns.includes("used")) {
+        const bar = lines.map((line) => /\[[|.]+[»\]]/.exec(line)?.[0] ?? "").filter(Boolean)[0] ?? "";
+        widest.set(width, Math.max(widest.get(width) ?? 0, bar.length));
+      }
     }
   }
+
+  assert.ok((widest.get(160) ?? 0) > (widest.get(80) ?? 0), "a wide terminal gets a wider bar");
+  assert.ok((widest.get(80) ?? 0) >= 8, "even a narrow one keeps a readable bar");
 });
 
 test("an allocation never keeps floating point dust", async () => {
