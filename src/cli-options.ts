@@ -68,6 +68,10 @@ export function parseArgs(argv: string[]): Options {
       if (!commandSeen && COMMANDS.has(arg)) {
         options.command = arg;
         commandSeen = true;
+      } else if (!commandSeen && options.args.length === 0) {
+        options.command = "unknown";
+        options.args.push(arg);
+        commandSeen = true;
       } else {
         options.args.push(arg);
       }

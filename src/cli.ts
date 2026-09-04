@@ -57,6 +57,26 @@ ${dim("Questions, bugs and ideas: hello@offbeatport.com")}
 `;
 }
 
+const KNOWN_COMMANDS = [
+  "audit",
+  "defer",
+  "help",
+  "history",
+  "hud",
+  "install",
+  "park",
+  "pin",
+  "policy",
+  "priority",
+  "privacy",
+  "release",
+  "share",
+  "status",
+  "theme",
+  "uninstall",
+  "watch",
+];
+
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2));
 
@@ -107,6 +127,17 @@ async function main(): Promise<void> {
     case "privacy":
       runPrivacy(version());
       return;
+    case "unknown": {
+      const name = options.args[0] ?? "";
+      const known = [...KNOWN_COMMANDS].filter((command) => command.startsWith(name[0] ?? "")).slice(0, 4);
+      process.stderr.write(
+        `savemytokens: no command called ${name}.\n` +
+          (known.length > 0 ? `Did you mean: ${known.join(", ")}?\n` : "") +
+          "Run savemytokens --help for the list.\n",
+      );
+      process.exitCode = 1;
+      return;
+    }
     default:
       await runControl(options);
   }

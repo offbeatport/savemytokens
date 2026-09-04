@@ -112,7 +112,14 @@ export function runTheme(args: string[]): void {
     return;
   }
 
-  if (!surface || (surface !== "tui" && surface !== "hud")) {
+  const target: "tui" | "hud" | null = surface === "tui" || surface === "hud" ? surface : null;
+  if (surface && !target) {
+    process.stderr.write(`\nNo theme surface called ${surface}. Use: theme tui <name>, theme hud <name>, theme check, theme new\n\n`);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (!surface) {
     const out = ["", bold("SaveMyTokens themes"), ""];
     out.push(`  tui   ${config.theme.tui}`);
     out.push(`  hud   ${config.theme.hud} ${dim(`· layout ${config.layout.hud}`)}`);
@@ -132,11 +139,11 @@ export function runTheme(args: string[]): void {
   }
 
   if (!value) {
-    process.stdout.write(`\n  ${surface} theme is ${config.theme[surface]}\n\n`);
+    process.stdout.write(`\n  ${target} theme is ${config.theme[target ?? "tui"]}\n\n`);
     return;
   }
 
-  if (surface === "hud" && LAYOUTS.includes(value)) {
+  if (target === "hud" && LAYOUTS.includes(value)) {
     config.layout.hud = value;
     saveConfig(config);
     process.stdout.write(`\n${green("Set")} hud layout to ${bold(value)}\n\n`);
@@ -150,7 +157,7 @@ export function runTheme(args: string[]): void {
     return;
   }
 
-  config.theme[surface] = value;
+  config.theme[target ?? "tui"] = value;
   saveConfig(config);
-  process.stdout.write(`\n${green("Set")} ${surface} theme to ${bold(value)}\n\n`);
+  process.stdout.write(`\n${green("Set")} ${target} theme to ${bold(value)}\n\n`);
 }

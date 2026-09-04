@@ -152,5 +152,5 @@ bar the built-in themes have to clear.
 <br>
 <sub>No daemon · no account · nothing leaves your machine · MIT</sub>
 <br>
-<sub>Questions, bugs and ideas: <a href="mailto:hello@offbeatport.com">hello@offbeatport.com</a></sub>
+<sub>Built by <a href="https://offbeatport.com">Offbeatport</a> · questions and bugs: <a href="mailto:hello@offbeatport.com">hello@offbeatport.com</a></sub>
 </div>
