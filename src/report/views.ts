@@ -26,6 +26,7 @@ export interface ViewContext {
 
 const STATE_MARK: Record<string, string> = { active: "•", "needs-more": "+", done: "✓", blocked: "!" };
 const BAR_CELLS = 10;
+const UNATTRIBUTED_FLOOR = 5;
 
 function clip(text: string, max: number): string {
   if (max <= 1) return "";
@@ -134,9 +135,10 @@ function footerNote(control: ControlPlan, context: ViewContext): string[] {
   const out = [
     `  ${paint(theme, "dim", `${set.active.length} ${set.active.length === 1 ? "session is" : "sessions are"} sharing this window${spare > 0 ? `, ${spare}% of it unclaimed` : ""}.`, color)}`,
   ];
-  if (control.unattributed !== null) {
+  const drift = control.unattributed ?? 0;
+  if (drift >= UNATTRIBUTED_FLOOR) {
     out.push(
-      `  ${paint(theme, "warn", `${Math.round(control.unattributed)}% of the window went while none of these were running`, color)} ${paint(theme, "dim", "— another machine, or claude.ai", color)}`,
+      `  ${paint(theme, "warn", `${Math.round(drift)}% of the window was spent outside these sessions`, color)} ${paint(theme, "dim", "— claude.ai, another machine, or usage SaveMyTokens was not running for", color)}`,
     );
   }
   return out;
@@ -284,6 +286,8 @@ export function helpOverlay(control: ControlPlan, context: ViewContext): string[
     `    ${paint(theme, "dim", "progress  how far through its own target it is · » means over", color)}`,
     "",
     `    ${paint(theme, "dim", "5h and 7d are Anthropic's numbers. share is measured from your transcripts.", color)}`,
+    `    ${paint(theme, "dim", "\"spent outside these sessions\" is window that moved while none of them had a turn:", color)}`,
+    `    ${paint(theme, "dim", "claude.ai or another machine, or work done before SaveMyTokens was watching.", color)}`,
     `    ${paint(theme, "dim", "used is their number split by that share, so the split between rows is ours.", color)}`,
     "",
     `    ${paint(theme, "dim", `Claude is told to wind down at ${stages}% of its target · npx savemytokens policy`, color)}`,

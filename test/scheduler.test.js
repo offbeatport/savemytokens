@@ -356,6 +356,24 @@ test("the window can be switched to the weekly one", () => {
   assert.equal(week.claimants[0].tokens, 1000, "a six-hour-old turn is inside the weekly window");
 });
 
+test("small drift stays quiet", () => {
+  const box = sandbox();
+  const now = Date.now();
+  appendTurns(box, [turn(box, "m1", 1000, now - 120_000)]);
+  runStatusLine(box, rateLimits(10));
+
+  const file = path.join(box.home, "quota", "claude-code.json");
+  const stored = JSON.parse(fs.readFileSync(file, "utf8"));
+  stored.history = [
+    { at: now - 60_000, metered: 1, turnAt: now - 120_000, five_hour: 10, seven_day: 10 },
+    { at: now - 30_000, metered: 1, turnAt: now - 120_000, five_hour: 12, seven_day: 10 },
+  ];
+  fs.writeFileSync(file, JSON.stringify(stored));
+
+  const text = execFileSync("node", [CLI, "status"], { env: box.env, encoding: "utf8" });
+  assert.doesNotMatch(text, /spent outside these sessions/, "two points of drift is not worth a warning");
+});
+
 test("window movement while nothing local ran is reported separately", () => {
   const box = sandbox();
   const now = Date.now();
@@ -376,7 +394,8 @@ test("window movement while nothing local ran is reported separately", () => {
   assert.equal(Math.round(out.unattributedPercent), 8, "the 8 points that moved with no local usage are called out");
 
   const text = execFileSync("node", [CLI, "status"], { env: box.env, encoding: "utf8" });
-  assert.match(text, /8% of the window went while none of these were running/);
+  assert.match(text, /8% of the window was spent outside these sessions/);
+  assert.doesNotMatch(text, /another machine, or claude\.ai$/m, "it no longer asserts a cause it cannot prove");
 });
 
 test("only active sessions hold a share; parking hands it back", () => {
