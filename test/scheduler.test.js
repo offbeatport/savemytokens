@@ -447,7 +447,7 @@ test("a sandboxed run refuses to edit the real Claude settings", () => {
       output = String(error.stdout ?? "");
     }
     assert.ok(failed, `${command} must not touch the real settings from a sandbox`);
-    assert.match(output, /Refusing to edit/);
+    assert.match(output, /Half of this run is sandboxed/);
   }
 });
 

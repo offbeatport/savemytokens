@@ -123,15 +123,41 @@ test("uninstall --purge deletes the local state as well", () => {
 
 test("--purge will not delete the default state directory unattended", () => {
   const box = sandbox();
-  const env = { ...box.env };
-  delete env.SAVEMYTOKENS_HOME;
+  const home = path.join(os.homedir(), ".savemytokens");
+  const canary = path.join(home, "config.json");
+  const before = fs.existsSync(canary) ? fs.readFileSync(canary, "utf8") : null;
   let output = "";
   try {
-    execFileSync("node", [CLI, "uninstall", "--purge"], { env, encoding: "utf8" });
+    output = execFileSync("node", [CLI, "uninstall", "--purge"], {
+      env: { ...box.env, SAVEMYTOKENS_HOME: home },
+      encoding: "utf8",
+    });
   } catch (error) {
     output = String(error.stdout ?? "");
   }
-  assert.match(output, /Refusing to delete/);
+  assert.match(output, /Refusing to (delete|touch)/, "it says no rather than deleting your state");
+  assert.equal(fs.existsSync(canary) ? fs.readFileSync(canary, "utf8") : null, before, "your real config is untouched");
+});
+
+test("a half-sandboxed run touches nothing at all", () => {
+  const real = path.join(os.homedir(), ".savemytokens", "hooks");
+  const existed = fs.existsSync(real);
+  for (const missing of ["SAVEMYTOKENS_HOME", "SAVEMYTOKENS_SETTINGS"]) {
+    const box = sandbox();
+    const env = { ...box.env };
+    delete env[missing];
+    delete env.CLAUDE_CONFIG_DIR;
+    for (const command of ["install", "uninstall"]) {
+      let output = "";
+      try {
+        output = execFileSync("node", [CLI, command], { env, encoding: "utf8" });
+      } catch (error) {
+        output = String(error.stdout ?? "");
+      }
+      assert.match(output, /Half of this run is sandboxed/, `${command} refuses when ${missing} is unset`);
+    }
+  }
+  assert.equal(fs.existsSync(real), existed, "the real hooks directory is exactly as it was");
 });
 
 test("the CLAUDE.md block is opt-in and removed byte-exactly", () => {

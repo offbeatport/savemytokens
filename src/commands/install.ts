@@ -147,7 +147,7 @@ export function runInstall(options: InstallOptions): void {
   }
   if (sandboxMismatch()) {
     process.stdout.write(
-      `\n${bold("SaveMyTokens")}\n\nSAVEMYTOKENS_HOME points somewhere else, but the Claude settings do not.\nRefusing to edit ${SETTINGS} from a sandboxed run — set SAVEMYTOKENS_SETTINGS\nor CLAUDE_CONFIG_DIR too, or unset SAVEMYTOKENS_HOME.\n\n`,
+      `\n${bold("SaveMyTokens")}\n\nHalf of this run is sandboxed and half is not: state is ${HOME}\nand settings are ${SETTINGS}. Refusing to touch either — override\nSAVEMYTOKENS_HOME and SAVEMYTOKENS_SETTINGS together, or neither.\n\n`,
     );
     process.exitCode = 1;
     return;
@@ -245,7 +245,7 @@ export function runInstall(options: InstallOptions): void {
 function sandboxMismatch(): boolean {
   const homeOverridden = Boolean(process.env.SAVEMYTOKENS_HOME);
   const settingsChosen = Boolean(process.env.SAVEMYTOKENS_SETTINGS || process.env.CLAUDE_CONFIG_DIR);
-  return homeOverridden && !settingsChosen;
+  return homeOverridden !== settingsChosen;
 }
 
 export function runUninstall(purge: boolean): void {
@@ -256,7 +256,7 @@ export function runUninstall(purge: boolean): void {
   }
   if (sandboxMismatch()) {
     process.stdout.write(
-      `\n${bold("SaveMyTokens")}\n\nSAVEMYTOKENS_HOME points somewhere else, but the Claude settings do not.\nRefusing to edit ${SETTINGS} from a sandboxed run — set SAVEMYTOKENS_SETTINGS\nor CLAUDE_CONFIG_DIR too, or unset SAVEMYTOKENS_HOME.\n\n`,
+      `\n${bold("SaveMyTokens")}\n\nHalf of this run is sandboxed and half is not: state is ${HOME}\nand settings are ${SETTINGS}. Refusing to touch either — override\nSAVEMYTOKENS_HOME and SAVEMYTOKENS_SETTINGS together, or neither.\n\n`,
     );
     process.exitCode = 1;
     return;
@@ -294,7 +294,7 @@ export function runUninstall(purge: boolean): void {
   const strippedRules = memory.includes(RULES_START);
   if (strippedRules) fs.writeFileSync(MEMORY, stripRules(memory) + "\n");
 
-  const defaultHome = !process.env.SAVEMYTOKENS_HOME;
+  const defaultHome = path.resolve(HOME) === path.resolve(os.homedir(), ".savemytokens");
   let purged = false;
   if (purge && defaultHome && !process.stdin.isTTY) {
     process.stdout.write(
