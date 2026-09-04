@@ -1,8 +1,6 @@
 import fs from "node:fs";
 import { claudeCodeAdapter } from "../adapters/claude-code/index.js";
-import type { Audit } from "../core/types.js";
-import { buildPayload } from "../privacy/payload.js";
-import { LAST_AUDIT_FILE, displayHome, readJson } from "../storage/paths.js";
+import { displayHome } from "../storage/paths.js";
 import { bold, dim } from "../util/ansi.js";
 
 export function runPrivacy(version: string): void {
@@ -26,23 +24,7 @@ export function runPrivacy(version: string): void {
   out.push("");
   out.push(bold("What leaves this machine"));
   out.push("");
-  out.push("  Nothing. This version makes no network call at all, and there is nothing to opt into.");
-  out.push("");
-  out.push(`  ${dim("If that ever changes it will be opt-in, off by default, announced in the")}`);
-  out.push(`  ${dim("changelog, and local-only will stay a supported way to run this.")}`);
-  out.push("");
-  out.push(bold("If you ever opt in, this is the exact shape that would be sent"));
-  out.push("");
-
-  const audit = fs.existsSync(LAST_AUDIT_FILE) ? readJson<Audit | null>(LAST_AUDIT_FILE, null) : null;
-  if (!audit) {
-    out.push(dim("  Run `npx savemytokens` once, then this shows your real payload."));
-  } else {
-    const payload = buildPayload(audit, version, audit.outcomes);
-    for (const line of JSON.stringify(payload, null, 2).split("\n")) out.push(`  ${line}`);
-  }
-  out.push("");
-  out.push(dim("  Counters only. No prompts, responses, file paths, commands, repo names or code."));
+  out.push("  Nothing. There is no network call in this tool.");
   out.push("");
   process.stdout.write(out.join("\n") + "\n");
 }
