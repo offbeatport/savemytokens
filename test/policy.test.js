@@ -343,19 +343,23 @@ test("m lifts the caps, not just the screen budget", async () => {
 
   const claimants = [
     ...Array.from({ length: 9 }, (_, i) => make(`recent${i}`, "recent", i + 1)),
-    ...Array.from({ length: 7 }, (_, i) => make(`parked${i}`, "parked", 60 * 24 * (i + 2))),
+    ...Array.from({ length: 7 }, (_, i) => {
+      const view = make(`parked${i}`, "parked", 60 * 24 * (i + 2));
+      view.claimant.parked = true;
+      return view;
+    }),
   ];
   const plan = { claimants };
 
   const collapsed = workingSet(plan, false);
-  assert.equal(collapsed.recent.length, 6);
-  assert.equal(collapsed.parked.length, 4);
-  assert.equal(collapsed.hidden, 6, "nine recent and seven parked leaves six behind");
+  assert.equal(collapsed.recent.length, 6, "idle sessions are trimmed to six");
+  assert.equal(collapsed.parked.length, 0, "parked ones are out of the way entirely");
+  assert.equal(collapsed.hidden, 10, "three idle and seven parked are waiting behind m");
 
   const full = workingSet(plan, true);
   assert.equal(full.recent.length, 9);
-  assert.equal(full.parked.length, 7);
-  assert.equal(full.hidden, 0, "expanding shows every one of them");
+  assert.equal(full.parked.length, 7, "expanding brings the parked ones back");
+  assert.equal(full.hidden, 0);
 });
 
 test("a session is never marked seen later than its newest turn", async () => {

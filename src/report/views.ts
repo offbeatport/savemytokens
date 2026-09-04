@@ -115,8 +115,9 @@ function idleRow(
   const label = padEndVisible(clip(context.labels.get(view.claimant.id) ?? view.claimant.label, widths.label), widths.label);
   const when = padStartVisible(ago(view.claimant.lastSeen, now), 10);
   const share = padStartVisible(percentLabel(view.observed * 100, 4), 5);
-  const prompt = clip(view.claimant.prompt || "—", widths.prompt + TARGET_COL + 6);
-  return `${cursor}${pin}· ${paint(theme, "dim", `${label} ${when} ${share}  ${prompt}`, color)}`;
+  const tag = view.claimant.parked ? paint(theme, "dim", " parked", color) : "";
+  const prompt = clip(view.claimant.prompt || "—", widths.prompt + TARGET_COL - (view.claimant.parked ? 1 : 7));
+  return `${cursor}${pin}· ${paint(theme, "dim", `${label} ${when} ${share}  ${prompt}`, color)}${tag}`;
 }
 
 function row(
@@ -190,7 +191,7 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
   const widths = columnWidths(context);
   const now = control.schedule.now;
   const columns = control.config.columns ?? [];
-  const out = [...capacityRow(control, context), "", headerRow(context, widths, columns)];
+  const out = [...capacityRow(control, context)];
   let index = 0;
   let printed = 0;
   const budget = context.expanded ? Number.MAX_SAFE_INTEGER : Math.max(6, context.rows - 13);
@@ -199,6 +200,7 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
     if (views.length === 0) return;
     out.push("");
     out.push(sectionTitle(name, views.length, context));
+    out.push(idle ? idleHeaderRow(context, widths) : headerRow(context, widths, columns));
     for (const view of views) {
       if (printed >= budget) {
         index += 1;
@@ -211,12 +213,7 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
   };
 
   section("ACTIVE", set.active, false);
-  if (set.recent.length > 0 || set.parked.length > 0) {
-    out.push("");
-    out.push(idleHeaderRow(context, widths));
-  }
-  section("RECENT", set.recent, true);
-  section("PARKED", set.parked, true);
+  section("RECENT", [...set.recent, ...set.parked], true);
 
   const shown = printed;
   const total = set.active.length + set.recent.length + set.parked.length + set.hidden;

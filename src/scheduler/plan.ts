@@ -108,15 +108,15 @@ function byInterest(a: ClaimantPlanView, b: ClaimantPlanView): number {
 
 export function workingSet(plan: SchedulePlanView, full = false): WorkingSet {
   const active = plan.claimants.filter((view) => view.bucket === "active").sort((a, b) => byInterest(a, b) || b.observed - a.observed);
-  const recentAll = plan.claimants.filter((view) => view.bucket === "recent").sort(byInterest);
-  const parkedAll = plan.claimants.filter((view) => view.bucket === "parked").sort(byInterest);
-  const recent = full ? recentAll : recentAll.slice(0, RECENT_LIMIT);
-  const parked = full ? parkedAll : parkedAll.slice(0, PARKED_LIMIT);
+  const idleAll = plan.claimants.filter((view) => view.bucket !== "active" && !view.claimant.parked).sort(byInterest);
+  const parkedAll = plan.claimants.filter((view) => view.bucket !== "active" && view.claimant.parked).sort(byInterest);
+  const recent = full ? idleAll : idleAll.slice(0, RECENT_LIMIT);
+  const parked = full ? parkedAll : [];
   return {
     active,
     recent,
     parked,
-    hidden: recentAll.length - recent.length + (parkedAll.length - parked.length),
+    hidden: idleAll.length - recent.length + (parkedAll.length - parked.length),
   };
 }
 
