@@ -442,6 +442,13 @@ export function helpOverlay(control: ControlPlan, context: ViewContext): string[
   out.push("");
   out.push(...helpProse("A filled dot means a session is open there right now. Only those spend the window, so one sitting in ACTIVE with nothing running lends its share to the rest and takes it back when you return.", context));
 
+  out.push(...helpSection("allocation and priority", context));
+  out.push(...helpProse("Allocation is what you asked for: the share of the window this project should get. Move it with the arrows.", context));
+  out.push("");
+  out.push(...helpProse("Priority decides who gets the leftovers. Capacity is released whenever a project finishes or sits idle under its target, and that spare goes to every HIGH project first, then NORMAL, then LOW. It is an order, not a weighting: a LOW project gets nothing while a HIGH one still has room.", context));
+  out.push("");
+  out.push(...helpProse("So allocation is your intent and priority is the tie-break. If pinned targets already add up to the whole window there is no spare, and priority does nothing.", context));
+
   out.push(...helpSection("the status line", context));
   out.push(
     ...helpProse(
