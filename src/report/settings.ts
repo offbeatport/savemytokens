@@ -202,7 +202,7 @@ export function renderSettings(
 
   for (const [index, row] of rows.entries()) {
     const here = index === cursor;
-    const mark = here ? paint(theme, "accent", "❯", color) : " ";
+    const mark = here ? paint(theme, "accent", theme.tui?.cursor ?? "❯", color) : " ";
 
     if (row.kind === "blank") {
       out.push("");

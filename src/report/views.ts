@@ -12,7 +12,7 @@ import {
 } from "../runtime/kernel.mjs";
 import { padEndVisible, padStartVisible, visibleWidth } from "../util/ansi.js";
 import { ago, compactNumber } from "../util/fmt.js";
-import { heatStrip, miniSpark, percentLabel, smallBar } from "./graphs.js";
+import { emptyBar, heatStrip, miniSpark, percentLabel, smallBar } from "./graphs.js";
 
 export interface ViewContext {
   theme: Theme;
@@ -25,7 +25,14 @@ export interface ViewContext {
   labels: Map<string, string>;
 }
 
-const STATE_MARK: Record<string, string> = { active: "•", "needs-more": "+", done: "✓", blocked: "!" };
+function stateMark(theme: Theme, bucket: string, state: string): string {
+  const glyphs = theme.tui ?? {};
+  if (state === "blocked") return glyphs.blocked ?? "!";
+  if (bucket !== "active") return glyphs.idle ?? "·";
+  if (state === "needs-more") return "+";
+  if (state === "done") return glyphs.done ?? "✓";
+  return glyphs.active ?? "•";
+}
 const TARGET_COL = 13;
 
 function barCellsFor(columns: number): number {
@@ -115,15 +122,16 @@ function row(
 ): string {
   const { theme, color } = context;
   const role = pressureRole(view.pressure.value);
-  const cursor = context.interactive && context.selected === index ? paint(theme, "accent", "❯", color) : " ";
-  const pin = view.settings.pinned ? paint(theme, "accent", "★", color) : " ";
+  const cursor =
+    context.interactive && context.selected === index ? paint(theme, "accent", theme.tui?.cursor ?? "❯", color) : " ";
+  const pin = view.settings.pinned ? paint(theme, "accent", theme.tui?.pin ?? "★", color) : " ";
   const sessions = view.liveSessions > 1 ? paint(theme, "dim", ` ${view.liveSessions}`, color) : "  ";
   const label = padEndVisible(clip(view.label, widths.label - 2), widths.label - 2);
   const allocation = padStartVisible(percentLabel(view.allocation.target * 100, 5), 10);
   const starved = view.allocation.target <= 0;
   const used = padEndVisible(
     starved
-      ? paint(theme, "dim", `[${".".repeat(widths.bar)}]    —`, color)
+      ? `${emptyBar(widths.bar, theme, color)}    ${paint(theme, "dim", "—", color)}`
       : `${smallBar(view.pressure.value, widths.bar, theme, color, role)} ${padStartVisible(paint(theme, role, percentLabel(view.pressure.value * 100, 4), color), 4)}`,
     widths.used,
   );
@@ -163,8 +171,9 @@ function idleRow(
   now: number,
 ): string {
   const { theme, color } = context;
-  const cursor = context.interactive && context.selected === index ? paint(theme, "accent", "❯", color) : " ";
-  const pin = view.settings.pinned ? paint(theme, "accent", "★", color) : " ";
+  const cursor =
+    context.interactive && context.selected === index ? paint(theme, "accent", theme.tui?.cursor ?? "❯", color) : " ";
+  const pin = view.settings.pinned ? paint(theme, "accent", theme.tui?.pin ?? "★", color) : " ";
   const label = padEndVisible(clip(view.label, widths.label), widths.label);
   const when = padStartVisible(ago(view.lastSeen, now), 10);
   const tag = view.settings.parked ? " parked" : "";

@@ -616,6 +616,22 @@ test("the tight section shows the real text, when it fires, and where you are", 
   assert.match(columns.join("\n"), /5h.*— the 5-hour window Anthropic publishes/, "so do status line segments");
 });
 
+test("every palette dresses the control centre as well as the status line", async () => {
+  const { builtinThemes, loadTheme } = await import("../dist/runtime/kernel.mjs");
+  const { smallBar } = await import("../dist/report/graphs.js");
+  const seen = new Set();
+  for (const name of builtinThemes()) {
+    const theme = loadTheme(name);
+    seen.add(`${theme.tui.cursor}${theme.tui.fill}${theme.tui.empty}${theme.tui.active}`);
+    const bar = smallBar(0.5, 8, theme, false, "ok");
+    assert.ok(bar.includes(theme.tui.fill), `${name} draws its bar with its own character`);
+    assert.ok(bar.includes(theme.tui.empty), `${name} draws the empty half with its own character`);
+    const over = smallBar(1.4, 8, theme, false, "ok");
+    assert.ok(over.includes(theme.tui.over), `${name} marks an overrun with its own character`);
+  }
+  assert.ok(seen.size >= 6, `expected the palettes to look different, found ${seen.size} distinct glyph sets`);
+});
+
 test("palettes exist for both surfaces, and dracula is now violet", async () => {
   const { builtinThemes, loadTheme, renderHud } = await import("../dist/runtime/kernel.mjs");
   const names = builtinThemes();
@@ -644,6 +660,9 @@ test("palettes exist for both surfaces, and dracula is now violet", async () => 
     }
     for (const glyph of ["full", "empty", "sep"]) {
       assert.ok((theme.glyphs[glyph] ?? "").length > 0, `${name} is missing its ${glyph} glyph`);
+    }
+    for (const glyph of ["cursor", "pin", "active", "done", "blocked", "idle", "fill", "empty", "over", "meter", "track"]) {
+      assert.ok((theme.tui[glyph] ?? "").length > 0, `${name} is missing its ${glyph} character for the control centre`);
     }
     const line = renderHud(["project", "5h"], view, theme, true);
     assert.ok(line.includes("webinvoke"), `${name} renders a status line`);

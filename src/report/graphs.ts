@@ -16,11 +16,21 @@ export function weighted(row: number[]): number {
 
 export function smallBar(ratio: number, width: number, theme: Theme, color: boolean, role: string): string {
   const cells = Math.max(4, width);
-  const open = paint(theme, "dim", "[", color);
-  const close = paint(theme, "dim", "]", color);
-  if (ratio > 1) return `${open}${paint(theme, "danger", "|".repeat(cells - 1) + "»", color)}${close}`;
+  const glyphs = theme.tui ?? {};
+  const fill = glyphs.fill ?? "|";
+  const empty = glyphs.empty ?? ".";
+  const open = glyphs.open ? paint(theme, "dim", glyphs.open, color) : "";
+  const close = glyphs.close ? paint(theme, "dim", glyphs.close, color) : "";
+  if (ratio > 1) return `${open}${paint(theme, "danger", fill.repeat(cells - 1) + (glyphs.over ?? "»"), color)}${close}`;
   const filled = Math.max(0, Math.min(cells, Math.round(Math.max(0, ratio) * cells)));
-  return `${open}${paint(theme, role, "|".repeat(filled), color)}${paint(theme, "track", ".".repeat(cells - filled), color)}${close}`;
+  return `${open}${paint(theme, role, fill.repeat(filled), color)}${paint(theme, "track", empty.repeat(cells - filled), color)}${close}`;
+}
+
+export function emptyBar(width: number, theme: Theme, color: boolean): string {
+  const glyphs = theme.tui ?? {};
+  const open = glyphs.open ?? "";
+  const close = glyphs.close ?? "";
+  return paint(theme, "dim", `${open}${(glyphs.empty ?? ".").repeat(Math.max(4, width))}${close}`, color);
 }
 
 function slotsFor(buckets: number[][], from: number, to: number, width: number): number[] {

@@ -131,6 +131,7 @@ export interface Theme {
   colors: Record<string, string>;
   glyphs: Record<string, string>;
   border: Record<string, string>;
+  tui: Record<string, string>;
 }
 
 export interface AllocationEntry {
