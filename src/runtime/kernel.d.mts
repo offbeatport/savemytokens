@@ -143,6 +143,10 @@ export interface HudView {
   pressure: number;
   priority: string;
   quota: Partial<Record<WindowKey, QuotaWindow>>;
+  history?: number[];
+  rate?: number | null;
+  from?: number;
+  to?: number;
   stale?: boolean;
   now?: number;
 }
@@ -270,6 +274,7 @@ export function paint(theme: Theme, role: string, text: string, enabled?: boolea
 export function meterBar(theme: Theme, ratio: number, width: number, role?: string, enabled?: boolean): string;
 export function pressureRole(pressure: number): string;
 export function formatReset(resetsAt: number | undefined, now?: number): string;
+export const HUD_LAYOUTS: string[];
 export function renderHud(layout: string, view: HudView, theme: Theme, enabled?: boolean): string;
 
 export type { Allocation, AllocationResult };

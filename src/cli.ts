@@ -4,6 +4,7 @@ import { parseArgs } from "./cli-options.js";
 import { runAudit } from "./commands/audit.js";
 import { runControl } from "./commands/control.js";
 import { runInstall, runUninstall } from "./commands/install.js";
+import { runHud } from "./commands/hud.js";
 import { runDefer, runPolicy } from "./commands/policy.js";
 import { runPrivacy } from "./commands/privacy.js";
 import { runSet } from "./commands/set.js";
@@ -35,6 +36,7 @@ ${bold("savemytokens")} — give every Claude Code session a target share of you
   npx savemytokens release <project>          hand its unused share back
   npx savemytokens policy      what Claude does as the window fills
   npx savemytokens defer       work pushed to the next session
+  npx savemytokens hud         status line layouts, previewed on your numbers
   npx savemytokens theme       themes for the TUI and the status line
   npx savemytokens audit       the token-waste report
 
@@ -71,6 +73,9 @@ async function main(): Promise<void> {
       return;
     case "theme":
       runTheme(options.args);
+      return;
+    case "hud":
+      runHud(options);
       return;
     case "share":
     case "priority":

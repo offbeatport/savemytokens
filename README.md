@@ -207,6 +207,114 @@ npx savemytokens status --json  the whole plan, machine-readable
 npx savemytokens --view burn    pick a layout (or press v in the TUI)
 ```
 
+## Sixteen ways to look at it
+
+The control centre is full-screen. `v` cycles layouts, digits pick the first ten, and the choice
+persists. `--view <name>` prints one without the TUI.
+
+**`plan`** is the table: session, target, used, share, priority, last prompt. Everything else is that
+table with something above it, or the same sessions drawn as bars.
+
+**A graph on top** — ten of them, over the published window:
+
+| view | what it draws |
+| --- | --- |
+| `spark` | one row: the window's shape so far |
+| `gauge` | a single bar with a marker where even pace would be |
+| `segments` | forty chunky segments, pace marked |
+| `pace` | used against elapsed — "21% in hand" or "burning faster than the clock" |
+| `line` | a braille line chart, four times the resolution of blocks |
+| `runway` | now → reset, with the point you run dry marked against it |
+| `big` | the number, five rows tall, readable across the room |
+| `columns` | tokens burned per slice, all sessions |
+| `stack` | the same, stacked by session — who burned when |
+| `heat` | one dense strip, darker where more burned |
+
+**A bar per session** — five styles:
+
+| view | what it shows |
+| --- | --- |
+| `bars` | `[\|\|\|\|\|.......]` — how much of its *own* target share is spent, `»` when over |
+| `blocks` | the same, in `▰▱` |
+| `target` | used across the whole window, with `┃` marking its target |
+| `twin` | target and used side by side |
+| `wide` | full-width bar under each session's name, priority, tokens and prompt |
+
+```
+    session             how much of its own target share is spent
+  • savemytokens 10:50 [|||||||||||||||||||||||||||||||||||||||||||||||||.....]  91% of  29%
+  • reposhine          [||||||||||||||||||||..................................]  37% of  27%
+  • webinvoke 12:06    [||||||||||||||||||....................................]  34% of  15%
+```
+
+## Ten status lines
+
+The line Claude Code shows you is switchable too. `npx savemytokens hud` prints all ten rendered on
+your own numbers, then the current one in every theme, so you pick by looking:
+
+```
+  → allocation  SMT · savemytokens target 29% · used 26% · NORMAL · 5h 52% 14:20
+    compact     SMT · savemytokens 26%/29% · 5h 52% 14:20
+    global      SMT · 5h 52% 14:20 · 7d 17% Tue · savemytokens 26%/29% NORMAL
+    bar         SMT · savemytokens |||||||||. 26%/29% · 5h ████░░░░ 52%
+    blocks      SMT · ▰▰▰▰▰▱▱▱▱▱ 52% · savemytokens 26%/29%
+    dots        SMT · ●●●●●○○○○○ 52% · savemytokens 26%/29% NORMAL
+    minimal     52% · 26%/29%
+    pace        SMT · 5h 52% of 73% elapsed -21 · savemytokens 26%/29%
+    runway      SMT · 5h 52% resets 14:20 · savemytokens 26%/29%
+    spark       SMT · ▅▄▅▅▄▅▅▅▄▅▅▅ 52% · savemytokens 26%/29%
+```
+
+```
+npx savemytokens hud blocks        set the layout
+npx savemytokens hud blocks nord   layout and theme together
+```
+
+## Install
+
+```
+npx savemytokens install            hooks + status line
+npx savemytokens install --dry-run  print the exact settings.json changes, write nothing
+npx savemytokens install --force    keep an existing status line and append the SMT segment
+npx savemytokens install --rules    also write the token-discipline block into ~/.claude/CLAUDE.md
+npx savemytokens uninstall          remove all of it   (--purge also deletes ~/.savemytokens)
+```
+
+It writes `~/.savemytokens/hooks/{kernel,hook,statusline}.mjs`, adds `SessionStart`,
+`UserPromptSubmit`, `Stop` and `SessionEnd` entries, sets the status line, and backs up your
+settings first. Those three scripts are copies rather than references, so they keep working after the
+npx cache is cleared — and they are the same modules the TUI imports, so there is one implementation
+of metering, allocation and theming, not two that drift.
+
+If you already have a status line (ccusage, a custom PS1) it is **left alone**. `--force` wraps it:
+your command runs first, and the SMT segment is appended to its output.
+
+By default nothing outside `~/.savemytokens` and Claude Code's own `settings.json` is touched.
+
+## Themes
+
+The HUD lives in your terminal all day, so themes are part of V0. They are data, not code, and the
+tool still has zero runtime dependencies.
+
+```
+npx savemytokens theme              what is set, and what is available
+npx savemytokens theme tui nord
+npx savemytokens theme hud compact
+```
+
+Built in: `default`, `minimal`, `nord`, `dracula`, `matrix`. `npx savemytokens theme new midnight nord`
+writes a copy you can edit; user themes live in `~/.savemytokens/themes/<name>.json` and override any
+subset of colours, glyphs and borders. HUD
+layouts: `compact`, `allocation`, `global`. The TUI and the status line are themed independently.
+
+Every non-interactive path stays plain text, so output remains pipeable and greppable:
+
+```
+npx savemytokens status         one snapshot, no cursor tricks
+npx savemytokens status --json  the whole plan, machine-readable
+npx savemytokens --view burn    pick a layout (or press v in the TUI)
+```
+
 ## Eleven ways to look at it
 
 The control centre is full-screen and switches layout with `v`, or a digit for the first ten:

@@ -1,9 +1,18 @@
 import fs from "node:fs";
 import path from "node:path";
-import { THEME_DIR, builtinThemes, loadConfig, loadTheme, saveConfig, userThemes, writeJson } from "../runtime/kernel.mjs";
+import {
+  HUD_LAYOUTS,
+  THEME_DIR,
+  builtinThemes,
+  loadConfig,
+  loadTheme,
+  saveConfig,
+  userThemes,
+  writeJson,
+} from "../runtime/kernel.mjs";
 import { bold, dim, green } from "../util/ansi.js";
 
-const LAYOUTS = ["compact", "allocation", "global"];
+const LAYOUTS = HUD_LAYOUTS;
 
 function scaffold(name: string, from: string): void {
   if (!name) {

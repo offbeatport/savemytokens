@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
 import {
+  windowBounds,
   loadConfig,
   loadMeter,
   loadQuota,
@@ -150,6 +151,18 @@ function run() {
     if (window && (typeof window.resetsAt !== "number" || window.resetsAt * 1000 > now)) quota[key] = window;
   }
 
+  const bounds = windowBounds(plan.quota, "five_hour", now);
+  const history = (plan.quota?.history ?? [])
+    .filter((point) => typeof point.five_hour === "number" && point.at >= bounds.from)
+    .map((point) => point.five_hour);
+  const rate = (() => {
+    const points = (plan.quota?.history ?? []).filter((point) => typeof point.five_hour === "number" && point.at >= now - 45 * 60 * 1000);
+    const first = points[0];
+    const last = points[points.length - 1];
+    if (!first || !last || last.at <= first.at) return null;
+    return ((last.five_hour - first.five_hour) / (last.at - first.at)) * 3600000;
+  })();
+
   const line = renderHud(
     config.layout.hud,
     {
@@ -160,6 +173,10 @@ function run() {
       pressure: view?.pressure.value ?? 0,
       priority: view?.claimant.priority ?? "normal",
       quota,
+      history,
+      rate,
+      from: bounds.from,
+      to: bounds.to,
       stale: !reading && Object.keys(quota).length > 0 && now - (plan.quota?.at ?? 0) > STALE_READING_MS,
       now,
     },

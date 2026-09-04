@@ -27,6 +27,7 @@ const COMMANDS = new Set([
   "release",
   "policy",
   "defer",
+  "hud",
   "audit",
   "install",
   "uninstall",
