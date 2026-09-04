@@ -248,6 +248,18 @@ function sandboxMismatch(): boolean {
   return homeOverridden !== settingsChosen;
 }
 
+function pointedAtTheRealHome(): boolean {
+  if (!process.env.SAVEMYTOKENS_HOME) return false;
+  return path.resolve(HOME) === path.resolve(os.homedir(), ".savemytokens");
+}
+
+function refusePointingHere(): void {
+  process.stdout.write(
+    `\n${bold("SaveMyTokens")}\n\nSAVEMYTOKENS_HOME is set to ${HOME}, which is the real one.\nRefusing to delete anything. Leave the variable unset to work on your own\nstate, or point it somewhere else.\n\n`,
+  );
+  process.exitCode = 1;
+}
+
 export function runUninstall(purge: boolean): void {
   const parsed = readSettings();
   if (parsed === null) {
@@ -259,6 +271,10 @@ export function runUninstall(purge: boolean): void {
       `\n${bold("SaveMyTokens")}\n\nHalf of this run is sandboxed and half is not: state is ${HOME}\nand settings are ${SETTINGS}. Refusing to touch either. Override\nSAVEMYTOKENS_HOME and SAVEMYTOKENS_SETTINGS together, or neither.\n\n`,
     );
     process.exitCode = 1;
+    return;
+  }
+  if (pointedAtTheRealHome()) {
+    refusePointingHere();
     return;
   }
   const settings = parsed;

@@ -121,22 +121,27 @@ test("uninstall --purge deletes the local state as well", () => {
   assert.equal(fs.existsSync(box.home), false);
 });
 
-test("--purge will not delete the default state directory unattended", () => {
+test("pointing SAVEMYTOKENS_HOME at the real state directory refuses everything", () => {
   const box = sandbox();
   const home = path.join(os.homedir(), ".savemytokens");
-  const canary = path.join(home, "config.json");
-  const before = fs.existsSync(canary) ? fs.readFileSync(canary, "utf8") : null;
-  let output = "";
-  try {
-    output = execFileSync("node", [CLI, "uninstall", "--purge"], {
-      env: { ...box.env, SAVEMYTOKENS_HOME: home },
-      encoding: "utf8",
-    });
-  } catch (error) {
-    output = String(error.stdout ?? "");
+  const hooks = path.join(home, "hooks");
+  const before = fs.existsSync(hooks) ? fs.readdirSync(hooks).sort() : null;
+
+  for (const args of [["uninstall"], ["uninstall", "--purge"]]) {
+    let output = "";
+    try {
+      output = execFileSync("node", [CLI, ...args], { env: { ...box.env, SAVEMYTOKENS_HOME: home }, encoding: "utf8" });
+    } catch (error) {
+      output = String(error.stdout ?? "");
+    }
+    assert.match(output, /Refusing to delete anything/, `${args.join(" ")} says no`);
   }
-  assert.match(output, /Refusing to (delete|touch)/, "it says no rather than deleting your state");
-  assert.equal(fs.existsSync(canary) ? fs.readFileSync(canary, "utf8") : null, before, "your real config is untouched");
+
+  assert.deepEqual(
+    fs.existsSync(hooks) ? fs.readdirSync(hooks).sort() : null,
+    before,
+    "the developer's own hooks are exactly as they were",
+  );
 });
 
 test("a half-sandboxed run touches nothing at all", () => {
