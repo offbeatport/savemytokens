@@ -62,21 +62,38 @@ function capacityRow(control: ControlPlan, context: ViewContext): string[] {
   return [`  ${parts.join("    ")}`];
 }
 
-function columnWidths(context: ViewContext): { label: number; prompt: number } {
-  const label = Math.min(26, Math.max(14, ...[...context.labels.values()].map((value) => value.length + 2), 14));
-  const prompt = Math.max(14, context.columns - label - 40);
+const COLUMN_WIDTH: Record<string, number> = {
+  allocation: 10,
+  used: 15,
+  share: 6,
+  tokens: 7,
+  priority: 8,
+};
+
+function columnWidths(context: ViewContext, columns: string[]): { label: number; prompt: number } {
+  let fixed = 3;
+  for (const name of columns) {
+    const width = COLUMN_WIDTH[name];
+    if (width) fixed += width + 1;
+  }
+  const wanted = Math.min(26, Math.max(14, ...[...context.labels.values()].map((value) => value.length + 2), 14));
+  const room = Math.max(8, context.columns - fixed);
+  const wantsPrompt = columns.includes("last prompt");
+  const label = Math.max(8, Math.min(wanted, wantsPrompt ? Math.max(8, room - 15) : room));
+  const spare = room - label - 1;
+  const prompt = wantsPrompt && spare >= 14 ? spare : 0;
   return { label, prompt };
 }
 
 function headerRow(context: ViewContext, widths: { label: number; prompt: number }, columns: string[]): string {
   const { theme, color } = context;
-  const cells = [`   ${padEndVisible("project", widths.label)}`];
+  const cells = [`   ${padEndVisible(clip("project", widths.label), widths.label)}`];
   if (columns.includes("allocation")) cells.push(padStartVisible("allocation", 10));
   if (columns.includes("used")) cells.push(padEndVisible("used of it", 15));
   if (columns.includes("share")) cells.push(padStartVisible("share", 6));
   if (columns.includes("tokens")) cells.push(padStartVisible("tokens", 7));
   if (columns.includes("priority")) cells.push(padEndVisible("priority", 8));
-  if (columns.includes("last prompt")) cells.push("last prompt");
+  if (columns.includes("last prompt") && widths.prompt > 0) cells.push(clip("last prompt", widths.prompt));
   return paint(theme, "dim", cells.join(" "), color);
 }
 
@@ -110,7 +127,9 @@ function row(
   if (columns.includes("share")) cells.push(share);
   if (columns.includes("tokens")) cells.push(tokens);
   if (columns.includes("priority")) cells.push(priority);
-  if (columns.includes("last prompt")) cells.push(paint(theme, "dim", clip(view.prompt || "—", widths.prompt), color));
+  if (columns.includes("last prompt") && widths.prompt > 0) {
+    cells.push(paint(theme, "dim", clip(view.prompt || "—", widths.prompt), color));
+  }
   return cells.join(" ");
 }
 
@@ -136,9 +155,10 @@ function idleRow(
   const pin = view.settings.pinned ? paint(theme, "accent", "★", color) : " ";
   const label = padEndVisible(clip(view.label, widths.label), widths.label);
   const when = padStartVisible(ago(view.lastSeen, now), 10);
-  const tag = view.settings.parked ? paint(theme, "dim", " parked", color) : "";
-  const prompt = clip(view.prompt || "—", widths.prompt + 12);
-  return `${cursor}${pin} ${paint(theme, "dim", `${label} ${when}  ${prompt}`, color)}${tag}`;
+  const tag = view.settings.parked ? " parked" : "";
+  const room = Math.max(10, context.columns - widths.label - 18 - tag.length);
+  const prompt = clip(view.prompt || "—", room);
+  return `${cursor}${pin} ${paint(theme, "dim", `${label} ${when}  ${prompt}${tag}`, color)}`;
 }
 
 function sectionTitle(name: string, count: number, context: ViewContext): string {
@@ -165,9 +185,9 @@ function footerNote(control: ControlPlan, context: ViewContext): string[] {
 
 export function planRows(control: ControlPlan, context: ViewContext): string[] {
   const set = workingSet(control.schedule, context.expanded);
-  const widths = columnWidths(context);
-  const now = control.schedule.now;
   const columns = control.config.columns ?? [];
+  const widths = columnWidths(context, columns);
+  const now = control.schedule.now;
   const out = [...capacityRow(control, context)];
   let index = 0;
   let printed = 0;

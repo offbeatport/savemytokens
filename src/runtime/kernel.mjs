@@ -642,6 +642,10 @@ export function allocate(entries) {
     }
   }
 
+  for (const allocation of targets.values()) {
+    if (allocation.target < EPSILON * 1000) allocation.target = 0;
+    if (allocation.pool < EPSILON * 1000) allocation.pool = 0;
+  }
   return { targets, unusedPool: Math.max(0, pool + idle) };
 }
 
@@ -785,12 +789,15 @@ export function viewFor(plan, id) {
   return plan.claimants.find((view) => view.claimant.id === id) ?? null;
 }
 
+const MIN_TARGET = 0.001;
+const MAX_PRESSURE = 9.99;
+
 export function pressureFor(consumedShare, target, quotaUsedPercent) {
-  if (!(target > 0)) return { value: consumedShare > 0 ? 1 : 0, basis: "share" };
+  if (!(target > MIN_TARGET)) return { value: consumedShare > 0 ? MAX_PRESSURE : 0, basis: "share" };
   if (typeof quotaUsedPercent === "number" && quotaUsedPercent >= 0) {
-    return { value: (quotaUsedPercent / 100) * (consumedShare / target), basis: "budget" };
+    return { value: Math.min(MAX_PRESSURE, (quotaUsedPercent / 100) * (consumedShare / target)), basis: "budget" };
   }
-  return { value: consumedShare / target, basis: "share" };
+  return { value: Math.min(MAX_PRESSURE, consumedShare / target), basis: "share" };
 }
 
 export const POLICIES = {

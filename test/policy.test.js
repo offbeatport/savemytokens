@@ -423,3 +423,101 @@ test("the settings screen models columns, segments and their order", async () =>
   assert.ok(painted.some((line) => line.includes("webinvoke")), "the status line is previewed on real data");
   assert.ok(painted.some((line) => line.includes("[nord]")), "the chosen palette is marked");
 });
+
+test("no row overflows the terminal, whatever columns are on", async () => {
+  const { planRows } = await import("../dist/report/views.js");
+  const { loadTheme } = await import("../dist/runtime/kernel.mjs");
+  const now = Date.now();
+
+  const project = (label, live, prompt) => ({
+    project: `/Users/you/${label}`,
+    label,
+    settings: { project: `/Users/you/${label}`, label, share: 0.4, priority: "high", cap: null, pinned: true, parked: false },
+    sessions: [],
+    allocation: { claimantId: label, target: 0.4, pinned: true, pool: 0, released: !live },
+    observed: 0.35,
+    usage: { tokens: 1234567, weighted: 999999, requests: 42 },
+    lastSeen: now - 60000,
+    bucket: live ? "active" : "recent",
+    attributedPercent: 18,
+    pressure: { value: 0.45, basis: "budget" },
+    prompt,
+    liveSessions: live ? 2 : 0,
+  });
+
+  const long = "Implement the provider fallback chain end to end and then rewrite the parser, checking every edge case along the way";
+  const control = {
+    provider: { id: "claude-code", label: "Claude Code" },
+    resources: [
+      {
+        id: "claude-code:five_hour",
+        adapter: "claude-code",
+        label: "5h",
+        unit: "observed_usage",
+        window: { kind: "rolling", ms: 18000000, resetsAt: Math.floor(now / 1000) + 3600 },
+        capacity: { amount: 100, confidence: "published" },
+        usedPercent: 42,
+      },
+    ],
+    enforcement: ["advise"],
+    unattributed: null,
+    deferred: [],
+    others: [],
+    schedule: {
+      adapter: "claude-code",
+      key: "five_hour",
+      now,
+      quota: null,
+      live: { usedPercent: 42, resetsAt: Math.floor(now / 1000) + 3600 },
+      bounds: { from: now - 18000000, to: now + 3600000, anchored: true },
+      windowId: 1,
+      unusedPool: 0.05,
+      totalWeighted: 1000,
+      lockouts: [],
+      projects: [
+        project("a-very-long-project-name-here", true, long),
+        project("webinvoke", true, long),
+        project("reposhine", false, long),
+      ],
+      claimants: [],
+    },
+  };
+
+  const columnSets = [
+    ["allocation", "used", "priority", "last prompt"],
+    ["allocation", "used", "share", "tokens", "priority", "last prompt"],
+    ["allocation", "last prompt"],
+    ["last prompt"],
+  ];
+
+  for (const columns of columnSets) {
+    for (const width of [70, 80, 100, 120, 160]) {
+      control.config = {
+        columns,
+        policy: "finish",
+        policyFor: {},
+        preserveFor: {},
+        customAdvice: {},
+        theme: { tui: "default", hud: "default" },
+        layout: { hud: "allocation" },
+        hud: { segments: [] },
+      };
+      const context = {
+        theme: loadTheme("default"),
+        color: false,
+        columns: width,
+        rows: 40,
+        selected: 0,
+        interactive: true,
+        expanded: true,
+        labels: new Map(control.schedule.projects.map((p) => [p.project, p.label])),
+      };
+      for (const line of planRows(control, context)) {
+        assert.ok(
+          line.length <= width,
+          `${columns.join("+")} at ${width} columns overflowed by ${line.length - width}: ${JSON.stringify(line.slice(0, 60))}`,
+        );
+      }
+    }
+  }
+});
