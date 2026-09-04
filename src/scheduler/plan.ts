@@ -105,12 +105,12 @@ function byInterest(a: ClaimantPlanView, b: ClaimantPlanView): number {
   );
 }
 
-export function workingSet(plan: SchedulePlanView): WorkingSet {
+export function workingSet(plan: SchedulePlanView, full = false): WorkingSet {
   const active = plan.claimants.filter((view) => view.bucket === "active").sort((a, b) => byInterest(a, b) || b.observed - a.observed);
   const recentAll = plan.claimants.filter((view) => view.bucket === "recent").sort(byInterest);
   const parkedAll = plan.claimants.filter((view) => view.bucket === "parked").sort(byInterest);
-  const recent = recentAll.slice(0, RECENT_LIMIT);
-  const parked = parkedAll.slice(0, PARKED_LIMIT);
+  const recent = full ? recentAll : recentAll.slice(0, RECENT_LIMIT);
+  const parked = full ? parkedAll : parkedAll.slice(0, PARKED_LIMIT);
   return {
     active,
     recent,
@@ -119,8 +119,17 @@ export function workingSet(plan: SchedulePlanView): WorkingSet {
   };
 }
 
-export function visibleRows(plan: SchedulePlanView): ClaimantPlanView[] {
-  const set = workingSet(plan);
+export function selectionIndex(ids: string[], selectedId: string | null, previousIndex: number): number {
+  if (ids.length === 0) return 0;
+  if (selectedId) {
+    const found = ids.indexOf(selectedId);
+    if (found !== -1) return found;
+  }
+  return Math.max(0, Math.min(previousIndex, ids.length - 1));
+}
+
+export function visibleRows(plan: SchedulePlanView, full = false): ClaimantPlanView[] {
+  const set = workingSet(plan, full);
   return [...set.active, ...set.recent, ...set.parked];
 }
 

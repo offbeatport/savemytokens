@@ -4,6 +4,7 @@ import { keyActions, splitKeys, type Action } from "../scheduler/keys.js";
 import {
   buildPlan,
   cyclePriority,
+  selectionIndex,
   equalize,
   saveCustomAdvice,
   savePreference,
@@ -248,13 +249,23 @@ export async function runControl(options: Options): Promise<void> {
   let cursor = 0;
   let custom = "";
   let selected = 0;
+  let selectedId: string | null = null;
   const chosen = new Set(DEFAULT_PRESERVE);
 
   stdin.resume();
   stdin.setEncoding("utf8");
   process.stdout.write(ALT_ON + HIDE);
 
-  const rows = () => visibleRows(control.schedule);
+  const rows = () => visibleRows(control.schedule, expanded);
+  const settle = (): void => {
+    const list = rows();
+    selected = selectionIndex(
+      list.map((view) => view.claimant.id),
+      selectedId,
+      selected,
+    );
+    selectedId = list[selected]?.claimant.id ?? null;
+  };
   const context = () => contextFor(control, selected, true, expanded);
 
   const draw = (): void => {
@@ -291,7 +302,7 @@ export async function runControl(options: Options): Promise<void> {
 
   const refresh = (): void => {
     control = buildPlan(Date.now(), true, options.window, options.adapter);
-    selected = Math.max(0, Math.min(selected, rows().length - 1));
+    settle();
     draw();
   };
 
@@ -310,6 +321,7 @@ export async function runControl(options: Options): Promise<void> {
     saveCustomAdvice("default", custom);
   };
 
+  settle();
   const timer = setInterval(refresh, REFRESH_MS);
   process.stdout.on("resize", draw);
   draw();
@@ -385,6 +397,7 @@ export async function runControl(options: Options): Promise<void> {
           break;
         case "expand":
           expanded = !expanded;
+          settle();
           break;
         case "resume":
           mode = mode === "detail" ? "plan" : "detail";
@@ -408,9 +421,11 @@ export async function runControl(options: Options): Promise<void> {
         }
         case "up":
           selected = Math.max(0, selected - 1);
+          selectedId = rows()[selected]?.claimant.id ?? null;
           break;
         case "down":
           selected = Math.min(Math.max(0, rows().length - 1), selected + 1);
+          selectedId = rows()[selected]?.claimant.id ?? null;
           break;
         case "share":
           if (view) {

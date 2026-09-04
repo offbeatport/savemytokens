@@ -314,3 +314,46 @@ test("the first-run dialog fits any terminal it is drawn in", async () => {
     assert.ok(framed.some((line) => line.includes("[ Yes ]")), "the default choice is visible");
   }
 });
+
+test("the cursor follows the session, not the row it happened to be on", async () => {
+  const { selectionIndex } = await import("../dist/scheduler/plan.js");
+
+  assert.equal(selectionIndex(["a", "b", "c"], "b", 1), 1, "unchanged list keeps its place");
+  assert.equal(selectionIndex(["c", "b", "a"], "b", 0), 1, "a re-sort moves the cursor with the session");
+  assert.equal(selectionIndex(["b", "c"], "b", 2), 0, "rows above disappearing does not lose it");
+  assert.equal(selectionIndex(["x", "y"], "gone", 1), 1, "a vanished session falls back to the same row");
+  assert.equal(selectionIndex(["x"], "gone", 5), 0, "and is clamped to the list");
+  assert.equal(selectionIndex([], "gone", 3), 0, "an empty list selects nothing");
+});
+
+test("m lifts the caps, not just the screen budget", async () => {
+  const { workingSet } = await import("../dist/scheduler/plan.js");
+  const now = Date.now();
+  const make = (id, bucket, minsAgo) => ({
+    claimant: { id, label: id, project: `/tmp/${id}`, pinned: false, parked: false, lastSeen: now - minsAgo * 60000, startedAt: now - 7200000, priority: "normal", prompt: "" },
+    allocation: { claimantId: id, target: 0, pinned: false, pool: 0, released: true },
+    usage: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0, requests: 0, tokens: 0, weighted: 0 },
+    observed: 0,
+    state: "done",
+    bucket,
+    stale: true,
+    pressure: { value: 0, basis: "share" },
+    attributedPercent: 0,
+  });
+
+  const claimants = [
+    ...Array.from({ length: 9 }, (_, i) => make(`recent${i}`, "recent", i + 1)),
+    ...Array.from({ length: 7 }, (_, i) => make(`parked${i}`, "parked", 60 * 24 * (i + 2))),
+  ];
+  const plan = { claimants };
+
+  const collapsed = workingSet(plan, false);
+  assert.equal(collapsed.recent.length, 6);
+  assert.equal(collapsed.parked.length, 4);
+  assert.equal(collapsed.hidden, 6, "nine recent and seven parked leaves six behind");
+
+  const full = workingSet(plan, true);
+  assert.equal(full.recent.length, 9);
+  assert.equal(full.parked.length, 7);
+  assert.equal(full.hidden, 0, "expanding shows every one of them");
+});

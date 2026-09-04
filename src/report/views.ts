@@ -130,7 +130,7 @@ function sectionTitle(name: string, count: number, note: string, context: ViewCo
 
 function footerNote(control: ControlPlan, context: ViewContext): string[] {
   const { theme, color } = context;
-  const set = workingSet(control.schedule);
+  const set = workingSet(control.schedule, context.expanded);
   const spare = Math.round(control.schedule.unusedPool * 100);
   const out = [
     `  ${paint(theme, "dim", `${set.active.length} ${set.active.length === 1 ? "session is" : "sessions are"} sharing this window${spare > 0 ? `, ${spare}% of it unclaimed` : ""}.`, color)}`,
@@ -145,7 +145,7 @@ function footerNote(control: ControlPlan, context: ViewContext): string[] {
 }
 
 export function planRows(control: ControlPlan, context: ViewContext): string[] {
-  const set = workingSet(control.schedule);
+  const set = workingSet(control.schedule, context.expanded);
   const widths = columnWidths(context);
   const now = control.schedule.now;
   const out = [...capacityRow(control, context), "", headerRow(context, widths)];
@@ -177,6 +177,9 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
   if (total > shown) {
     out.push("");
     out.push(`  ${paint(context.theme, "dim", `+${total - shown} more · m shows everything`, context.color)}`);
+  } else if (context.expanded && total > 8) {
+    out.push("");
+    out.push(`  ${paint(context.theme, "dim", "showing everything · m trims it back", context.color)}`);
   }
 
   out.push("");
@@ -186,7 +189,7 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
 
 export function detailRows(control: ControlPlan, context: ViewContext): string[] {
   const { theme, color } = context;
-  const rows = visibleRows(control.schedule);
+  const rows = visibleRows(control.schedule, context.expanded);
   const view = rows[Math.max(0, Math.min(context.selected, rows.length - 1))];
   if (!view) return [`  ${paint(theme, "dim", "nothing to show", color)}`];
 
