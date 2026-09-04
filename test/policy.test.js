@@ -319,7 +319,7 @@ test("the first-run dialog fits any terminal it is drawn in", async () => {
     if (details) {
       assert.match(text, /settings\.json/, "d shows the file it edits");
       assert.match(text, /SessionStart/, "and every hook it adds");
-      assert.match(text, /settings\.backup\.json/, "and that it copies the file first");
+      assert.match(text, /copied first/, "and that it copies the file first");
     } else {
       assert.doesNotMatch(text, /SessionStart/, "and hides the detail until asked");
     }
