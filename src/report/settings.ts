@@ -68,7 +68,7 @@ export function settingsRows(config: Config): SettingRow[] {
   for (const id of COLUMNS) rows.push({ kind: "column", id });
 
   rows.push({ kind: "blank" });
-  rows.push({ kind: "header", label: "PALETTE", hint: "← → changes it" });
+  rows.push({ kind: "header", label: "THEME", hint: "← → changes it" });
   rows.push({ kind: "theme", surface: "tui" });
   rows.push({ kind: "theme", surface: "hud" });
 

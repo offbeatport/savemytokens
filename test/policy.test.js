@@ -394,7 +394,7 @@ test("the settings screen models columns, segments and their order", async () =>
 
   const rows = settingsRows(config);
   const headers = rows.filter((row) => row.kind === "header").map((row) => row.label);
-  assert.deepEqual(headers, ["COLUMNS", "PALETTE", "STATUS LINE", "WHEN IT GETS TIGHT"]);
+  assert.deepEqual(headers, ["COLUMNS", "THEME", "STATUS LINE", "WHEN IT GETS TIGHT"]);
 
   const selectable = selectableRows(rows);
   for (const index of selectable) {
@@ -421,7 +421,7 @@ test("the settings screen models columns, segments and their order", async () =>
   const painted = renderSettings(config, rows, selectable[0], false, "", preview, loadTheme("default"), false);
   assert.ok(painted.some((line) => line.includes("❯")), "the cursor is drawn");
   assert.ok(painted.some((line) => line.includes("webinvoke")), "the status line is previewed on real data");
-  assert.ok(painted.some((line) => line.includes("[nord]")), "the chosen palette is marked");
+  assert.ok(painted.some((line) => line.includes("[nord]")), "the chosen theme is marked");
 });
 
 test("bars grow with the terminal, and no row overflows it", async () => {
@@ -616,7 +616,7 @@ test("the tight section shows the real text, when it fires, and where you are", 
   assert.match(columns.join("\n"), /5h.*— the 5-hour window Anthropic publishes/, "so do status line segments");
 });
 
-test("every palette dresses the control centre as well as the status line", async () => {
+test("every theme dresses the control centre as well as the status line", async () => {
   const { builtinThemes, loadTheme } = await import("../dist/runtime/kernel.mjs");
   const { smallBar } = await import("../dist/report/graphs.js");
   const seen = new Set();
@@ -629,14 +629,14 @@ test("every palette dresses the control centre as well as the status line", asyn
     const over = smallBar(1.4, 8, theme, false, "ok");
     assert.ok(over.includes(theme.tui.over), `${name} marks an overrun with its own character`);
   }
-  assert.ok(seen.size >= 6, `expected the palettes to look different, found ${seen.size} distinct glyph sets`);
+  assert.ok(seen.size >= 6, `expected the themes to look different, found ${seen.size} distinct glyph sets`);
 });
 
-test("palettes exist for both surfaces, and dracula is now violet", async () => {
+test("themes exist for both surfaces, and dracula is now violet", async () => {
   const { builtinThemes, loadTheme, renderHud } = await import("../dist/runtime/kernel.mjs");
   const names = builtinThemes();
 
-  assert.ok(names.length >= 10, `expected at least ten palettes, found ${names.length}`);
+  assert.ok(names.length >= 10, `expected at least ten themes, found ${names.length}`);
   assert.ok(!names.includes("dracula"), "the old name is gone");
   assert.ok(names.includes("violet"), "and replaced");
   assert.equal(loadTheme("dracula").name, "violet", "anyone who set dracula keeps their colours");
@@ -669,7 +669,7 @@ test("palettes exist for both surfaces, and dracula is now violet", async () => 
   }
 });
 
-test("every palette is readable, measured not asserted", async () => {
+test("every theme is readable, measured not asserted", async () => {
   const { builtinThemes, loadTheme } = await import("../dist/runtime/kernel.mjs");
 
   const channel = (value) => {

@@ -326,7 +326,7 @@ export function helpOverlay(control: ControlPlan, context: ViewContext): string[
     "    d b a n   mark done · blocked · active · needs-more",
     "    f x       pin a row · park it",
     "    m         show every session, not just the first screenful",
-    "    P         settings: columns, palette, status line, what to preserve",
+    "    P         settings: columns, theme, status line, what to preserve",
     "    r ? q     refresh · this help · quit",
     "",
     `  ${paint(theme, "accent", "the working set", color)}`,
