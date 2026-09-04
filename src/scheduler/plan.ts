@@ -77,7 +77,7 @@ export function buildPlan(now = Date.now(), withSweep = true, window: WindowKey 
     const span = WINDOW_MS[window] ?? FIVE_HOUR_MS;
     provider.sweep(Math.min(bounds.from, now - span), now);
   }
-  const plan = schedule(provider.id, now, window);
+  const plan = schedule(provider.id, now, window, null, provider.dataDir ?? null);
   const others = detectedProviders()
     .filter((other) => other.id !== provider.id)
     .map((other) => ({ id: other.id, label: other.label, resources: other.resources(now) }));
@@ -105,8 +105,8 @@ export interface WorkingSet {
 
 export function inPlan(view: ProjectView): boolean {
   if (view.bucket === "active") return true;
-  if (view.settings.inPlan === false) return false;
-  if (view.settings.inPlan === true) return true;
+  if (view.settings.kept === true) return true;
+  if (view.settings.kept === false) return false;
   return view.settings.pinned || (view.settings.share ?? 0) > 0;
 }
 
@@ -133,11 +133,11 @@ export function visibleRows(plan: SchedulePlanView, full = false): ProjectView[]
 }
 
 export function joinPlan(project: string, adapter = "claude-code"): void {
-  upsertProject(adapter, project, { inPlan: true, joinedAt: Date.now() });
+  upsertProject(adapter, project, { kept: true });
 }
 
 export function leavePlan(project: string, adapter = "claude-code"): void {
-  upsertProject(adapter, project, { inPlan: false, pinned: false, share: null });
+  upsertProject(adapter, project, { kept: false, pinned: false, share: null });
 }
 
 export function activeViews(plan: SchedulePlanView): ProjectView[] {

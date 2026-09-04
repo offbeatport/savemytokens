@@ -333,7 +333,7 @@ test("the plan is one list: what is in it, and what you can add", async () => {
   const make = (id, bucket, minsAgo, settings = {}) => ({
     project: `/tmp/${id}`,
     label: id,
-    settings: { project: `/tmp/${id}`, label: id, share: null, priority: "normal", cap: null, pinned: false, parked: false, inPlan: null, joinedAt: 0, ...settings },
+    settings: { project: `/tmp/${id}`, label: id, share: null, priority: "normal", cap: null, pinned: false, parked: false, kept: null, ...settings },
     sessions: [],
     allocation: { claimantId: id, target: 0, pinned: false, pool: 0, released: true },
     observed: 0,
@@ -347,10 +347,10 @@ test("the plan is one list: what is in it, and what you can add", async () => {
   });
 
   const live = make("live", "active", 0);
-  const joined = make("joined", "recent", 30, { inPlan: true });
+  const joined = make("joined", "recent", 30, { kept: true });
   const held = make("held", "recent", 90, { share: 0.2 });
   const pinned = make("pinned", "recent", 120, { pinned: true });
-  const removed = make("removed", "recent", 5, { inPlan: false, share: 0.5 });
+  const removed = make("removed", "recent", 5, { kept: false, share: 0.5 });
   const seen = Array.from({ length: 20 }, (_, i) => make(`seen${i}`, "recent", 60 * 24 * (i + 1)));
 
   assert.equal(inPlan(live), true, "an open session is always in the plan");

@@ -116,5 +116,6 @@ export const claudeCodeProvider: Provider = {
   resources: (now?: number) => resourcesFor(now),
   sweep,
   meter: claudeCodeMeter,
+  dataDir: claudeCodeAdapter.dataDir,
   enforcer: claudeCodeEnforcer,
 };

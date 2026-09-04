@@ -85,6 +85,7 @@ export interface Provider {
   sweep(since: number, now?: number): void;
   meter: Meter;
   enforcer: Enforcer;
+  dataDir?: string;
 }
 
 export interface Allocation {

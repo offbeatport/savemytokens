@@ -175,6 +175,88 @@ export function upsertClaimant(adapter, id, patch = {}) {
   return next;
 }
 
+const SEEN_MS = 30 * 24 * 60 * 60 * 1000;
+
+function lastPromptIn(file) {
+  try {
+    const size = fs.statSync(file).size;
+    const start = Math.max(0, size - 96 * 1024);
+    const handle = fs.openSync(file, "r");
+    const buffer = Buffer.alloc(size - start);
+    fs.readSync(handle, buffer, 0, buffer.length, start);
+    fs.closeSync(handle);
+    const lines = buffer.toString("utf8").split("\n");
+    for (let at = lines.length - 1; at >= 0; at--) {
+      const line = lines[at];
+      if (!line || line[0] !== "{") continue;
+      let row;
+      try {
+        row = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      if (row.type !== "user" || row.isMeta) continue;
+      const content = row.message?.content;
+      const text = typeof content === "string" ? content : content?.find?.((part) => part.type === "text")?.text;
+      if (typeof text === "string" && text.trim() && !text.startsWith("<")) return text.trim().replace(/\s+/g, " ").slice(0, 200);
+    }
+  } catch {}
+  return "";
+}
+
+function cwdOf(file) {
+  try {
+    const handle = fs.openSync(file, "r");
+    const buffer = Buffer.alloc(8192);
+    const read = fs.readSync(handle, buffer, 0, buffer.length, 0);
+    fs.closeSync(handle);
+    for (const line of buffer.toString("utf8", 0, read).split("\n")) {
+      if (!line || line[0] !== "{") continue;
+      try {
+        const row = JSON.parse(line);
+        if (typeof row.cwd === "string" && row.cwd) return row.cwd;
+      } catch {}
+    }
+  } catch {}
+  return "";
+}
+
+export function seenProjects(root, now = Date.now(), limit = 60) {
+  const out = [];
+  let dirs;
+  try {
+    dirs = fs.readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory());
+  } catch {
+    return out;
+  }
+  for (const dir of dirs) {
+    const full = path.join(root, dir.name);
+    let newest = null;
+    try {
+      for (const name of fs.readdirSync(full)) {
+        if (!name.endsWith(".jsonl")) continue;
+        const file = path.join(full, name);
+        const at = fs.statSync(file).mtimeMs;
+        if (!newest || at > newest.at) newest = { file, at };
+      }
+    } catch {
+      continue;
+    }
+    if (!newest || now - newest.at > SEEN_MS) continue;
+    out.push({ dir: full, file: newest.file, at: newest.at });
+  }
+  out.sort((a, b) => b.at - a.at);
+  return out.slice(0, limit).map((entry) => {
+    const cwd = cwdOf(entry.file);
+    return {
+      project: cwd || entry.dir,
+      label: cwd ? "" : (path.basename(entry.dir).split("-").filter(Boolean).pop() ?? ""),
+      lastSeen: entry.at,
+      prompt: lastPromptIn(entry.file),
+    };
+  });
+}
+
 export function loadClaimants(adapter) {
   const dir = path.join(CLAIMANT_DIR, adapter);
   const cutoff = Date.now() - CLAIMANT_RETENTION_MS;
@@ -226,7 +308,7 @@ export function projectKey(project) {
 }
 
 function blankProject(project) {
-  return { schema: 1, project, label: project ? project.split("/").filter(Boolean).pop() : "unknown", share: null, priority: "normal", cap: null, pinned: false, parked: false, inPlan: null, joinedAt: 0 };
+  return { schema: 1, project, label: project ? project.split("/").filter(Boolean).pop() : "unknown", share: null, priority: "normal", cap: null, pinned: false, parked: false, kept: null };
 }
 
 export function loadProject(adapter, project) {
@@ -674,7 +756,7 @@ export function allocate(entries) {
   return { targets, unusedPool: Math.max(0, pool + idle) };
 }
 
-export function schedule(adapter, now = Date.now(), key = "five_hour", quotaOverride = null) {
+export function schedule(adapter, now = Date.now(), key = "five_hour", quotaOverride = null, transcriptRoot = null) {
   const quota = quotaOverride ?? loadQuota(adapter);
   const bounds = windowBounds(quota, key, now);
   const claimants = loadClaimants(adapter);
@@ -710,13 +792,6 @@ export function schedule(adapter, now = Date.now(), key = "five_hour", quotaOver
     group.tokens += window.tokens;
     group.requests += window.requests;
     group.lastSeen = Math.max(group.lastSeen, claimant.lastSeen ?? 0);
-  }
-
-  for (const group of groups.values()) {
-    const running = group.sessions.some((session) => session.bucket === "active");
-    if (running && group.settings.inPlan !== true) {
-      group.settings = upsertProject(adapter, group.project, { inPlan: true, joinedAt: group.settings.joinedAt || now });
-    }
   }
 
   const entries = [...groups.values()].map((group) => {
@@ -799,6 +874,27 @@ export function schedule(adapter, now = Date.now(), key = "five_hour", quotaOver
       liveSessions: sessions.filter((session) => session.bucket === "active").length,
     };
   });
+
+  const known = new Set(projects.map((view) => view.project));
+  for (const seen of transcriptRoot ? seenProjects(transcriptRoot, now) : []) {
+    if (!seen.project || known.has(seen.project)) continue;
+    const settings = loadProject(adapter, seen.project);
+    projects.push({
+      project: seen.project,
+      label: settings.label || seen.label || seen.project.split("/").filter(Boolean).pop() || seen.project,
+      settings,
+      sessions: [],
+      allocation: { claimantId: seen.project, target: 0, pinned: false, pool: 0, released: true },
+      observed: 0,
+      usage: { tokens: 0, weighted: 0, requests: 0 },
+      lastSeen: seen.lastSeen,
+      bucket: "recent",
+      attributedPercent: null,
+      pressure: { value: 0, basis: "share" },
+      prompt: seen.prompt,
+      liveSessions: 0,
+    });
+  }
 
   const span = WINDOW_MS[key] ?? FIVE_HOUR_MS;
   return {

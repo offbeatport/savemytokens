@@ -61,8 +61,7 @@ export interface ClaimantRecord extends Claimant {
   heartbeat: number;
   pinned: boolean;
   parked: boolean;
-  inPlan: boolean | null;
-  joinedAt: number;
+  kept: boolean | null;
 }
 
 export interface MeterRecord {
@@ -263,8 +262,7 @@ export interface ProjectSettings {
   cap: number | null;
   pinned: boolean;
   parked: boolean;
-  inPlan: boolean | null;
-  joinedAt: number;
+  kept: boolean | null;
 }
 
 export interface ProjectView {
@@ -303,7 +301,9 @@ export function schedule(
   now?: number,
   key?: WindowKey,
   quotaOverride?: QuotaReading | null,
+  transcriptRoot?: string | null,
 ): SchedulePlanView;
+export function seenProjects(root: string, now?: number, limit?: number): Array<{ project: string; lastSeen: number; prompt: string }>;
 export function viewFor(plan: SchedulePlanView, id: string): ClaimantPlanView | null;
 export function allocate(entries: AllocationEntry[]): AllocationResult;
 export function pressureFor(consumedShare: number, target: number, quotaUsedPercent?: number | null): Pressure;
