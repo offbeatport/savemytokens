@@ -1,5 +1,5 @@
 import type { Options } from "../cli-options.js";
-import { renderSchedule } from "../report/schedule.js";
+import { VIEWS, helpOverlay, labelsFor, viewByName, type ViewContext } from "../report/views.js";
 import { keyActions, splitKeys, type Action } from "../scheduler/keys.js";
 import {
   activeViews,
@@ -11,10 +11,12 @@ import {
   setPriority,
   setShare,
   setState,
+  setView,
   type ControlPlan,
 } from "../scheduler/plan.js";
-import { loadConfig, loadTheme, paint } from "../runtime/kernel.mjs";
-import { colorEnabled } from "../util/ansi.js";
+import { loadTheme, paint, type Theme } from "../runtime/kernel.mjs";
+import { colorEnabled, padEndVisible, visibleWidth } from "../util/ansi.js";
+import { ago } from "../util/fmt.js";
 
 const REFRESH_MS = 2500;
 const STEP = 0.05;
@@ -29,14 +31,54 @@ const HIDE = "\u001b[?25l";
 const SHOW = "\u001b[?25h";
 const CLEAR = "\u001b[2J\u001b[H";
 
-function snapshot(control: ControlPlan, interactive: boolean, selected: number): string {
-  return renderSchedule(control, {
+function size(): { columns: number; rows: number } {
+  return { columns: Math.max(60, process.stdout.columns ?? 100), rows: Math.max(14, process.stdout.rows ?? 30) };
+}
+
+function contextFor(control: ControlPlan, selected: number, interactive: boolean): ViewContext {
+  const { columns, rows } = size();
+  return {
     theme: loadTheme(control.config.theme.tui),
     color: colorEnabled,
-    interactive,
+    columns,
+    rows,
     selected,
-    columns: process.stdout.columns ?? 100,
-  });
+    interactive,
+    labels: labelsFor(activeViews(control.schedule)),
+  };
+}
+
+function header(control: ControlPlan, viewName: string, theme: Theme, color: boolean, columns: number): string {
+  const windowLabel = control.schedule.key === "seven_day" ? "7d" : "5h";
+  const left = ` ${paint(theme, "accent", "SaveMyTokens", color)} ${paint(theme, "dim", `· ${control.provider.label} · ${windowLabel}`, color)}`;
+  const read = control.schedule.quota ? `read ${ago(control.schedule.quota.at, control.schedule.now)}` : "no reading";
+  const right = `${paint(theme, "dim", read, color)}  ${paint(theme, "accent", viewName, color)} `;
+  const gap = Math.max(1, columns - visibleWidth(left) - visibleWidth(right));
+  return left + " ".repeat(gap) + right;
+}
+
+function fullScreen(control: ControlPlan, body: string[], footer: string[], viewName: string, context: ViewContext): string {
+  const { theme, color, columns, rows } = context;
+  const rule = paint(theme, "dim", (theme.border.h ?? "─").repeat(columns), color);
+  const top = [header(control, viewName, theme, color, columns), rule];
+  const bottom = [rule, ...footer];
+  const room = Math.max(1, rows - top.length - bottom.length - 1);
+  const shown = body.slice(0, room);
+  const padding: string[] = new Array(Math.max(0, room - shown.length)).fill("");
+  return [...top, ...shown, ...padding, ...bottom].join("\n");
+}
+
+function footerFor(control: ControlPlan, context: ViewContext, showHelp: boolean): string[] {
+  const { theme, color } = context;
+  if (showHelp) return [paint(theme, "dim", "  ? close help    q quit", color)];
+  return [
+    paint(
+      theme,
+      "dim",
+      "  ↑↓ select   ←→ target   p priority   e equalize   d done   v view   P preserve   ? help   q quit",
+      color,
+    ),
+  ];
 }
 
 function toJson(control: ControlPlan): string {
@@ -64,6 +106,7 @@ function toJson(control: ControlPlan): string {
         weighted: view.usage.weighted,
         prompt: view.claimant.prompt,
         stale: view.stale,
+        heartbeat: view.claimant.heartbeat ?? 0,
       })),
     },
     null,
@@ -71,11 +114,15 @@ function toJson(control: ControlPlan): string {
   );
 }
 
-function preferencesScreen(selected: Set<number>, cursor: number, custom: string, editing: boolean): string {
-  const theme = loadTheme(loadConfig().theme.tui);
-  const color = colorEnabled;
-  const out = ["", `  ${paint(theme, "accent", "SaveMyTokens", color)}`, ""];
-  out.push("  When your Claude window gets tight, what should be preserved?");
+function preferencesScreen(
+  selected: Set<number>,
+  cursor: number,
+  custom: string,
+  editing: boolean,
+  theme: Theme,
+  color: boolean,
+): string[] {
+  const out = ["", "  When your Claude window gets tight, what should be preserved?"];
   out.push(`  ${paint(theme, "dim", "Optional. Without it the advice preserves testing and finalisation.", color)}`);
   out.push("");
   for (const [index, kind] of PRESERVE_KINDS.entries()) {
@@ -85,32 +132,26 @@ function preferencesScreen(selected: Set<number>, cursor: number, custom: string
     out.push(`   ${arrow} ${index + 1} [${mark}] ${kind}`);
   }
   out.push("");
-  const onCustom = cursor === CUSTOM_ROW;
-  const arrow = onCustom && !editing ? paint(theme, "accent", "❯", color) : " ";
+  const arrow = cursor === CUSTOM_ROW && !editing ? paint(theme, "accent", "❯", color) : " ";
   const body = editing
     ? `${custom}${paint(theme, "accent", "▏", color)}`
-    : custom
-      ? custom
-      : paint(theme, "dim", "nothing — press enter to write one", color);
+    : custom || paint(theme, "dim", "nothing — press enter to write one", color);
   out.push(`   ${arrow} ${paint(theme, "dim", "your own line, injected with the advice:", color)}`);
   out.push(`      ${body}`);
-  out.push("");
-  out.push(
-    `  ${paint(theme, "dim", editing ? "type it   enter keep   esc cancel" : "↑↓ move   space toggle   1-5 jump   enter edit   s save   esc back", color)}`,
-  );
-  out.push("");
-  return out.join("\n");
+  return out;
 }
 
 export async function runControl(options: Options): Promise<void> {
-  const control = buildPlan(Date.now(), true, options.window, options.adapter);
+  let control = buildPlan(Date.now(), true, options.window, options.adapter);
+  const startView = options.view || control.config.view || "plan";
 
   if (options.json) {
     process.stdout.write(`${toJson(control)}\n`);
     return;
   }
   if (!process.stdout.isTTY || !process.stdin.isTTY || options.command === "status") {
-    process.stdout.write(`${snapshot(control, false, -1)}\n`);
+    const context = contextFor(control, -1, false);
+    process.stdout.write(`\n${viewByName(startView).render(control, context).join("\n")}\n\n`);
     return;
   }
 
@@ -118,38 +159,60 @@ export async function runControl(options: Options): Promise<void> {
   try {
     stdin.setRawMode(true);
   } catch {
-    process.stdout.write(`${snapshot(control, false, -1)}\n`);
+    const context = contextFor(control, -1, false);
+    process.stdout.write(`\n${viewByName(startView).render(control, context).join("\n")}\n\n`);
     return;
   }
 
-  let mode: "prefs" | "plan" = "plan";
+  let mode: "plan" | "prefs" = "plan";
+  let viewIndex = Math.max(0, VIEWS.findIndex((view) => view.name === startView));
+  let showHelp = false;
   let editing = false;
   let cursor = 0;
   let custom = "";
-  const chosen = new Set(DEFAULT_PRESERVE);
-  let current = control;
   let selected = 0;
+  const chosen = new Set(DEFAULT_PRESERVE);
 
   stdin.resume();
   stdin.setEncoding("utf8");
   process.stdout.write(ALT_ON + HIDE);
 
-  const rows = () => activeViews(current.schedule);
+  const rows = () => activeViews(control.schedule);
 
   const draw = (): void => {
-    const frame =
-      mode === "prefs" ? preferencesScreen(chosen, cursor, custom, editing) : snapshot(current, true, selected);
-    process.stdout.write(CLEAR + frame);
+    const context = contextFor(control, selected, true);
+    const view = VIEWS[viewIndex] ?? VIEWS[0];
+    if (!view) return;
+    const body = showHelp
+      ? helpOverlay(control, context)
+      : mode === "prefs"
+        ? preferencesScreen(chosen, cursor, custom, editing, context.theme, context.color)
+        : view.render(control, context);
+    const footer =
+      mode === "prefs" && !showHelp
+        ? [
+            paint(
+              context.theme,
+              "dim",
+              editing
+                ? "  type it   enter keep   esc cancel"
+                : "  ↑↓ move   space toggle   1-5 jump   enter edit   s save   esc back",
+              context.color,
+            ),
+          ]
+        : footerFor(control, context, showHelp);
+    process.stdout.write(CLEAR + fullScreen(control, body, footer, mode === "prefs" ? "preserve" : view.title, context));
   };
 
   const refresh = (): void => {
-    current = buildPlan(Date.now(), true, options.window, options.adapter);
+    control = buildPlan(Date.now(), true, options.window, options.adapter);
     selected = Math.max(0, Math.min(selected, rows().length - 1));
-    if (mode === "plan") draw();
+    draw();
   };
 
   const stop = (): void => {
     clearInterval(timer);
+    process.stdout.off("resize", draw);
     stdin.setRawMode(false);
     stdin.pause();
     process.stdout.write(SHOW + ALT_OFF);
@@ -163,6 +226,7 @@ export async function runControl(options: Options): Promise<void> {
   };
 
   const timer = setInterval(refresh, REFRESH_MS);
+  process.stdout.on("resize", draw);
   draw();
 
   await new Promise<void>((resolve) => {
@@ -207,15 +271,29 @@ export async function runControl(options: Options): Promise<void> {
 
       const view = rows()[selected];
       switch (action.kind) {
+        case "help":
+          showHelp = !showHelp;
+          break;
+        case "view":
+          viewIndex = (viewIndex + action.delta + VIEWS.length) % VIEWS.length;
+          setView(VIEWS[viewIndex]?.name ?? "plan");
+          break;
+        case "viewAt":
+          if (action.index < VIEWS.length) {
+            viewIndex = action.index;
+            setView(VIEWS[viewIndex]?.name ?? "plan");
+          }
+          break;
         case "preferences": {
-          const stored = current.config.preserveFor[process.cwd()] ?? current.config.preserveFor.default;
+          const stored = control.config.preserveFor[process.cwd()] ?? control.config.preserveFor.default;
           chosen.clear();
           for (const [index, kind] of PRESERVE_KINDS.entries()) {
             if (stored ? stored.includes(kind) : DEFAULT_PRESERVE.includes(index)) chosen.add(index);
           }
-          custom = current.config.customAdvice[process.cwd()] ?? current.config.customAdvice.default ?? "";
+          custom = control.config.customAdvice[process.cwd()] ?? control.config.customAdvice.default ?? "";
           cursor = 0;
           editing = false;
+          showHelp = false;
           mode = "prefs";
           break;
         }
@@ -227,29 +305,29 @@ export async function runControl(options: Options): Promise<void> {
           break;
         case "share":
           if (view) {
-            setShare(view.claimant.id, view.allocation.target + action.delta);
+            setShare(view.claimant.id, view.allocation.target + action.delta, control.provider.id);
             refresh();
           }
           break;
         case "unpin":
           if (view) {
-            setShare(view.claimant.id, null);
+            setShare(view.claimant.id, null, control.provider.id);
             refresh();
           }
           break;
         case "priority":
           if (view) {
-            setPriority(view.claimant.id, cyclePriority(view.claimant.priority));
+            setPriority(view.claimant.id, cyclePriority(view.claimant.priority), control.provider.id);
             refresh();
           }
           break;
         case "equalize":
-          equalize();
+          equalize(control.provider.id);
           refresh();
           break;
         case "state":
           if (view) {
-            setState(view.claimant.id, action.state);
+            setState(view.claimant.id, action.state, control.provider.id);
             refresh();
           }
           break;
@@ -271,8 +349,7 @@ export async function runControl(options: Options): Promise<void> {
           } else if (key === "\u007f" || key === "\b") {
             custom = custom.slice(0, -1);
           } else if (key === "\u0003") {
-            stop();
-            resolve();
+            finish();
             return;
           } else if (key.length === 1 && key >= " ") {
             custom = (custom + key).slice(0, MAX_CUSTOM);

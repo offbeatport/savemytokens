@@ -33,6 +33,7 @@ export interface QuotaWindow {
 export interface QuotaHistoryPoint {
   at: number;
   metered: number;
+  turnAt?: number;
   five_hour: number | null;
   seven_day: number | null;
 }
@@ -55,6 +56,7 @@ export interface AdviceState {
 export interface ClaimantRecord extends Claimant {
   schema: number;
   advice: AdviceState;
+  heartbeat: number;
 }
 
 export interface MeterRecord {
@@ -110,6 +112,7 @@ export interface Config {
   policyFor: Record<string, string>;
   theme: { tui: string; hud: string };
   layout: { hud: string };
+  view: string;
   preserveFor: Record<string, string[]>;
   customAdvice: Record<string, string>;
   wrappedStatusLine: string | null;
@@ -168,8 +171,9 @@ export function quotaFile(adapter: string): string;
 export function loadClaimant(adapter: string, id: string): ClaimantRecord | null;
 export function upsertClaimant(adapter: string, id: string, patch?: Partial<ClaimantRecord>): ClaimantRecord;
 export function loadClaimants(adapter: string): ClaimantRecord[];
-export function effectiveState(claimant: ClaimantRecord, now?: number): ClaimantState;
-export function isStale(claimant: ClaimantRecord, now?: number): boolean;
+export function effectiveState(claimant: ClaimantRecord, now?: number, strict?: boolean): ClaimantState;
+export function isStale(claimant: ClaimantRecord, now?: number, strict?: boolean): boolean;
+export function heartbeatsLive(claimants: ClaimantRecord[], now?: number): boolean;
 
 export function saveQuota(adapter: string, reading: QuotaReading): boolean;
 export function loadQuota(adapter: string): QuotaReading | null;
@@ -183,6 +187,7 @@ export function windowBounds(
 export function loadMeter(adapter: string, id: string): MeterRecord;
 export function sampleFiles(adapter: string, id: string, files: string[], now?: number): MeterRecord;
 export function usageInWindow(record: MeterRecord, from: number, to: number): WindowUsage;
+export function trailingSignals(content: unknown): { signal: string | null; defers: string[] };
 export function signalIn(content: unknown): string | null;
 export function defersIn(content: unknown): string[];
 export function consumeSignal(adapter: string, id: string): { signal: string | null; defers: string[] };

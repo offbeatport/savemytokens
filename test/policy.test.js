@@ -11,6 +11,7 @@ import {
   preserveText,
   signalIn,
   stageFor,
+  trailingSignals,
 } from "../dist/runtime/kernel.mjs";
 import { actionFor, keyActions, splitKeys } from "../dist/scheduler/keys.js";
 
@@ -160,4 +161,25 @@ test("deferred lines must start their own line", () => {
   assert.deepEqual(defersIn([{ type: "text", text: "  SMT: DEFER wire the retry path\nSMT: DONE" }]), [
     "wire the retry path",
   ]);
+});
+
+test("only the run of SMT lines at the very end counts", () => {
+  const prose = [
+    {
+      type: "text",
+      text: "You write it as `SMT: DEFER <one line>` and it is captured per project.\n\nThat is the whole feature.",
+    },
+  ];
+  assert.deepEqual(defersIn(prose), [], "documenting the syntax must not queue work");
+  assert.equal(signalIn(prose), null);
+
+  const real = [
+    { type: "text", text: "Shipped the parser.\n\nSMT: DEFER wire the retry path\nSMT: DEFER add an e2e\nSMT: NEEDS_MORE" },
+  ];
+  const parsed = trailingSignals(real);
+  assert.deepEqual(parsed.defers, ["wire the retry path", "add an e2e"]);
+  assert.equal(parsed.signal, "NEEDS_MORE");
+
+  const interrupted = [{ type: "text", text: "SMT: DEFER something\n\nBut actually I kept going and did it." }];
+  assert.deepEqual(defersIn(interrupted), [], "a defer line followed by more work is not a report");
 });

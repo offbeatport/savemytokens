@@ -21,6 +21,7 @@ const RETENTION_MS = 9 * 24 * 60 * 60 * 1000;
 const SEEN_LIMIT = 400;
 const LOCKOUT_GAP_MS = 5 * 60 * 1000;
 const STALE_MS = 45 * 60 * 1000;
+const HEARTBEAT_MS = 60 * 1000;
 const DEFER_LIMIT = 12;
 const DEFER_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
 const CHUNK = 1 << 20;
@@ -63,6 +64,7 @@ export const DEFAULT_CONFIG = {
   preferencesSetAt: 0,
   theme: { tui: "default", hud: "default" },
   layout: { hud: "allocation" },
+  view: "plan",
   policy: "finish",
   policyFor: {},
   preserveFor: {},
@@ -116,6 +118,7 @@ function blankClaimant(adapter, id, now) {
     startedAt: now,
     lastSeen: now,
     endedAt: null,
+    heartbeat: 0,
     prompt: "",
     signal: null,
     advice: { stage: 0, at: 0, window: 0 },
@@ -159,15 +162,24 @@ export function loadClaimants(adapter) {
   return out.sort((a, b) => a.startedAt - b.startedAt);
 }
 
-export function effectiveState(claimant, now = Date.now()) {
-  if (claimant.state === "done" || claimant.state === "blocked") return claimant.state;
-  if (claimant.endedAt) return "done";
-  if (now - (claimant.lastSeen ?? 0) > STALE_MS) return "done";
-  return claimant.state;
+export function heartbeatsLive(claimants, now = Date.now()) {
+  let latest = 0;
+  for (const claimant of claimants) latest = Math.max(latest, claimant.heartbeat ?? 0);
+  return latest > 0 && now - latest <= HEARTBEAT_MS;
 }
 
-export function isStale(claimant, now = Date.now()) {
+export function isStale(claimant, now = Date.now(), strict = false) {
+  const beat = claimant.heartbeat ?? 0;
+  if (now - (claimant.lastSeen ?? 0) <= HEARTBEAT_MS) return false;
+  if (beat > 0 || strict) return now - beat > HEARTBEAT_MS;
   return now - (claimant.lastSeen ?? 0) > STALE_MS;
+}
+
+export function effectiveState(claimant, now = Date.now(), strict = false) {
+  if (claimant.state === "done" || claimant.state === "blocked") return claimant.state;
+  if (claimant.endedAt) return "done";
+  if (isStale(claimant, now, strict)) return "done";
+  return claimant.state;
 }
 
 export function saveQuota(adapter, reading) {
@@ -386,25 +398,40 @@ function blockText(content) {
   return parts.join("\n");
 }
 
-export function signalIn(content) {
+export function trailingSignals(content) {
   const lines = blockText(content)
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
-  const last = lines[lines.length - 1] ?? "";
-  const match = /^SMT:\s*(DONE|NEEDS_MORE|BLOCKED)$/.exec(last);
-  return match ? match[1] : null;
+  const block = [];
+  for (let index = lines.length - 1; index >= 0; index--) {
+    const line = lines[index] ?? "";
+    if (!/^SMT:\s*(DONE|NEEDS_MORE|BLOCKED|DEFER\b)/.test(line)) break;
+    block.unshift(line);
+  }
+  let signal = null;
+  const defers = [];
+  for (const line of block) {
+    const state = /^SMT:\s*(DONE|NEEDS_MORE|BLOCKED)$/.exec(line);
+    if (state) {
+      signal = state[1];
+      continue;
+    }
+    const defer = /^SMT:\s*DEFER\s+(.+)$/.exec(line);
+    if (defer) {
+      const text = String(defer[1]).replace(/\s+/g, " ").trim().slice(0, 140);
+      if (text) defers.push(text);
+    }
+  }
+  return { signal, defers };
+}
+
+export function signalIn(content) {
+  return trailingSignals(content).signal;
 }
 
 export function defersIn(content) {
-  const out = [];
-  for (const line of blockText(content).split("\n")) {
-    const match = /^\s*SMT:\s*DEFER\s+(.+)$/.exec(line);
-    if (!match) continue;
-    const text = String(match[1]).replace(/\s+/g, " ").trim().slice(0, 140);
-    if (text) out.push(text);
-  }
-  return out;
+  return trailingSignals(content).defers;
 }
 
 export function deferFile(adapter, project) {
@@ -565,13 +592,14 @@ export function schedule(adapter, now = Date.now(), key = "five_hour", quotaOver
   }
 
   const live = liveWindow(quota, key, now);
+  const strict = heartbeatsLive(claimants, now);
   const entries = claimants.map((claimant) => {
     const observed = total > 0 ? usage.get(claimant.id).weighted / total : 0;
     return {
       id: claimant.id,
       share: claimant.share,
       priority: claimant.priority,
-      state: effectiveState(claimant, now),
+      state: effectiveState(claimant, now, strict),
       consumed: live ? (live.usedPercent / 100) * observed : 0,
       cap: claimant.cap,
     };
@@ -595,8 +623,8 @@ export function schedule(adapter, now = Date.now(), key = "five_hour", quotaOver
       allocation,
       usage: window,
       observed,
-      state: effectiveState(claimant, now),
-      stale: isStale(claimant, now),
+      state: effectiveState(claimant, now, strict),
+      stale: isStale(claimant, now, strict),
       pressure:
         live || eligible > 1
           ? pressureFor(observed, allocation.target, live ? live.usedPercent : null)

@@ -12,6 +12,7 @@ export interface Options {
   force: boolean;
   window: "five_hour" | "seven_day";
   adapter: string;
+  view: string;
   rules: boolean;
   purge: boolean;
   help: boolean;
@@ -51,6 +52,7 @@ export function parseArgs(argv: string[]): Options {
     force: false,
     window: "five_hour",
     adapter: "claude-code",
+    view: "",
     rules: false,
     purge: false,
     help: false,
@@ -121,6 +123,11 @@ export function parseArgs(argv: string[]): Options {
       case "--adapter": {
         const value = argv[++i];
         if (value) options.adapter = value;
+        break;
+      }
+      case "--view": {
+        const value = argv[++i];
+        if (value) options.view = value;
         break;
       }
       case "--codex":

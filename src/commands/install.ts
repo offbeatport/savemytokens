@@ -161,7 +161,7 @@ export function runInstall(options: InstallOptions): void {
 
   if (options.dryRun) {
     const preview = {
-      statusLine: { type: "command", command: statusLineCommand(), padding: 0 },
+      statusLine: { type: "command", command: statusLineCommand(), padding: 0, refreshInterval: 10 },
       hooks: Object.fromEntries(
         HOOK_EVENTS.map(([event, action]) => [event, [{ hooks: [{ type: "command", command: hookCommand(action), timeout: 10 }] }]]),
       ),
@@ -186,7 +186,7 @@ export function runInstall(options: InstallOptions): void {
   const config = loadConfig();
   if (!conflict || options.force) {
     if (conflict && options.force) config.wrappedStatusLine = existingStatusLine;
-    settings.statusLine = { type: "command", command: statusLineCommand(), padding: 0 };
+    settings.statusLine = { type: "command", command: statusLineCommand(), padding: 0, refreshInterval: 10 };
   }
   if (!config.createdAt) config.createdAt = Date.now();
   saveConfig(config);

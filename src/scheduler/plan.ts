@@ -43,8 +43,7 @@ export function detectedProviders(): Provider[] {
 }
 
 function unattributedPercent(plan: SchedulePlanView): number | null {
-  const history = (plan.quota as { history?: Array<{ at: number; metered: number; five_hour: number | null }> } | null)
-    ?.history;
+  const history = plan.quota?.history;
   if (!Array.isArray(history) || history.length < 2) return null;
   let drift = 0;
   for (let i = 1; i < history.length; i++) {
@@ -53,9 +52,9 @@ function unattributedPercent(plan: SchedulePlanView): number | null {
     if (!previous || !current) continue;
     if (current.at < plan.bounds.from) continue;
     if (typeof current.five_hour !== "number" || typeof previous.five_hour !== "number") continue;
+    if (typeof current.turnAt !== "number" || typeof previous.turnAt !== "number") continue;
     const quotaDelta = current.five_hour - previous.five_hour;
-    const meteredDelta = (current.metered ?? 0) - (previous.metered ?? 0);
-    if (quotaDelta > 0 && meteredDelta <= 0) drift += quotaDelta;
+    if (quotaDelta > 0 && current.turnAt === previous.turnAt) drift += quotaDelta;
   }
   return drift > 0 ? drift : null;
 }
@@ -141,6 +140,12 @@ export function saveCustomAdvice(project: string, text: string): void {
   const value = text.trim();
   if (value) config.customAdvice[key] = value;
   else delete config.customAdvice[key];
+  saveConfig(config);
+}
+
+export function setView(name: string): void {
+  const config = loadConfig();
+  config.view = name;
   saveConfig(config);
 }
 

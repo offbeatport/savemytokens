@@ -204,7 +204,43 @@ Every non-interactive path stays plain text, so output remains pipeable and grep
 ```
 npx savemytokens status         one snapshot, no cursor tricks
 npx savemytokens status --json  the whole plan, machine-readable
+npx savemytokens --view burn    pick a layout (or press v in the TUI)
 ```
+
+## Eleven ways to look at it
+
+The control centre is full-screen and switches layout with `v`, or a digit for the first ten:
+
+| | view | what it is for |
+| --- | --- | --- |
+| 1 | `plan` | the table: target, used, share, priority, last prompt |
+| 2 | `minimal` | four lines — the window and who is on it |
+| 3 | `burn` | the window over time, with a projection to the reset |
+| 4 | `bars` | used against target, with the target as a marker in the bar |
+| 5 | `focus` | one session, large: its bars, pressure, activity, deferred work |
+| 6 | `cards` | a panel per session |
+| 7 | `spark` | per-session token sparklines across the window |
+| 8 | `timeline` | when each session actually burned, as a heat strip |
+| 9 | `proportion` | one bar split by session — who owns the measured usage |
+| 0 | `split` | the burn chart above the cards |
+| | `debug` | raw numbers, for when a figure looks wrong |
+
+The burn view answers the question the others cannot: *am I burning this window faster than it can
+last?*
+
+```
+100%
+ 50%                                 ▁▂▃▅▆▆▆▆▆▆▆
+                              ▁▁▆████████████████┈┈┈┈┈
+  0%                       ████████████████████████
+     09:20                                reset 14:20
+
+  29%/h — at this rate you run out at 14:17, before the reset
+```
+
+The solid area is what Anthropic published, point by point. The dotted line is a projection from the
+last 45 minutes, and it is labelled as one. Anthropic's number moves down as well as up, so this is
+plotted as readings over time rather than a cumulative total.
 
 ## How consumption is measured
 

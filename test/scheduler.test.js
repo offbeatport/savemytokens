@@ -366,9 +366,9 @@ test("window movement while nothing local ran is reported separately", () => {
   const stored = JSON.parse(fs.readFileSync(file, "utf8"));
   const metered = stored.meteredTokens ?? 0;
   stored.history = [
-    { at: now - 90_000, metered, five_hour: 10, seven_day: 10 },
-    { at: now - 60_000, metered, five_hour: 18, seven_day: 12 },
-    { at: now - 30_000, metered: metered + 5000, five_hour: 24, seven_day: 13 },
+    { at: now - 90_000, metered, turnAt: now - 120_000, five_hour: 10, seven_day: 10 },
+    { at: now - 60_000, metered, turnAt: now - 120_000, five_hour: 18, seven_day: 12 },
+    { at: now - 30_000, metered: metered + 5000, turnAt: now - 40_000, five_hour: 24, seven_day: 13 },
   ];
   fs.writeFileSync(file, JSON.stringify(stored));
 
@@ -376,5 +376,5 @@ test("window movement while nothing local ran is reported separately", () => {
   assert.equal(Math.round(out.unattributedPercent), 8, "the 8 points that moved with no local usage are called out");
 
   const text = execFileSync("node", [CLI, "status"], { env: box.env, encoding: "utf8" });
-  assert.match(text, /8% of the window moved while no local session was running/);
+  assert.match(text, /8% unattributed/);
 });

@@ -70,13 +70,14 @@ function buildReading(payload, now) {
   return { at: now, source: "statusline", sessionId: String(payload.session_id ?? ""), windows, history: [] };
 }
 
-function persistReading(reading, metered) {
+function persistReading(reading, metered, turnAt) {
   const previous = loadQuota(ADAPTER);
   const history = Array.isArray(previous?.history) ? previous.history : [];
   const last = history[history.length - 1];
   const point = {
     at: reading.at,
     metered,
+    turnAt,
     five_hour: reading.windows.five_hour?.usedPercent ?? null,
     seven_day: reading.windows.seven_day?.usedPercent ?? null,
   };
@@ -84,6 +85,7 @@ function persistReading(reading, metered) {
     !last ||
     last.five_hour !== point.five_hour ||
     last.seven_day !== point.seven_day ||
+    last.turnAt !== point.turnAt ||
     reading.at - last.at > 10 * 60 * 1000;
   saveQuota(ADAPTER, {
     ...reading,
@@ -107,10 +109,7 @@ function keepAlive(payload, now) {
   if (!id) return;
   const project = payload.cwd || payload.workspace?.current_dir || "";
   const label = project ? path.basename(project) : String(payload.session_name || "session");
-  const current = schedule(ADAPTER, now);
-  const view = viewFor(current, id);
-  if (view && now - view.claimant.lastSeen < LIVENESS_THROTTLE_MS && view.claimant.label === label) return;
-  upsertClaimant(ADAPTER, id, { project, label });
+  upsertClaimant(ADAPTER, id, { project, label, heartbeat: now });
 }
 
 function wrappedOutput(config, raw) {
@@ -137,7 +136,11 @@ function run() {
 
   const reading = buildReading(payload, now);
   const plan = schedule(ADAPTER, now, "five_hour", reading);
-  if (reading) persistReading(reading, plan.totalWeighted);
+  if (reading) {
+    let turnAt = 0;
+    for (const claimant of plan.claimants) turnAt = Math.max(turnAt, loadMeter(ADAPTER, claimant.claimant.id).lastAt ?? 0);
+    persistReading(reading, plan.totalWeighted, turnAt);
+  }
 
   const view = viewFor(plan, String(payload.session_id ?? ""));
   const theme = loadTheme(config.theme.hud);

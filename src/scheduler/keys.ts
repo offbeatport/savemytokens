@@ -16,7 +16,10 @@ export type Action =
   | { kind: "skip" }
   | { kind: "preferences" }
   | { kind: "toggleCurrent" }
-  | { kind: "edit" };
+  | { kind: "edit" }
+  | { kind: "help" }
+  | { kind: "view"; delta: number }
+  | { kind: "viewAt"; index: number };
 
 const ESC = "\u001b";
 const FINAL = /[@-~]/;
@@ -95,8 +98,16 @@ export function actionFor(key: string, mode: "plan" | "prefs", step: number): Ac
       return { kind: "refresh" };
     case "P":
       return { kind: "preferences" };
-    default:
+    case "?":
+      return { kind: "help" };
+    case "v":
+      return { kind: "view", delta: 1 };
+    case "V":
+      return { kind: "view", delta: -1 };
+    default: {
+      if (/^[0-9]$/.test(key)) return { kind: "viewAt", index: key === "0" ? 9 : Number(key) - 1 };
       return { kind: "none" };
+    }
   }
 }
 
