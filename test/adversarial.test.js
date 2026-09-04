@@ -222,3 +222,33 @@ test("two hooks writing at once do not lose each other's work", () => {
   assert.equal(sessions.length, 2, "both sessions survive concurrent writes");
   assert.equal(sessions.reduce((sum, session) => sum + session.tokens, 0), 3000);
 });
+
+test("an implausible reset time is refused, not stored forever", () => {
+  const box = sandbox();
+  const now = Math.floor(Date.now() / 1000);
+  const good = now + 7200;
+
+  const send = (resetsAt) =>
+    execFileSync("node", [STATUSLINE], {
+      env: box.env,
+      encoding: "utf8",
+      input: JSON.stringify({
+        session_id: "poison",
+        transcript_path: "/does/not/exist",
+        cwd: process.cwd(),
+        rate_limits: { five_hour: { used_percentage: 42, resets_at: resetsAt } },
+      }),
+    });
+
+  for (const bad of [9_999_999_999, good * 1000, 0, -5, Number.NaN]) {
+    send(bad);
+    const line = send(good);
+    assert.match(line, /in 1h5\d|in 2h/, `resets_at ${bad} must not survive a good reading: ${line}`);
+  }
+
+  const stored = JSON.parse(fs.readFileSync(path.join(box.home, "quota", "claude-code.json"), "utf8"));
+  assert.ok(
+    stored.windows.five_hour.resetsAt * 1000 - Date.now() <= 11 * 3600_000,
+    "nothing beyond a 5-hour window plus slack is ever written",
+  );
+});

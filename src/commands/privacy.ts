@@ -3,11 +3,9 @@ import { claudeCodeAdapter } from "../adapters/claude-code/index.js";
 import type { Audit } from "../core/types.js";
 import { buildPayload } from "../privacy/payload.js";
 import { LAST_AUDIT_FILE, displayHome, readJson } from "../storage/paths.js";
-import { loadConfig } from "../runtime/kernel.mjs";
 import { bold, dim } from "../util/ansi.js";
 
 export function runPrivacy(version: string): void {
-  const config = loadConfig();
   const out: string[] = ["", bold("SaveMyTokens"), "", bold("What it reads"), ""];
   out.push(`  ${claudeCodeAdapter.dataDir}${dim("  (Claude Code's own session logs, read-only)")}`);
   out.push("");
@@ -28,7 +26,7 @@ export function runPrivacy(version: string): void {
   out.push("");
   out.push(bold("What leaves this machine"));
   out.push("");
-  out.push(`  Nothing. There is no network call in this tool. Contribution is ${config.contribute ? "ON" : "OFF"} and opt-in only.`);
+  out.push("  Nothing. There is no network call in this tool, and nothing to opt into.");
   out.push("");
   out.push(bold("If you ever opt in, this is the exact shape that would be sent"));
   out.push("");

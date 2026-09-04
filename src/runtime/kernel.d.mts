@@ -123,7 +123,6 @@ export interface Config {
   preserveFor: Record<string, string[]>;
   customAdvice: Record<string, string>;
   wrappedStatusLine: string | null;
-  contribute: boolean;
 }
 
 export interface Theme {

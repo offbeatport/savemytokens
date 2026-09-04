@@ -75,7 +75,6 @@ export const DEFAULT_CONFIG = {
   preserveFor: {},
   customAdvice: {},
   wrappedStatusLine: null,
-  contribute: false,
 };
 
 const COLUMN_RENAMES = { target: "allocation", "of target": "used", used: null, share: "share" };

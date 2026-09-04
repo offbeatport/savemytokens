@@ -65,15 +65,26 @@ function normalizeWindows(rateLimits) {
   return windows;
 }
 
+const WINDOW_SPAN_MS = { five_hour: 5 * 3600_000, seven_day: 7 * 24 * 3600_000, spend_limit: 31 * 24 * 3600_000 };
+const SLACK_MS = 6 * 3600_000;
+
+function plausibleReset(key, resetsAt, now) {
+  if (typeof resetsAt !== "number" || !Number.isFinite(resetsAt) || resetsAt <= 0) return null;
+  const ms = resetsAt * 1000;
+  if (ms <= now) return null;
+  if (ms - now > (WINDOW_SPAN_MS[key] ?? WINDOW_SPAN_MS.seven_day) + SLACK_MS) return null;
+  return resetsAt;
+}
+
 function mergeWindows(stored, incoming, now) {
   const merged = {};
   for (const [key, window] of Object.entries(stored ?? {})) {
     if (typeof window?.usedPercent !== "number") continue;
-    if (typeof window.resetsAt === "number" && window.resetsAt * 1000 <= now) continue;
+    if (window.resetsAt !== undefined && plausibleReset(key, window.resetsAt, now) === null) continue;
     merged[key] = window;
   }
   for (const [key, window] of Object.entries(incoming)) {
-    if (typeof window.resetsAt === "number" && window.resetsAt * 1000 <= now) continue;
+    if (window.resetsAt !== undefined && plausibleReset(key, window.resetsAt, now) === null) continue;
     const previous = merged[key];
     if (!previous) {
       merged[key] = { ...window, at: now };
@@ -184,7 +195,7 @@ function run() {
   const quota = {};
   for (const key of ["five_hour", "seven_day", "spend_limit"]) {
     const window = plan.quota?.windows?.[key];
-    if (window && (typeof window.resetsAt !== "number" || window.resetsAt * 1000 > now)) quota[key] = window;
+    if (window && (window.resetsAt === undefined || plausibleReset(key, window.resetsAt, now) !== null)) quota[key] = window;
   }
 
   const bounds = windowBounds(plan.quota, "five_hour", now);

@@ -40,6 +40,9 @@ ${bold("savemytokens")}: give every Claude Code session a target share of your C
   npx savemytokens hud         status line layouts, previewed on your numbers
   npx savemytokens theme       themes for the TUI and the status line
   npx savemytokens audit       the token-waste report
+  npx savemytokens watch       keep watching, and report drift as it happens
+  npx savemytokens history     past audit scores
+  npx savemytokens privacy     every file it reads and writes
 
   -d, --days <n>   audit window (default 7)
       --json       machine-readable
