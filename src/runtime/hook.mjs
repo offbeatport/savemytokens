@@ -206,7 +206,9 @@ function run() {
     const view = viewFor(schedule(ADAPTER, now), id);
     upsertClaimant(ADAPTER, id, {
       prompt: String(payload.prompt ?? record.prompt ?? "").replace(/\s+/g, " ").trim().slice(0, 120),
-      ...(view && view.claimant.state !== "active" ? { state: "active", endedAt: null, signal: null } : {}),
+      ...(view && (view.claimant.state !== "active" || view.claimant.parked)
+        ? { state: "active", endedAt: null, signal: null, parked: false }
+        : {}),
     });
     const advice = guidance(id, project, now);
     if (advice) lines.push(advice);

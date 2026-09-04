@@ -1,6 +1,6 @@
 import type { Options } from "../cli-options.js";
 import type { ClaimantState, Priority } from "../core/resource.js";
-import { buildPlan, resolveClaimant, setPriority, setShare, setState } from "../scheduler/plan.js";
+import { buildPlan, resolveClaimant, setParked, setPinned, setPriority, setShare, setState } from "../scheduler/plan.js";
 import { bold, dim, green, yellow } from "../util/ansi.js";
 
 const PRIORITIES: Priority[] = ["high", "normal", "low"];
@@ -63,6 +63,16 @@ export function runSet(options: Options): void {
       `\n${green("Set")} ${bold(view.claimant.label)} target to ${bold(actual)}${note}\n${
         clamped ? yellow(`  asked for ${Math.round(percent)}%, but the window is already committed elsewhere\n`) : ""
       }\n`,
+    );
+    return;
+  }
+
+  if (command === "pin" || command === "park") {
+    const on = String(value ?? "on").toLowerCase() !== "off";
+    if (command === "pin") setPinned(view.claimant.id, on, control.provider.id);
+    else setParked(view.claimant.id, on, control.provider.id);
+    process.stdout.write(
+      `\n${green(on ? (command === "pin" ? "Pinned" : "Parked") : "Cleared")} ${bold(view.claimant.label)}${note}\n${dim(command === "pin" ? "  it stays visible even when it goes quiet" : "  it drops out of the working set until you resume it")}\n\n`,
     );
     return;
   }

@@ -53,10 +53,14 @@ export interface AdviceState {
   window: number;
 }
 
+export type ClaimantBucket = "active" | "recent" | "parked";
+
 export interface ClaimantRecord extends Claimant {
   schema: number;
   advice: AdviceState;
   heartbeat: number;
+  pinned: boolean;
+  parked: boolean;
 }
 
 export interface MeterRecord {
@@ -108,6 +112,7 @@ export interface Config {
   version: number;
   createdAt: number;
   preferencesSetAt: number;
+  offeredInstallAt: number;
   policy: string;
   policyFor: Record<string, string>;
   theme: { tui: string; hud: string };
@@ -178,6 +183,7 @@ export function loadClaimants(adapter: string): ClaimantRecord[];
 export function effectiveState(claimant: ClaimantRecord, now?: number, strict?: boolean): ClaimantState;
 export function isStale(claimant: ClaimantRecord, now?: number, strict?: boolean): boolean;
 export function heartbeatsLive(claimants: ClaimantRecord[], now?: number): boolean;
+export function bucketFor(claimant: ClaimantRecord, now?: number, strict?: boolean): ClaimantBucket;
 
 export function saveQuota(adapter: string, reading: QuotaReading): boolean;
 export function loadQuota(adapter: string): QuotaReading | null;
@@ -229,6 +235,7 @@ export interface ClaimantPlanView {
   usage: WindowUsage;
   observed: number;
   state: ClaimantState;
+  bucket: ClaimantBucket;
   stale: boolean;
   pressure: Pressure;
   attributedPercent: number | null;

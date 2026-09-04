@@ -34,6 +34,7 @@ ${bold("savemytokens")} — give every Claude Code session a target share of you
   npx savemytokens share <project> <percent|auto>
   npx savemytokens priority <project> <high|normal|low>
   npx savemytokens release <project>          hand its unused share back
+  npx savemytokens pin|park <project>         keep it visible, or drop it from the set
   npx savemytokens policy      what Claude does as the window fills
   npx savemytokens defer       work pushed to the next session
   npx savemytokens hud         status line layouts, previewed on your numbers
@@ -80,6 +81,8 @@ async function main(): Promise<void> {
     case "share":
     case "priority":
     case "release":
+    case "pin":
+    case "park":
       runSet(options);
       return;
     case "policy":

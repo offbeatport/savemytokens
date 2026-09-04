@@ -83,23 +83,49 @@ export function buildPlan(now = Date.now(), withSweep = true, window: WindowKey 
   };
 }
 
-const VISIBLE_LIMIT = 12;
-const VISIBLE_SHARE = 0.005;
+const RECENT_LIMIT = 6;
+const PARKED_LIMIT = 4;
 
 function live(view: ClaimantPlanView): boolean {
   return view.state === "active" || view.state === "needs-more";
 }
 
+export interface WorkingSet {
+  active: ClaimantPlanView[];
+  recent: ClaimantPlanView[];
+  parked: ClaimantPlanView[];
+  hidden: number;
+}
+
+function byInterest(a: ClaimantPlanView, b: ClaimantPlanView): number {
+  return (
+    Number(b.claimant.pinned) - Number(a.claimant.pinned) ||
+    b.claimant.lastSeen - a.claimant.lastSeen ||
+    b.observed - a.observed
+  );
+}
+
+export function workingSet(plan: SchedulePlanView): WorkingSet {
+  const active = plan.claimants.filter((view) => view.bucket === "active").sort((a, b) => byInterest(a, b) || b.observed - a.observed);
+  const recentAll = plan.claimants.filter((view) => view.bucket === "recent").sort(byInterest);
+  const parkedAll = plan.claimants.filter((view) => view.bucket === "parked").sort(byInterest);
+  const recent = recentAll.slice(0, RECENT_LIMIT);
+  const parked = parkedAll.slice(0, PARKED_LIMIT);
+  return {
+    active,
+    recent,
+    parked,
+    hidden: recentAll.length - recent.length + (parkedAll.length - parked.length),
+  };
+}
+
+export function visibleRows(plan: SchedulePlanView): ClaimantPlanView[] {
+  const set = workingSet(plan);
+  return [...set.active, ...set.recent, ...set.parked];
+}
+
 export function activeViews(plan: SchedulePlanView): ClaimantPlanView[] {
-  return plan.claimants
-    .filter((view) => live(view) || view.observed >= VISIBLE_SHARE)
-    .sort(
-      (a, b) =>
-        Number(live(b)) - Number(live(a)) ||
-        b.observed - a.observed ||
-        a.claimant.label.localeCompare(b.claimant.label),
-    )
-    .slice(0, VISIBLE_LIMIT);
+  return workingSet(plan).active;
 }
 
 export function setShare(id: string, share: number | null, adapter = "claude-code"): void {
@@ -141,6 +167,14 @@ export function saveCustomAdvice(project: string, text: string): void {
   if (value) config.customAdvice[key] = value;
   else delete config.customAdvice[key];
   saveConfig(config);
+}
+
+export function setPinned(id: string, pinned: boolean, adapter = "claude-code"): void {
+  upsertClaimant(adapter, id, { pinned });
+}
+
+export function setParked(id: string, parked: boolean, adapter = "claude-code"): void {
+  upsertClaimant(adapter, id, { parked, ...(parked ? { state: "done" as ClaimantState } : {}) });
 }
 
 export function setView(name: string): void {

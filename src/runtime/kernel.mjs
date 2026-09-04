@@ -18,10 +18,12 @@ export const WINDOW_LABEL = { five_hour: "5h", seven_day: "7d", spend_limit: "sp
 
 const BUCKET_MS = 5 * 60 * 1000;
 const RETENTION_MS = 9 * 24 * 60 * 60 * 1000;
+const CLAIMANT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const SEEN_LIMIT = 400;
 const LOCKOUT_GAP_MS = 5 * 60 * 1000;
 const STALE_MS = 45 * 60 * 1000;
 const HEARTBEAT_MS = 60 * 1000;
+const RECENT_MS = 24 * 60 * 60 * 1000;
 const DEFER_LIMIT = 12;
 const DEFER_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
 const CHUNK = 1 << 20;
@@ -62,6 +64,7 @@ export const DEFAULT_CONFIG = {
   version: 1,
   createdAt: 0,
   preferencesSetAt: 0,
+  offeredInstallAt: 0,
   theme: { tui: "default", hud: "default" },
   layout: { hud: "allocation" },
   view: "plan",
@@ -119,6 +122,8 @@ function blankClaimant(adapter, id, now) {
     lastSeen: now,
     endedAt: null,
     heartbeat: 0,
+    pinned: false,
+    parked: false,
     prompt: "",
     signal: null,
     advice: { stage: 0, at: 0, window: 0 },
@@ -146,12 +151,12 @@ export function upsertClaimant(adapter, id, patch = {}) {
 
 export function loadClaimants(adapter) {
   const dir = path.join(CLAIMANT_DIR, adapter);
-  const cutoff = Date.now() - RETENTION_MS;
+  const cutoff = Date.now() - CLAIMANT_RETENTION_MS;
   const out = [];
   for (const name of listJson(dir)) {
     const record = readJson(path.join(dir, name), null);
     if (!record || typeof record !== "object") continue;
-    if ((record.lastSeen ?? 0) < cutoff) {
+    if ((record.lastSeen ?? 0) < cutoff && !record.pinned) {
       try {
         fs.rmSync(path.join(dir, name));
       } catch {}
@@ -173,6 +178,14 @@ export function isStale(claimant, now = Date.now(), strict = false) {
   if (now - (claimant.lastSeen ?? 0) <= HEARTBEAT_MS) return false;
   if (beat > 0 || strict) return now - beat > HEARTBEAT_MS;
   return now - (claimant.lastSeen ?? 0) > STALE_MS;
+}
+
+export function bucketFor(claimant, now = Date.now(), strict = false) {
+  if (claimant.parked) return "parked";
+  const state = effectiveState(claimant, now, strict);
+  if (state === "active" || state === "needs-more") return "active";
+  if (now - (claimant.lastSeen ?? 0) <= RECENT_MS) return "recent";
+  return "parked";
 }
 
 export function effectiveState(claimant, now = Date.now(), strict = false) {
@@ -624,6 +637,7 @@ export function schedule(adapter, now = Date.now(), key = "five_hour", quotaOver
       usage: window,
       observed,
       state: effectiveState(claimant, now, strict),
+      bucket: bucketFor(claimant, now, strict),
       stale: isStale(claimant, now, strict),
       pressure:
         live || eligible > 1

@@ -378,3 +378,73 @@ test("window movement while nothing local ran is reported separately", () => {
   const text = execFileSync("node", [CLI, "status"], { env: box.env, encoding: "utf8" });
   assert.match(text, /8% unattributed/);
 });
+
+test("only active sessions hold a share; parking hands it back", () => {
+  const box = sandbox();
+  appendTurns(box, [turn(box, "m1", 1000, Date.now() - 60_000)]);
+  runStatusLine(box, rateLimits(40));
+  runHook(box, "prompt", { prompt: "implement the provider fallback chain end to end" });
+
+  const before = plan(box);
+  assert.equal(before.claimants[0].bucket, "active");
+  assert.ok(before.claimants[0].target > 0.9);
+
+  execFileSync("node", [CLI, "park", "webinvoke"], { env: box.env, encoding: "utf8" });
+  const after = plan(box);
+  assert.equal(after.claimants[0].bucket, "parked");
+  assert.ok(
+    Math.abs(after.claimants[0].target - after.claimants[0].observed * 0.4) < 0.01,
+    "it keeps only what it used",
+  );
+
+  execFileSync("node", [CLI, "pin", "webinvoke"], { env: box.env, encoding: "utf8" });
+  assert.equal(plan(box).claimants[0].pinned_by_user, true);
+
+  runHook(box, "prompt", { prompt: "actually, carry on with the fallback chain after all" });
+  const resumed = plan(box);
+  assert.equal(resumed.claimants[0].bucket, "active", "typing into a parked session resumes it");
+  assert.ok(resumed.claimants[0].target > 0.9, "and it takes a share again");
+});
+
+test("a sandboxed run refuses to edit the real Claude settings", () => {
+  const box = sandbox();
+  const env = { ...process.env, SAVEMYTOKENS_HOME: box.home, NO_COLOR: "1" };
+  delete env.SAVEMYTOKENS_SETTINGS;
+  delete env.CLAUDE_CONFIG_DIR;
+
+  for (const command of ["install", "uninstall"]) {
+    let output = "";
+    let failed = false;
+    try {
+      execFileSync("node", [CLI, command], { env, encoding: "utf8" });
+    } catch (error) {
+      failed = true;
+      output = String(error.stdout ?? "");
+    }
+    assert.ok(failed, `${command} must not touch the real settings from a sandbox`);
+    assert.match(output, /Refusing to edit/);
+  }
+});
+
+test("a stale session cannot erase a live window", () => {
+  const box = sandbox();
+  appendTurns(box, [turn(box, "m1", 1000, Date.now() - 60_000)]);
+  const resets = Math.floor(Date.now() / 1000) + 3600;
+
+  runStatusLine(box, { rate_limits: { five_hour: { used_percentage: 40, resets_at: resets }, seven_day: { used_percentage: 18, resets_at: resets + 86400 } } });
+  assert.equal(quota(box).windows.five_hour.usedPercent, 40);
+
+  runStatusLine(box, { rate_limits: { seven_day: { used_percentage: 16, resets_at: resets + 86400 } } });
+  const afterPartial = quota(box);
+  assert.equal(afterPartial.windows.five_hour.usedPercent, 40, "a payload without five_hour must not delete it");
+  assert.equal(afterPartial.windows.seven_day.usedPercent, 18, "and a lower reading in the same window does not win");
+
+  runStatusLine(box, { rate_limits: { five_hour: { used_percentage: 44, resets_at: resets } } });
+  assert.equal(quota(box).windows.five_hour.usedPercent, 44, "a higher reading in the same window does win");
+
+  runStatusLine(box, { rate_limits: { five_hour: { used_percentage: 3, resets_at: resets + 18000 } } });
+  assert.equal(quota(box).windows.five_hour.usedPercent, 3, "a new window replaces the old one outright");
+
+  const line = runStatusLine(box, {});
+  assert.match(line, /5h/, "with no rate limits at all the last good reading is still shown");
+});

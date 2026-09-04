@@ -277,3 +277,24 @@ test("every view and hud layout renders without throwing", async () => {
     assert.ok(!line.includes("\n"), `${layout} must stay on one line`);
   }
 });
+
+test("the working set sorts itself into active, recent and parked", async () => {
+  const { bucketFor } = await import("../dist/runtime/kernel.mjs");
+  const now = Date.now();
+  const base = { state: "active", endedAt: null, pinned: false, parked: false };
+
+  const beating = { ...base, heartbeat: now - 5_000, lastSeen: now - 5_000 };
+  assert.equal(bucketFor(beating, now, true), "active", "a live session holds a share");
+
+  const quiet = { ...base, heartbeat: now - 10 * 60_000, lastSeen: now - 2 * 60 * 60_000 };
+  assert.equal(bucketFor(quiet, now, true), "recent", "worked on today, nothing running");
+
+  const old = { ...base, heartbeat: 0, lastSeen: now - 6 * 24 * 60 * 60_000 };
+  assert.equal(bucketFor(old, now, true), "parked");
+
+  const parkedByHand = { ...base, parked: true, heartbeat: 0, lastSeen: now - 60_000 };
+  assert.equal(bucketFor(parkedByHand, now, true), "parked", "parking wins over recency");
+
+  const parkedButBeating = { ...base, parked: true, heartbeat: now - 5_000, lastSeen: now - 5_000 };
+  assert.equal(bucketFor(parkedButBeating, now, true), "parked", "parking holds until you resume it deliberately");
+});

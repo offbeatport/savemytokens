@@ -4,11 +4,21 @@
 budget you want it to work within.**
 
 ```
-npx savemytokens install
 npx savemytokens
 ```
 
-No daemon. No account. No setup. Nothing leaves your machine.
+That is the whole setup. The first run asks once:
+
+```
+  Enable live Claude usage in your status bar?
+
+  Shows your 5h and weekly capacity, and this session's SaveMyTokens allocation.
+
+    [ Yes ]     Not now
+```
+
+Nothing is written to Claude Code's config until you answer, and `npx savemytokens uninstall` removes
+every trace. No daemon. No account. Nothing leaves your machine.
 
 If you run three or four Claude Code sessions at once, they compete for one allowance and nothing
 tells you which one is eating it. SaveMyTokens reads the numbers Anthropic already publishes, splits
@@ -60,6 +70,32 @@ Two things follow from Anthropic publishing this **only to the status line**:
 Usage from another machine, or from claude.ai, is invisible here and lands inside your local
 sessions' slices. When the window moves while no local session is running, SaveMyTokens counts that
 separately and shows it as its own line.
+
+## The working set
+
+Sessions sort themselves; you never maintain a list.
+
+| | means | gets a share? |
+| --- | --- | --- |
+| **ACTIVE** | a Claude session is open right now — proven by a status line heartbeat every 10s | **yes** |
+| **RECENT** | worked on in the last day, nothing running | no |
+| **PARKED** | older, or parked by hand | no |
+
+```
+  ACTIVE 3 · sharing the window
+  • reposhine             27%*    8%     18%  NORMAL   This is the new plan for reposhine…
+  • webinvoke 12:06       48%     5%     10%  NORMAL   Yes, do V0 as is in the latest plan…
+
+  RECENT 6 · no live session — a is resume, x parks it
+  · buydiff                3h ago  where are we now ?
+
+  PARKED 4
+  · obp-ui                 6d ago  yes, that's it. commit push
+```
+
+`f` pins a row so it stays visible wherever it sits, `x` parks it, `⏎` prints the command to resume
+it, and typing into a parked session un-parks it automatically. From a script: `savemytokens pin` and
+`savemytokens park`.
 
 ## Allocation
 

@@ -1,5 +1,5 @@
 import type { ControlPlan } from "../scheduler/plan.js";
-import { activeViews } from "../scheduler/plan.js";
+import { activeViews, visibleRows, workingSet } from "../scheduler/plan.js";
 import {
   formatReset,
   loadMeter,
@@ -10,7 +10,7 @@ import {
   type Theme,
 } from "../runtime/kernel.mjs";
 import { padEndVisible, padStartVisible, visibleWidth } from "../util/ansi.js";
-import { compactNumber } from "../util/fmt.js";
+import { ago, compactNumber } from "../util/fmt.js";
 import {
   asciiBar,
   bigRows,
@@ -52,6 +52,10 @@ const STATE_MARK: Record<string, string> = { active: "•", "needs-more": "+", d
 function clip(text: string, max: number): string {
   if (max <= 1) return "";
   return visibleWidth(text) <= max ? text : `${text.slice(0, Math.max(0, max - 1))}…`;
+}
+
+function pinMark(view: ClaimantPlanView, theme: Theme, color: boolean): string {
+  return view.claimant.pinned ? paint(theme, "accent", "★", color) : " ";
 }
 
 export function labelsFor(views: ClaimantPlanView[]): Map<string, string> {
@@ -125,24 +129,25 @@ function labelWidthFor(context: ViewContext): number {
 
 function tableRows(control: ControlPlan, context: ViewContext, limit: number): string[] {
   const { theme, color, labels, selected } = context;
-  const views = activeViews(control.schedule).slice(0, limit);
+  const set = workingSet(control.schedule);
   const attributed = control.schedule.live !== null;
   const labelWidth = labelWidthFor(context);
-  const promptWidth = Math.max(12, context.columns - labelWidth - (attributed ? 40 : 32));
-  const out: string[] = [
-    paint(
-      theme,
-      "dim",
-      `    ${padEndVisible("session", labelWidth)} ${padStartVisible("target", 6)}${attributed ? ` ${padStartVisible("used", 6)}` : ""}  ${padStartVisible("share", 6)}  ${padEndVisible("priority", 8)} last prompt`,
-      color,
-    ),
-  ];
+  const promptWidth = Math.max(12, context.columns - labelWidth - (attributed ? 42 : 34));
+  const out: string[] = [];
+  let index = 0;
+  let room = Math.max(3, limit);
 
-  for (const [index, view] of views.entries()) {
+  const header = (title: string, count: number, note: string): void => {
+    out.push(
+      `  ${paint(theme, "accent", title, color)} ${paint(theme, "dim", `${count}${note ? ` · ${note}` : ""}`, color)}`,
+    );
+  };
+
+  const activeRow = (view: ClaimantPlanView): string => {
     const running = view.state === "active" || view.state === "needs-more";
     const role = running ? pressureRole(view.pressure.value) : "dim";
-    const cursor = context.interactive && selected === index ? paint(theme, "accent", "❯ ", color) : "  ";
-    const mark = paint(theme, view.state === "blocked" ? "danger" : running ? "ok" : "dim", STATE_MARK[view.state] ?? "•", color);
+    const cursor = context.interactive && selected === index ? paint(theme, "accent", "❯", color) : " ";
+    const mark = paint(theme, view.state === "blocked" ? "danger" : "ok", STATE_MARK[view.state] ?? "•", color);
     const label = padEndVisible(clip(labels.get(view.claimant.id) ?? view.claimant.label, labelWidth), labelWidth);
     const pinned = view.allocation.pinned ? paint(theme, "dim", "*", color) : " ";
     const target = padStartVisible(percentLabel(view.allocation.target * 100, 5), 6);
@@ -152,10 +157,52 @@ function tableRows(control: ControlPlan, context: ViewContext, limit: number): s
       paint(theme, view.claimant.priority === "high" ? "accent" : "dim", view.claimant.priority.toUpperCase(), color),
       8,
     );
-    out.push(
-      `${cursor}${mark} ${label} ${target}${pinned}${used}  ${share}  ${priority} ${paint(theme, "dim", clip(view.claimant.prompt || "—", promptWidth), color)}`,
-    );
+    return `${cursor}${pinMark(view, theme, color)}${mark} ${label} ${target}${pinned}${used}  ${share}  ${priority} ${paint(theme, "dim", clip(view.claimant.prompt || "—", promptWidth), color)}`;
+  };
+
+  const idleRow = (view: ClaimantPlanView): string => {
+    const cursor = context.interactive && selected === index ? paint(theme, "accent", "❯", color) : " ";
+    const label = padEndVisible(clip(labels.get(view.claimant.id) ?? view.claimant.label, labelWidth), labelWidth);
+    const when = padStartVisible(ago(view.claimant.lastSeen, control.schedule.now), 10);
+    return `${cursor}${pinMark(view, theme, color)}${paint(theme, "dim", "·", color)} ${paint(theme, "dim", label, color)} ${paint(theme, "dim", when, color)}  ${paint(theme, "dim", clip(view.claimant.prompt || "—", promptWidth + 8), color)}`;
+  };
+
+  header("ACTIVE", set.active.length, set.active.length === 0 ? "no Claude session is open" : "sharing the window");
+  out.push(
+    paint(
+      theme,
+      "dim",
+      `    ${padEndVisible("session", labelWidth)} ${padStartVisible("target", 6)}${attributed ? ` ${padStartVisible("used", 6)}` : ""}  ${padStartVisible("share", 6)}  ${padEndVisible("priority", 8)} last prompt`,
+      color,
+    ),
+  );
+  for (const view of set.active) {
+    if (room-- <= 0) break;
+    out.push(activeRow(view));
+    index++;
   }
+
+  if (set.recent.length > 0 && room > 2) {
+    out.push("");
+    header("RECENT", set.recent.length, "no live session — a is resume, x parks it");
+    for (const view of set.recent) {
+      if (room-- <= 0) break;
+      out.push(idleRow(view));
+      index++;
+    }
+  }
+
+  if (set.parked.length > 0 && room > 2) {
+    out.push("");
+    header("PARKED", set.parked.length, "");
+    for (const view of set.parked) {
+      if (room-- <= 0) break;
+      out.push(idleRow(view));
+      index++;
+    }
+  }
+
+  if (set.hidden > 0) out.push(`  ${paint(theme, "dim", `+${set.hidden} more`, color)}`);
   return out;
 }
 
@@ -387,9 +434,16 @@ export function helpOverlay(control: ControlPlan, context: ViewContext): string[
     "    p         priority: high → normal → low",
     "    e         equalize — clear every pin",
     "    d b a n   mark done · blocked · active · needs-more",
+    "    f x ⏎     pin · park · resume a recent session",
     "    v V       next / previous view",
     "    P         what to preserve, and your own line of advice",
     "    r         refresh now      ?  this help      q  quit",
+    "",
+    `  ${paint(theme, "accent", "the working set", color)}`,
+    "",
+    `    ${paint(theme, "dim", "ACTIVE   a Claude session is open right now — only these get a share", color)}`,
+    `    ${paint(theme, "dim", "RECENT   worked on in the last day, nothing running", color)}`,
+    `    ${paint(theme, "dim", "PARKED   older, or parked by hand · pinned rows stay wherever they are", color)}`,
     "",
     `  ${paint(theme, "accent", "views", color)}`,
     "",

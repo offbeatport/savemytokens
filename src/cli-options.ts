@@ -25,6 +25,8 @@ const COMMANDS = new Set([
   "share",
   "priority",
   "release",
+  "pin",
+  "park",
   "policy",
   "defer",
   "hud",

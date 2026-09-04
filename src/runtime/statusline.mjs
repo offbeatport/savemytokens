@@ -65,10 +65,45 @@ function normalizeWindows(rateLimits) {
   return windows;
 }
 
+function mergeWindows(stored, incoming, now) {
+  const merged = {};
+  for (const [key, window] of Object.entries(stored ?? {})) {
+    if (typeof window?.usedPercent !== "number") continue;
+    if (typeof window.resetsAt === "number" && window.resetsAt * 1000 <= now) continue;
+    merged[key] = window;
+  }
+  for (const [key, window] of Object.entries(incoming)) {
+    if (typeof window.resetsAt === "number" && window.resetsAt * 1000 <= now) continue;
+    const previous = merged[key];
+    if (!previous) {
+      merged[key] = { ...window, at: now };
+      continue;
+    }
+    const older = (window.resetsAt ?? 0) < (previous.resetsAt ?? 0);
+    if (older) continue;
+    const sameWindow = (window.resetsAt ?? 0) === (previous.resetsAt ?? 0);
+    merged[key] = {
+      ...window,
+      usedPercent: sameWindow ? Math.max(previous.usedPercent, window.usedPercent) : window.usedPercent,
+      at: now,
+    };
+  }
+  return merged;
+}
+
 function buildReading(payload, now) {
-  const windows = normalizeWindows(payload.rate_limits);
+  const incoming = normalizeWindows(payload.rate_limits);
+  const stored = loadQuota(ADAPTER);
+  const windows = mergeWindows(stored?.windows, incoming, now);
   if (Object.keys(windows).length === 0) return null;
-  return { at: now, source: "statusline", sessionId: String(payload.session_id ?? ""), windows, history: [] };
+  if (Object.keys(incoming).length === 0 && stored) return { ...stored, windows };
+  return {
+    at: now,
+    source: "statusline",
+    sessionId: String(payload.session_id ?? ""),
+    windows,
+    history: Array.isArray(stored?.history) ? stored.history : [],
+  };
 }
 
 function persistReading(reading, metered, turnAt) {
@@ -136,8 +171,9 @@ function run() {
   meterSession(payload, now);
 
   const reading = buildReading(payload, now);
+  const fresh = Object.keys(normalizeWindows(payload.rate_limits)).length > 0;
   const plan = schedule(ADAPTER, now, "five_hour", reading);
-  if (reading) {
+  if (reading && fresh) {
     let turnAt = 0;
     for (const claimant of plan.claimants) turnAt = Math.max(turnAt, loadMeter(ADAPTER, claimant.claimant.id).lastAt ?? 0);
     persistReading(reading, plan.totalWeighted, turnAt);
@@ -177,7 +213,7 @@ function run() {
       rate,
       from: bounds.from,
       to: bounds.to,
-      stale: !reading && Object.keys(quota).length > 0 && now - (plan.quota?.at ?? 0) > STALE_READING_MS,
+      stale: !fresh && Object.keys(quota).length > 0 && now - (plan.quota?.at ?? 0) > STALE_READING_MS,
       now,
     },
     theme,

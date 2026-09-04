@@ -19,7 +19,10 @@ export type Action =
   | { kind: "edit" }
   | { kind: "help" }
   | { kind: "view"; delta: number }
-  | { kind: "viewAt"; index: number };
+  | { kind: "viewAt"; index: number }
+  | { kind: "pin" }
+  | { kind: "park" }
+  | { kind: "resume" };
 
 const ESC = "\u001b";
 const FINAL = /[@-~]/;
@@ -100,6 +103,13 @@ export function actionFor(key: string, mode: "plan" | "prefs", step: number): Ac
       return { kind: "preferences" };
     case "?":
       return { kind: "help" };
+    case "f":
+      return { kind: "pin" };
+    case "x":
+      return { kind: "park" };
+    case "\r":
+    case "\n":
+      return { kind: "resume" };
     case "v":
       return { kind: "view", delta: 1 };
     case "V":

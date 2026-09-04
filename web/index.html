@@ -79,11 +79,16 @@
     <main>
       <h1>SaveMyTokens</h1>
       <p class="tagline">Decide which session gets your Claude allowance.</p>
-      <code>npx savemytokens install</code>
+      <code>npx savemytokens</code>
       <p class="note">
         Splits the 5-hour and weekly usage Anthropic publishes across the Claude Code sessions you
         are actually running, gives each one a target share, and tells it the budget it is working
         within. Published numbers only — never an invented "% remaining".
+      </p>
+      <p class="note">
+        One command. It asks before it touches anything, and
+        <code style="display:inline;margin:0;padding:0;border:0">npx savemytokens uninstall</code>
+        removes every trace.
       </p>
       <p class="note">Runs locally. No daemon, no account, nothing uploaded.</p>
       <p class="note">

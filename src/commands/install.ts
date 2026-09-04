@@ -121,9 +121,17 @@ export interface InstallOptions {
   dryRun: boolean;
   force: boolean;
   rules: boolean;
+  quiet?: boolean;
 }
 
 export function runInstall(options: InstallOptions): void {
+  if (sandboxMismatch()) {
+    process.stdout.write(
+      `\n${bold("SaveMyTokens")}\n\nSAVEMYTOKENS_HOME points somewhere else, but the Claude settings do not.\nRefusing to edit ${SETTINGS} from a sandboxed run — set SAVEMYTOKENS_SETTINGS\nor CLAUDE_CONFIG_DIR too, or unset SAVEMYTOKENS_HOME.\n\n`,
+    );
+    process.exitCode = 1;
+    return;
+  }
   const settings = readSettings();
   const existingStatusLine = settings.statusLine?.command;
   const ours = ourCommand(existingStatusLine);
@@ -157,6 +165,22 @@ export function runInstall(options: InstallOptions): void {
     out.push("  Without it SMT cannot read your published 5h/7d usage — every other part still works.");
     out.push(`  Run ${bold("npx savemytokens install --force")} to keep yours and append the SMT segment.`);
     out.push("");
+  }
+
+  if (options.quiet && !options.dryRun) {
+    fs.mkdirSync(HOME, { recursive: true });
+    if (fs.existsSync(SETTINGS)) fs.copyFileSync(SETTINGS, path.join(HOME, "settings.backup.json"));
+    copyRuntime();
+    addHooks(settings);
+    const quietConfig = loadConfig();
+    if (!conflict || options.force) {
+      if (conflict && options.force) quietConfig.wrappedStatusLine = existingStatusLine;
+      settings.statusLine = { type: "command", command: statusLineCommand(), padding: 0, refreshInterval: 10 };
+    }
+    if (!quietConfig.createdAt) quietConfig.createdAt = Date.now();
+    saveConfig(quietConfig);
+    writeSettings(settings);
+    return;
   }
 
   if (options.dryRun) {
@@ -195,10 +219,23 @@ export function runInstall(options: InstallOptions): void {
   out.push(`${green("Installed.")} It takes effect in sessions you start from now on.`);
   out.push(dim("  Open the control centre with: npx savemytokens"));
   out.push("");
-  process.stdout.write(out.join("\n") + "\n");
+  if (!options.quiet) process.stdout.write(out.join("\n") + "\n");
+}
+
+function sandboxMismatch(): boolean {
+  const homeOverridden = Boolean(process.env.SAVEMYTOKENS_HOME);
+  const settingsChosen = Boolean(process.env.SAVEMYTOKENS_SETTINGS || process.env.CLAUDE_CONFIG_DIR);
+  return homeOverridden && !settingsChosen;
 }
 
 export function runUninstall(purge: boolean): void {
+  if (sandboxMismatch()) {
+    process.stdout.write(
+      `\n${bold("SaveMyTokens")}\n\nSAVEMYTOKENS_HOME points somewhere else, but the Claude settings do not.\nRefusing to edit ${SETTINGS} from a sandboxed run — set SAVEMYTOKENS_SETTINGS\nor CLAUDE_CONFIG_DIR too, or unset SAVEMYTOKENS_HOME.\n\n`,
+    );
+    process.exitCode = 1;
+    return;
+  }
   const settings = readSettings();
   let removed = 0;
 
