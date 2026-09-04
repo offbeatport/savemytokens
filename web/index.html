@@ -3,98 +3,354 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SaveMyTokens</title>
-    <meta name="description" content="Give every Claude Code session a target share of your Claude window." />
+    <title>SaveMyTokens — decide which project gets your Claude allowance</title>
+    <meta
+      name="description"
+      content="Give every Claude Code session a target share of your Claude window, and keep Claude aware of it. Local, zero dependencies, nothing uploaded."
+    />
+    <link rel="canonical" href="https://savemytokens.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://savemytokens.com/" />
     <meta property="og:title" content="SaveMyTokens" />
-    <meta property="og:description" content="Decide which session gets your Claude allowance." />
-    <link rel="icon" href="data:," />
+    <meta property="og:description" content="Decide which project gets your Claude allowance." />
+    <meta property="og:image" content="https://savemytokens.com/screenshot.svg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231e1e2e'/%3E%3Crect x='6' y='14' width='12' height='4' rx='2' fill='%2389b4fa'/%3E%3Crect x='6' y='21' width='7' height='4' rx='2' fill='%23a6e3a1'/%3E%3Crect x='6' y='7' width='20' height='4' rx='2' fill='%23585b70'/%3E%3C/svg%3E"
+    />
     <style>
       :root {
-        color-scheme: light;
-        --ink: #000;
-        --paper: #fff;
-        --muted: #666;
-        --rule: #ddd;
+        color-scheme: light dark;
+        --paper: #fbfbfd;
+        --panel: #fff;
+        --ink: #16161d;
+        --muted: #5b5b6b;
+        --rule: #e4e4ec;
+        --accent: #2f5fd0;
+        --ok: #2f7a45;
+        --warn: #9a6b12;
       }
       @media (prefers-color-scheme: dark) {
         :root {
-          color-scheme: dark;
-          --ink: #fff;
-          --paper: #000;
-          --muted: #999;
-          --rule: #333;
+          --paper: #101018;
+          --panel: #17171f;
+          --ink: #e9e9f0;
+          --muted: #9a9aac;
+          --rule: #26262f;
+          --accent: #89b4fa;
+          --ok: #a6e3a1;
+          --warn: #f9e2af;
         }
       }
       * {
         box-sizing: border-box;
       }
-      html,
-      body {
-        margin: 0;
-        height: 100%;
+      html {
+        -webkit-text-size-adjust: 100%;
       }
       body {
+        margin: 0;
         background: var(--paper);
         color: var(--ink);
-        font: 16px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem;
+        font:
+          17px/1.65 -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Inter,
+          Roboto,
+          sans-serif;
       }
-      main {
-        width: 100%;
-        max-width: 34rem;
+      .wrap {
+        max-width: 62rem;
+        margin: 0 auto;
+        padding: 0 1.5rem;
+      }
+      header {
+        padding: 5rem 0 2.5rem;
+        text-align: center;
       }
       h1 {
-        font-size: 1.25rem;
-        font-weight: 700;
         margin: 0;
-        letter-spacing: -0.01em;
-      }
-      p {
-        margin: 0.25rem 0 0;
+        font-size: clamp(2.4rem, 6vw, 3.6rem);
+        letter-spacing: -0.035em;
+        line-height: 1.05;
       }
       .tagline {
-        font-size: 1.25rem;
+        margin: 1rem auto 0;
+        max-width: 34rem;
+        font-size: clamp(1.05rem, 2.4vw, 1.3rem);
+        color: var(--muted);
       }
-      code {
-        display: block;
-        margin: 2.5rem 0;
-        padding: 1rem 1.25rem;
+      .run {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 2.25rem 0 0.75rem;
+        padding: 0.85rem 1.35rem;
         border: 1px solid var(--rule);
-        font: inherit;
+        border-radius: 0.6rem;
+        background: var(--panel);
+        font:
+          1.05rem/1 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Consolas,
+          monospace;
+        cursor: pointer;
+      }
+      .run:hover {
+        border-color: var(--accent);
+      }
+      .run span {
         user-select: all;
       }
-      .note {
+      .run small {
         color: var(--muted);
-        font-size: 0.875rem;
+        font-family: inherit;
+        font-size: 0.8rem;
       }
-      .note a {
+      .sub {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      figure {
+        margin: 3.5rem 0 0;
+      }
+      figure img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 0.75rem;
+      }
+      figcaption {
+        margin-top: 0.85rem;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      section {
+        padding: 4rem 0;
+        border-top: 1px solid var(--rule);
+      }
+      h2 {
+        margin: 0 0 1.75rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .grid {
+        display: grid;
+        gap: 1.75rem 2.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+      }
+      .grid h3 {
+        margin: 0 0 0.35rem;
+        font-size: 1rem;
+      }
+      .grid p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+      }
+      td {
+        padding: 0.7rem 0;
+        border-bottom: 1px solid var(--rule);
+        vertical-align: top;
+      }
+      td:first-child {
+        width: 9.5rem;
+        padding-right: 1.5rem;
+        font-weight: 600;
+      }
+      td:last-child {
+        color: var(--muted);
+      }
+      .honest li {
+        margin-bottom: 0.6rem;
+        color: var(--muted);
+      }
+      .honest strong {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      ul {
+        margin: 0;
+        padding-left: 1.1rem;
+      }
+      code {
+        font:
+          0.9em ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          Consolas,
+          monospace;
+        background: var(--panel);
+        border: 1px solid var(--rule);
+        border-radius: 0.3rem;
+        padding: 0.1rem 0.35rem;
+      }
+      footer {
+        padding: 3rem 0 4rem;
+        border-top: 1px solid var(--rule);
+        color: var(--muted);
+        font-size: 0.9rem;
+        text-align: center;
+      }
+      a {
+        color: var(--accent);
+      }
+      footer a {
         color: inherit;
       }
     </style>
   </head>
   <body>
-    <main>
-      <h1>SaveMyTokens</h1>
-      <p class="tagline">Decide which session gets your Claude allowance.</p>
-      <code>npx savemytokens</code>
-      <p class="note">
-        Splits the 5-hour and weekly usage Anthropic publishes across the Claude Code sessions you
-        are actually running, gives each one a target share, and tells it the budget it is working
-        within. Published numbers only — never an invented "% remaining".
-      </p>
-      <p class="note">
-        One command. It asks before it touches anything, and
-        <code style="display:inline;margin:0;padding:0;border:0">npx savemytokens uninstall</code>
-        removes every trace.
-      </p>
-      <p class="note">Runs locally. No daemon, no account, nothing uploaded.</p>
-      <p class="note">
-        <a href="https://github.com/offbeatport/savemytokens">source</a> ·
-        <a href="https://www.npmjs.com/package/savemytokens">npm</a>
-      </p>
-    </main>
+    <div class="wrap">
+      <header>
+        <h1>SaveMyTokens</h1>
+        <p class="tagline">Decide which project gets your Claude allowance.</p>
+
+        <button class="run" type="button" id="copy">
+          <span>npx savemytokens</span>
+          <small id="hint">click to copy</small>
+        </button>
+        <p class="sub">Node 18.17+ · zero dependencies · nothing leaves your machine</p>
+
+        <figure>
+          <img
+            src="screenshot.svg"
+            width="850"
+            height="422"
+            alt="The control centre: three live projects sharing a 5-hour window, each with an allocation, how much of it it has spent, a priority and its last prompt."
+          />
+          <figcaption>Three projects sharing one 5-hour window. obp-ui is at 93% of its slice.</figcaption>
+        </figure>
+      </header>
+
+      <section>
+        <h2>What it does</h2>
+        <div class="grid">
+          <div>
+            <h3>The real numbers</h3>
+            <p>
+              Your 5-hour and weekly usage exactly as Anthropic publishes it, read from the Claude
+              Code status line. Never an invented “% remaining”.
+            </p>
+          </div>
+          <div>
+            <h3>A split you control</h3>
+            <p>
+              Give each project an allocation and a priority. Spare capacity goes to the highest
+              priority first, and a project’s share is divided among its live sessions by what they
+              burn.
+            </p>
+          </div>
+          <div>
+            <h3>Claude working to it</h3>
+            <p>
+              As a session eats into its slice it is told to narrow scope and finish, and to write
+              down whatever it drops. That comes back next time you open the project.
+            </p>
+          </div>
+          <div>
+            <h3>Unused capacity returned</h3>
+            <p>
+              Mark a project done and whatever it did not spend goes to the others, immediately.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Where the numbers come from</h2>
+        <table>
+          <tr>
+            <td>Published</td>
+            <td>
+              5h and 7d usage, straight from Anthropic through the status line. We do not estimate
+              it and we do not adjust it.
+            </td>
+          </tr>
+          <tr>
+            <td>Measured</td>
+            <td>
+              Tokens per project, counted from the transcripts already on your disk. Nothing is
+              sampled and nothing is sent anywhere.
+            </td>
+          </tr>
+          <tr>
+            <td>Inferred</td>
+            <td>
+              The split between projects — Anthropic publishes one total, so dividing it by measured
+              share is ours, and we label it as ours.
+            </td>
+          </tr>
+        </table>
+      </section>
+
+      <section>
+        <h2>Install</h2>
+        <table>
+          <tr>
+            <td><code>npx savemytokens</code></td>
+            <td>Opens the control centre and offers to install on first run.</td>
+          </tr>
+          <tr>
+            <td><code>… install</code></td>
+            <td>
+              Four hooks and a status line in <code>settings.json</code>, backed up first. Without
+              them nothing is live.
+            </td>
+          </tr>
+          <tr>
+            <td><code>… uninstall</code></td>
+            <td>Removes every entry it added and restores a status line it wrapped.</td>
+          </tr>
+          <tr>
+            <td><code>… status</code></td>
+            <td>One plain-text snapshot, or <code>--json</code> for a script.</td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="honest">
+        <h2>What it will not do</h2>
+        <ul>
+          <li><strong>It cannot stop a session.</strong> There is no API to pause Claude Code, so a share is advice given to Claude, not a hard cap.</li>
+          <li><strong>It does not predict a lockout.</strong> Anthropic publishes a percentage and a reset time; anything past that would be a guess.</li>
+          <li><strong>It makes no network call.</strong> No account, no telemetry, no daemon. Everything lives in <code>~/.savemytokens</code>.</li>
+        </ul>
+      </section>
+
+      <footer>
+        <a href="https://github.com/offbeatport/savemytokens">GitHub</a> ·
+        <a href="https://www.npmjs.com/package/savemytokens">npm</a> · MIT
+      </footer>
+    </div>
+
+    <script>
+      const button = document.getElementById("copy");
+      const hint = document.getElementById("hint");
+      button.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText("npx savemytokens");
+          hint.textContent = "copied";
+          setTimeout(() => {
+            hint.textContent = "click to copy";
+          }, 1600);
+        } catch {
+          hint.textContent = "press ⌘C";
+        }
+      });
+    </script>
   </body>
 </html>

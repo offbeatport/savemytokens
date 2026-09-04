@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="850" height="882" viewBox="0 0 850 882" role="img" aria-label="savemytokens — ?">
+  <rect width="850" height="882" rx="10" fill="#181825"/>
+  <rect width="850" height="38" rx="10" fill="#11111b"/>
+  <rect y="28" width="850" height="10" fill="#11111b"/>
+  <circle cx="28" cy="19" r="6" fill="#ff5f56"/><circle cx="46" cy="19" r="6" fill="#ffbd2e"/><circle cx="64" cy="19" r="6" fill="#27c93f"/>
+  <text x="425" y="24" text-anchor="middle" font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12" fill="#6c7086">savemytokens — ?</text>
+  <g font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14">
+  <text x="22" y="74" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">KEYS</tspan></text>
+  <text x="22" y="94" xml:space="preserve"></text>
+  <text x="22" y="114" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">↑ ↓    </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">select a project</tspan></text>
+  <text x="22" y="134" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">⏎      </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">open it and see its sessions — esc comes back</tspan></text>
+  <text x="22" y="154" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">← →    </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">move its allocation by 5 points</tspan></text>
+  <text x="22" y="174" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">u      </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">drop the target and go back to an even split</tspan></text>
+  <text x="22" y="194" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">e      </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">equalize — drop every pinned target at once</tspan></text>
+  <text x="22" y="214" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">p      </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">priority: high → normal → low, who gets spare capacity first</tspan></text>
+  <text x="22" y="234" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">f      </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">pin the row so it keeps its place</tspan></text>
+  <text x="22" y="254" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">x      </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">park it — out of the plan, holding nothing</tspan></text>
+  <text x="22" y="274" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">d b a n</tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">mark it done, blocked, active or needs-more by hand</tspan></text>
+  <text x="22" y="294" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">m      </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">show every project, not just the first screenful</tspan></text>
+  <text x="22" y="314" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">P      </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">settings: columns, theme, status line, what to protect</tspan></text>
+  <text x="22" y="334" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">r      </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">read everything again now</tspan></text>
+  <text x="22" y="354" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">? q    </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">this help · quit</tspan></text>
+  <text x="22" y="374" xml:space="preserve"></text>
+  <text x="22" y="394" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">THE THREE TABLES</tspan></text>
+  <text x="22" y="414" xml:space="preserve"></text>
+  <text x="22" y="434" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">ACTIVE — a Claude session is open there right now. Only these spend the window, so only</tspan></text>
+  <text x="22" y="454" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">these hold an allocation.</tspan></text>
+  <text x="22" y="474" xml:space="preserve"></text>
+  <text x="22" y="494" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">RECENT — worked on in the last day with nothing running. Set a target here and it waits</tspan></text>
+  <text x="22" y="514" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">for you.</tspan></text>
+  <text x="22" y="534" xml:space="preserve"></text>
+  <text x="22" y="554" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">PARKED — older, or parked by hand with x.</tspan></text>
+  <text x="22" y="574" xml:space="preserve"></text>
+  <text x="22" y="594" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">WHERE THE NUMBERS COME FROM</tspan></text>
+  <text x="22" y="614" xml:space="preserve"></text>
+  <text x="22" y="634" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">5h and 7d are Anthropic's own numbers, read from the status line. Share is measured from</tspan></text>
+  <text x="22" y="654" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">the tokens in your transcripts.</tspan></text>
+  <text x="22" y="674" xml:space="preserve"></text>
+  <text x="22" y="694" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Allocation is what you asked for. Used of it is Anthropic's number split by measured share</tspan></text>
+  <text x="22" y="714" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">— the split between rows is ours, not theirs.</tspan></text>
+  <text x="22" y="734" xml:space="preserve"></text>
+  <text x="22" y="754" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">A project's allocation is divided across its live sessions by what each one burns.</tspan></text>
+  <text x="22" y="774" xml:space="preserve"></text>
+  <text x="22" y="794" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">WHEN IT GETS TIGHT</tspan></text>
+  <text x="22" y="814" xml:space="preserve"></text>
+  <text x="22" y="834" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Claude is told to wind down at 50/80/90% of a project's target. Change it with P, or npx</tspan></text>
+  <text x="22" y="854" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">savemytokens policy.</tspan></text>
+  </g>
+</svg>

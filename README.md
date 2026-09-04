@@ -11,23 +11,11 @@
 <img src="https://img.shields.io/badge/local%20only-no%20network%20call-6e40c9?style=flat-square" alt="local only">
 <img src="https://img.shields.io/badge/license-MIT-24292f?style=flat-square" alt="MIT">
 
+<br><br>
+
+<img src="https://raw.githubusercontent.com/offbeatport/savemytokens/main/assets/screenshot.svg" alt="The SaveMyTokens control centre: three live projects sharing a 5-hour window, each with an allocation, how much of it they have spent, a priority and their last prompt." width="850">
+
 </div>
-
-```
-  5h █████░░░░░░░  42% resets in 1h57 (18:55)    7d ██░░░░░░░░░░  18% resets in 2d3h (Sun)
-
-  ACTIVE 3
-   project        allocation used of it      priority last prompt
-   webinvoke    2        50% [|||...]  45%   HIGH     Implement the provider fallback chain end to …
-   buydiff               30% [|||...]  44%   NORMAL   Fix the verdict table alignment on mobile
-   scratch               20% [||....]  31%   LOW      Try the alternate parser and compare
-
-  RECENT 1
-   project         last turn  last prompt
-   reposhine          3h ago  This is the new plan for reposhine
-
-  3 projects sharing this window across 4 sessions.
-```
 
 <br>
 

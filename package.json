@@ -30,6 +30,7 @@
   },
   "files": [
     "dist",
+    "assets",
     "README.md",
     "LICENSE"
   ],
@@ -40,7 +41,8 @@
     "build": "tsc -p tsconfig.json && node scripts/copy-runtime.mjs",
     "dev": "npm run build && node dist/cli.js",
     "test": "npm run build && node --test test/*.test.js",
-    "prepublishOnly": "npm run build"
+    "screenshot": "npm run build && COLORTERM=truecolor node scripts/screenshot.mjs",
+    "prepublishOnly": "npm run build && npm test"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
