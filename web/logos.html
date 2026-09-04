@@ -75,12 +75,13 @@
       .row { display: flex; align-items: baseline; gap: 0.6rem; }
       .name { font-weight: 600; font-size: 0.92rem; }
       .num { margin-left: auto; color: var(--muted); font: 0.72rem ui-monospace, Menlo, monospace; }
-      pre {
-        margin: 0.75rem 0 0;
+      .idea { margin: 0.5rem 0 0.75rem; color: var(--muted); font-size: 0.82rem; line-height: 1.45; }
+      code {
         color: var(--muted);
-        font: 11px/1.25 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        white-space: pre;
+        font: 10.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        opacity: 0.75;
       }
+      .stage { color: var(--accent); }
       footer { margin-top: 4rem; color: var(--muted); font-size: 0.9rem; }
       a { color: var(--accent); }
     </style>
@@ -91,96 +92,156 @@
         <div>
           <h1>Twenty marks</h1>
           <p class="lede">
-            One idea each, three shapes at most. Shown large and again at favicon size, because a
-            mark that only works big is not a mark. Each carries a character form for the terminal.
+            Twenty candidates from <a href="https://tabler.io/icons">Tabler Icons</a>, MIT licensed,
+            drawn on the same 24-pixel grid at the same stroke weight. Shown large and again at
+            favicon size, because a mark that only works big is not a mark.
           </p>
         </div>
         <button class="toggle" id="toggle" type="button"><span id="toggle-icon">◐</span> <span id="toggle-text">Dark</span></button>
       </div>
       <div class="grid" id="grid"></div>
       <footer>
-        <a href="index.html">Back to the site</a> · <a href="https://offbeatport.com">Offbeatport</a> ·
+        Icons by <a href="https://tabler.io/icons">Tabler</a>, MIT · <a href="index.html">Back to the site</a> · <a href="https://offbeatport.com">Offbeatport</a> ·
         <a href="https://github.com/offbeatport/savemytokens">GitHub</a> ·
         <a href="mailto:hello@offbeatport.com">hello@offbeatport.com</a>
       </footer>
     </div>
 
     <script>
-      const A = "var(--accent)";
-      const D = "var(--muted)";
-
       const MARKS = [
-        { name: "Three bars", ascii: "███\n██\n█",
-          d: `<rect x="4" y="8" width="40" height="7" rx="3.5" fill="${A}"/><rect x="4" y="20.5" width="26" height="7" rx="3.5" fill="${D}"/><rect x="4" y="33" width="14" height="7" rx="3.5" fill="${D}"/>` },
-
-        { name: "Two bars", ascii: "████\n██",
-          d: `<rect x="4" y="13" width="40" height="9" rx="4.5" fill="${A}"/><rect x="4" y="27" width="22" height="9" rx="4.5" fill="${D}"/>` },
-
-        { name: "Split square", ascii: "▛▀▜\n▙▄▟",
-          d: `<rect x="7" y="7" width="34" height="34" rx="8" fill="${D}"/><path d="M7 15a8 8 0 0 1 8-8h18a8 8 0 0 1 8 8v6H7z" fill="${A}"/>` },
-
-        { name: "Half circle", ascii: "(●○)",
-          d: `<circle cx="24" cy="24" r="17" fill="${D}"/><path d="M24 7a17 17 0 0 1 0 34z" fill="${A}"/>` },
-
-        { name: "Bar in a ring", ascii: "(▬)",
-          d: `<circle cx="24" cy="24" r="16" fill="none" stroke="${D}" stroke-width="4"/><rect x="14" y="21" width="14" height="6" rx="3" fill="${A}"/>` },
-
-        { name: "Quarter", ascii: "◔",
-          d: `<circle cx="24" cy="24" r="17" fill="${D}"/><path d="M24 7v17h17A17 17 0 0 0 24 7z" fill="${A}"/>` },
-
-        { name: "Filled meter", ascii: "[███░░]",
-          d: `<rect x="3" y="17" width="42" height="14" rx="7" fill="${D}"/><rect x="3" y="17" width="19" height="14" rx="7" fill="${A}"/>` },
-
-        { name: "Divider", ascii: "███ ██",
-          d: `<rect x="4" y="20" width="23" height="8" rx="4" fill="${A}"/><rect x="32" y="20" width="12" height="8" rx="4" fill="${D}"/>` },
-
-        { name: "Chevron", ascii: "❯",
-          d: `<path d="M15 12l14 12-14 12" fill="none" stroke="${A}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>` },
-
-        { name: "Chevron and bar", ascii: "❯ ██",
-          d: `<path d="M9 14l10 10-10 10" fill="none" stroke="${A}" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="27" y="20" width="17" height="8" rx="4" fill="${D}"/>` },
-
-        { name: "Column chart", ascii: "▁▄█",
-          d: `<rect x="6" y="30" width="9" height="12" rx="3" fill="${D}"/><rect x="19.5" y="20" width="9" height="22" rx="3" fill="${D}"/><rect x="33" y="8" width="9" height="34" rx="3" fill="${A}"/>` },
-
-        { name: "Stacked slab", ascii: "▀▀▀\n▄▄▄",
-          d: `<rect x="6" y="10" width="36" height="12" rx="4" fill="${A}"/><rect x="6" y="26" width="36" height="12" rx="4" fill="${D}"/>` },
-
-        { name: "Gauge", ascii: "◜◝\n ◞",
-          d: `<path d="M9 33a15 15 0 1 1 30 0" fill="none" stroke="${D}" stroke-width="5" stroke-linecap="round"/><path d="M9 33a15 15 0 0 1 6.5-12.4" fill="none" stroke="${A}" stroke-width="5" stroke-linecap="round"/>` },
-
-        { name: "Slash", ascii: "◍╱○",
-          d: `<path d="M34 11L14 37" stroke="${D}" stroke-width="4.5" stroke-linecap="round"/><circle cx="14" cy="13" r="6" fill="${A}"/>` },
-
-        { name: "Cut corner", ascii: "▛▀▚\n▙▄▟",
-          d: `<path d="M7 15a8 8 0 0 1 8-8h13l13 13v13a8 8 0 0 1-8 8H15a8 8 0 0 1-8-8z" fill="${D}"/><path d="M28 7l13 13H28z" fill="${A}"/>` },
-
-        { name: "Two panes", ascii: "▐█▌▕ ▏",
-          d: `<rect x="6" y="10" width="16" height="28" rx="5" fill="${A}"/><rect x="26" y="10" width="16" height="28" rx="5" fill="${D}"/>` },
-
-        { name: "Dot and bar", ascii: "● ███",
-          d: `<circle cx="12" cy="24" r="7" fill="${A}"/><rect x="25" y="20" width="19" height="8" rx="4" fill="${D}"/>` },
-
-        { name: "Wedge", ascii: "◤",
-          d: `<path d="M8 40V12a4 4 0 0 1 6.2-3.3l26 18a4 4 0 0 1-2.2 7.3z" fill="${D}"/><path d="M8 40V12a4 4 0 0 1 6.2-3.3L26 17z" fill="${A}"/>` },
-
-        { name: "Underline S", ascii: "S\n▔",
-          d: `<text x="24" y="31" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="30" font-weight="700" fill="${D}">S</text><rect x="9" y="37" width="30" height="5" rx="2.5" fill="${A}"/>` },
-
-        { name: "Nested squares", ascii: "▛▀▜\n▌▪▐",
-          d: `<rect x="6" y="6" width="36" height="36" rx="9" fill="none" stroke="${D}" stroke-width="4"/><rect x="17" y="17" width="14" height="14" rx="4" fill="${A}"/>` },
+        {
+          name: "Sliders",
+          icon: "adjustments-horizontal",
+          idea: "Allocation is a slider per project. The most literal mark there is.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" />`,
+        },
+        {
+          name: "Bar chart",
+          icon: "chart-bar",
+          idea: "Three bars of different heights: the plan, drawn.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -6" /> <path d="M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -10" /> <path d="M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -14" /> <path d="M4 20h14" />`,
+        },
+        {
+          name: "Rows",
+          icon: "layout-rows",
+          idea: "Stacked rows, one per project. Reads as a table, which is what it is.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2l0 -12" /> <path d="M4 12l16 0" />`,
+        },
+        {
+          name: "Progress",
+          icon: "progress",
+          idea: "A ring part-filled. How much of your share is gone.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M10 20.777a8.942 8.942 0 0 1 -2.48 -.969" /> <path d="M14 3.223a9.003 9.003 0 0 1 0 17.554" /> <path d="M4.579 17.093a8.961 8.961 0 0 1 -1.227 -2.592" /> <path d="M3.124 10.5c.16 -.95 .468 -1.85 .9 -2.675l.169 -.305" /> <path d="M6.907 4.579a8.954 8.954 0 0 1 3.093 -1.356" />`,
+        },
+        {
+          name: "Gauge",
+          icon: "gauge",
+          idea: "A dial that stops where the published number stops.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /> <path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /> <path d="M13.41 10.59l2.59 -2.59" /> <path d="M7 12a5 5 0 0 1 5 -5" />`,
+        },
+        {
+          name: "Pie",
+          icon: "chart-pie-2",
+          idea: "One window, divided. The wedge is the project you are in.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M12 3v9h9" /> <path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />`,
+        },
+        {
+          name: "Split",
+          icon: "arrows-split-2",
+          idea: "One stream of capacity dividing into several.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M21 17h-5.397a5 5 0 0 1 -4.096 -2.133l-.514 -.734a5 5 0 0 0 -4.096 -2.133h-3.897" /> <path d="M21 7h-5.395a5 5 0 0 0 -4.098 2.135l-.51 .73a5 5 0 0 1 -4.097 2.135h-3.9" /> <path d="M18 10l3 -3l-3 -3" /> <path d="M18 20l3 -3l-3 -3" />`,
+        },
+        {
+          name: "Terminal",
+          icon: "terminal-2",
+          idea: "It lives in a terminal, and nowhere else.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M8 9l3 3l-3 3" /> <path d="M13 15l3 0" /> <path d="M3 6a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2l0 -12" />`,
+        },
+        {
+          name: "Hourglass",
+          icon: "hourglass",
+          idea: "A five-hour window, running out.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M6.5 7h11" /> <path d="M6.5 17h11" /> <path d="M6 20v-2a6 6 0 1 1 12 0v2a1 1 0 0 1 -1 1h-10a1 1 0 0 1 -1 -1" /> <path d="M6 4v2a6 6 0 1 0 12 0v-2a1 1 0 0 0 -1 -1h-10a1 1 0 0 0 -1 1" />`,
+        },
+        {
+          name: "Battery",
+          icon: "battery-2",
+          idea: "The allowance as a thing that drains and refills on a timer.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M6 7h11a2 2 0 0 1 2 2v.5a.5 .5 0 0 0 .5 .5a.5 .5 0 0 1 .5 .5v3a.5 .5 0 0 1 -.5 .5a.5 .5 0 0 0 -.5 .5v.5a2 2 0 0 1 -2 2h-11a2 2 0 0 1 -2 -2v-6a2 2 0 0 1 2 -2" /> <path d="M7 10l0 4" /> <path d="M10 10l0 4" />`,
+        },
+        {
+          name: "Histogram",
+          icon: "chart-histogram",
+          idea: "Bars plus the line through them: usage against pace.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M3 3v18h18" /> <path d="M20 18v3" /> <path d="M16 16v5" /> <path d="M12 13v8" /> <path d="M8 16v5" /> <path d="M3 11c6 0 5 -5 9 -5s3 5 9 5" />`,
+        },
+        {
+          name: "Align left",
+          icon: "align-left",
+          idea: "Four rules of unequal length. Abstract allocation.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M4 6l16 0" /> <path d="M4 12l10 0" /> <path d="M4 18l14 0" />`,
+        },
+        {
+          name: "Percent",
+          icon: "percentage",
+          idea: "Every number in the product is one of these.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M16 17a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /> <path d="M6 7a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /> <path d="M6 18l12 -12" />`,
+        },
+        {
+          name: "Stack",
+          icon: "stack-2",
+          idea: "Sessions stacked into one window.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M12 4l-8 4l8 4l8 -4l-8 -4" /> <path d="M4 12l8 4l8 -4" /> <path d="M4 16l8 4l8 -4" />`,
+        },
+        {
+          name: "Wallet",
+          icon: "wallet",
+          idea: "An allowance you spend down. Warmer, less technical.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12" /> <path d="M20 12v4h-4a2 2 0 0 1 0 -4h4" />`,
+        },
+        {
+          name: "Columns",
+          icon: "columns-3",
+          idea: "Three columns sharing one frame.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M3 4a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v16a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1v-16" /> <path d="M9 3v18" /> <path d="M15 3v18" />`,
+        },
+        {
+          name: "Half square",
+          icon: "square-half",
+          idea: "The simplest possible split. Survives at any size.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M12 4v16" /> <path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14" /> <path d="M12 13l7.5 -7.5" /> <path d="M12 18l8 -8" /> <path d="M15 20l5 -5" /> <path d="M12 8l4 -4" />`,
+        },
+        {
+          name: "Half circle",
+          icon: "circle-half",
+          idea: "The same idea, rounder.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /> <path d="M12 3v18" />`,
+        },
+        {
+          name: "Speed dial",
+          icon: "brand-speedtest",
+          idea: "Rate rather than total: how fast you are burning.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M5.636 19.364a9 9 0 1 1 12.728 0" /> <path d="M16 9l-4 4" />`,
+        },
+        {
+          name: "Clock",
+          icon: "clock-hour-4",
+          idea: "Time is the resource, not tokens.",
+          svg: `<path stroke="none" d="M0 0h24v24H0z" fill="none" /> <path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /> <path d="M12 12l3 2" /> <path d="M12 7v5" />`,
+        },
       ];
 
-      const svg = (mark, size) =>
-        `<svg width="${size}" height="${size}" viewBox="0 0 48 48" aria-hidden="true">${mark.d}</svg>`;
+      const svg = (mark, size, stroke) =>
+        `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${mark.svg}</svg>`;
 
       document.getElementById("grid").innerHTML = MARKS.map(
         (mark, at) => `
         <div class="card">
-          <div class="stage">${svg(mark, 72)}${svg(mark, 20)}</div>
+          <div class="stage">${svg(mark, 64, 1.6)}${svg(mark, 22, 2)}</div>
           <div class="meta">
             <div class="row"><span class="name">${mark.name}</span><span class="num">${String(at + 1).padStart(2, "0")}</span></div>
-            <pre>${mark.ascii}</pre>
+            <p class="idea">${mark.idea}</p>
+            <code>tabler:${mark.icon}</code>
           </div>
         </div>`,
       ).join("");
