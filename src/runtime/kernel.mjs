@@ -97,7 +97,12 @@ export function loadConfig() {
   return {
     ...DEFAULT_CONFIG,
     ...stored,
-    theme: { ...DEFAULT_CONFIG.theme, ...(stored.theme || {}) },
+    theme: {
+      ...DEFAULT_CONFIG.theme,
+      ...(stored.theme || {}),
+      ...(stored.theme?.tui && THEME_RENAMES[stored.theme.tui] ? { tui: THEME_RENAMES[stored.theme.tui] } : {}),
+      ...(stored.theme?.hud && THEME_RENAMES[stored.theme.hud] ? { hud: THEME_RENAMES[stored.theme.hud] } : {}),
+    },
     layout: { ...DEFAULT_CONFIG.layout, ...(stored.layout || {}) },
     columns: migrateColumns(stored.columns),
     hud: {
@@ -934,8 +939,8 @@ const BUILTIN_THEMES = {
   default: {
     name: "default",
     colors: { fg: "#e6e6e6", dim: "#8a8a8a", accent: "#7aa2f7", ok: "#9ece6a", warn: "#e0af68", danger: "#f7768e", track: "#3b3b3b", fill: "#7aa2f7" },
-    glyphs: { full: "█", empty: "░", sep: "·", arrow: "→", tag: "SMT" },
-    border: { h: "─", v: "│", tl: "┌", tr: "┐", bl: "└", br: "┘" },
+    glyphs: { full: "\u2588", empty: "\u2591", sep: "\u00b7", arrow: "\u2192", tag: "SMT" },
+    border: { h: "\u2500", v: "\u2502", tl: "\u250c", tr: "\u2510", bl: "\u2514", br: "\u2518" },
   },
   minimal: {
     name: "minimal",
@@ -946,22 +951,60 @@ const BUILTIN_THEMES = {
   nord: {
     name: "nord",
     colors: { fg: "#eceff4", dim: "#4c566a", accent: "#88c0d0", ok: "#a3be8c", warn: "#ebcb8b", danger: "#bf616a", track: "#3b4252", fill: "#88c0d0" },
-    glyphs: { full: "▰", empty: "▱", sep: "·", arrow: "→", tag: "SMT" },
-    border: { h: "─", v: "│", tl: "╭", tr: "╮", bl: "╰", br: "╯" },
+    glyphs: { full: "\u25b0", empty: "\u25b1", sep: "\u00b7", arrow: "\u2192", tag: "SMT" },
+    border: { h: "\u2500", v: "\u2502", tl: "\u256d", tr: "\u256e", bl: "\u2570", br: "\u256f" },
   },
-  dracula: {
-    name: "dracula",
+  violet: {
+    name: "violet",
     colors: { fg: "#f8f8f2", dim: "#6272a4", accent: "#bd93f9", ok: "#50fa7b", warn: "#f1fa8c", danger: "#ff5555", track: "#44475a", fill: "#bd93f9" },
-    glyphs: { full: "█", empty: "▒", sep: "•", arrow: "→", tag: "SMT" },
-    border: { h: "─", v: "│", tl: "╭", tr: "╮", bl: "╰", br: "╯" },
+    glyphs: { full: "\u2588", empty: "\u2592", sep: "\u2022", arrow: "\u2192", tag: "SMT" },
+    border: { h: "\u2500", v: "\u2502", tl: "\u256d", tr: "\u256e", bl: "\u2570", br: "\u256f" },
   },
   matrix: {
     name: "matrix",
     colors: { fg: "#8fff8f", dim: "#1f7a1f", accent: "#00ff41", ok: "#00ff41", warn: "#b6ff00", danger: "#ff3131", track: "#0b2b0b", fill: "#00ff41" },
-    glyphs: { full: "▓", empty: "·", sep: "::", arrow: ">>", tag: "SMT" },
-    border: { h: "═", v: "║", tl: "╔", tr: "╗", bl: "╚", br: "╝" },
+    glyphs: { full: "\u2593", empty: "\u00b7", sep: "::", arrow: ">>", tag: "SMT" },
+    border: { h: "\u2550", v: "\u2551", tl: "\u2554", tr: "\u2557", bl: "\u255a", br: "\u255d" },
+  },
+  solarized: {
+    name: "solarized",
+    colors: { fg: "#93a1a1", dim: "#586e75", accent: "#268bd2", ok: "#859900", warn: "#b58900", danger: "#dc322f", track: "#073642", fill: "#268bd2" },
+    glyphs: { full: "\u2588", empty: "\u2591", sep: "\u00b7", arrow: "\u2192", tag: "SMT" },
+    border: { h: "\u2500", v: "\u2502", tl: "\u250c", tr: "\u2510", bl: "\u2514", br: "\u2518" },
+  },
+  gruvbox: {
+    name: "gruvbox",
+    colors: { fg: "#ebdbb2", dim: "#928374", accent: "#83a598", ok: "#b8bb26", warn: "#fabd2f", danger: "#fb4934", track: "#3c3836", fill: "#83a598" },
+    glyphs: { full: "\u2588", empty: "\u2591", sep: "\u00b7", arrow: "\u2192", tag: "SMT" },
+    border: { h: "\u2500", v: "\u2502", tl: "\u250c", tr: "\u2510", bl: "\u2514", br: "\u2518" },
+  },
+  rose: {
+    name: "rose",
+    colors: { fg: "#e0def4", dim: "#6e6a86", accent: "#c4a7e7", ok: "#9ccfd8", warn: "#f6c177", danger: "#eb6f92", track: "#26233a", fill: "#c4a7e7" },
+    glyphs: { full: "\u25ac", empty: "\u25ad", sep: "\u00b7", arrow: "\u2192", tag: "SMT" },
+    border: { h: "\u2500", v: "\u2502", tl: "\u256d", tr: "\u256e", bl: "\u2570", br: "\u256f" },
+  },
+  paper: {
+    name: "paper",
+    colors: { fg: "#24292f", dim: "#6e7781", accent: "#0969da", ok: "#1a7f37", warn: "#9a6700", danger: "#cf222e", track: "#d0d7de", fill: "#0969da" },
+    glyphs: { full: "\u2588", empty: "\u2591", sep: "\u00b7", arrow: "\u2192", tag: "SMT" },
+    border: { h: "\u2500", v: "\u2502", tl: "\u250c", tr: "\u2510", bl: "\u2514", br: "\u2518" },
+  },
+  neon: {
+    name: "neon",
+    colors: { fg: "#f0f0ff", dim: "#6b5b95", accent: "#ff2fb9", ok: "#00f5d4", warn: "#fee440", danger: "#ff206e", track: "#2b2b3d", fill: "#ff2fb9" },
+    glyphs: { full: "\u2589", empty: "\u2595", sep: "\u2502", arrow: "\u25b8", tag: "SMT" },
+    border: { h: "\u2501", v: "\u2503", tl: "\u250f", tr: "\u2513", bl: "\u2517", br: "\u251b" },
+  },
+  ember: {
+    name: "ember",
+    colors: { fg: "#f5e0dc", dim: "#9a7b76", accent: "#fab387", ok: "#a6e3a1", warn: "#f9e2af", danger: "#f38ba8", track: "#45475a", fill: "#fab387" },
+    glyphs: { full: "\u2588", empty: "\u2591", sep: "\u00b7", arrow: "\u2192", tag: "SMT" },
+    border: { h: "\u2500", v: "\u2502", tl: "\u256d", tr: "\u256e", bl: "\u2570", br: "\u256f" },
   },
 };
+
+const THEME_RENAMES = { dracula: "violet" };
 
 export function builtinThemes() {
   return Object.keys(BUILTIN_THEMES);
@@ -972,7 +1015,7 @@ export function userThemes() {
 }
 
 export function loadTheme(name) {
-  const wanted = name || "default";
+  const wanted = THEME_RENAMES[name] ?? name ?? "default";
   const user = readJson(path.join(THEME_DIR, `${wanted}.json`), null);
   const base = BUILTIN_THEMES[wanted] || BUILTIN_THEMES.default;
   if (!user || typeof user !== "object") return base;

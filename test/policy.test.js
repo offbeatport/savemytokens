@@ -615,3 +615,37 @@ test("the tight section shows the real text, when it fires, and where you are", 
   assert.match(columns.join("\n"), /allocation.*— the share of the window/, "columns explain themselves");
   assert.match(columns.join("\n"), /5h.*— the 5-hour window Anthropic publishes/, "so do status line segments");
 });
+
+test("palettes exist for both surfaces, and dracula is now violet", async () => {
+  const { builtinThemes, loadTheme, renderHud } = await import("../dist/runtime/kernel.mjs");
+  const names = builtinThemes();
+
+  assert.ok(names.length >= 10, `expected at least ten palettes, found ${names.length}`);
+  assert.ok(!names.includes("dracula"), "the old name is gone");
+  assert.ok(names.includes("violet"), "and replaced");
+  assert.equal(loadTheme("dracula").name, "violet", "anyone who set dracula keeps their colours");
+
+  const now = Date.now();
+  const view = {
+    label: "webinvoke",
+    target: 0.5,
+    observed: 0.4,
+    used: 20,
+    pressure: 0.4,
+    priority: "high",
+    quota: { five_hour: { usedPercent: 42, resetsAt: Math.floor(now / 1000) + 3600 } },
+    now,
+  };
+
+  for (const name of names) {
+    const theme = loadTheme(name);
+    for (const role of ["fg", "dim", "accent", "ok", "warn", "danger", "track"]) {
+      assert.match(theme.colors[role] ?? "", /^#[0-9a-f]{6}$/i, `${name} is missing a ${role} colour`);
+    }
+    for (const glyph of ["full", "empty", "sep"]) {
+      assert.ok((theme.glyphs[glyph] ?? "").length > 0, `${name} is missing its ${glyph} glyph`);
+    }
+    const line = renderHud(["project", "5h"], view, theme, true);
+    assert.ok(line.includes("webinvoke"), `${name} renders a status line`);
+  }
+});
