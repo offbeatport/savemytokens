@@ -421,7 +421,11 @@ test("the settings screen models columns, segments and their order", async () =>
   const painted = renderSettings(config, rows, selectable[0], false, "", preview, loadTheme("default"), false);
   assert.ok(painted.some((line) => line.includes("❯")), "the cursor is drawn");
   assert.ok(painted.some((line) => line.includes("webinvoke")), "the status line is previewed on real data");
-  assert.ok(painted.some((line) => line.includes("[nord]")), "the chosen theme is marked");
+  assert.ok(painted.some((line) => line.includes("‹") && line.includes("nord")), "the chosen theme is shown with a cycler");
+  assert.ok(
+    painted.some((line) => line.includes("/13")),
+    "and its position in the list, rather than every name at once",
+  );
 });
 
 test("bars grow with the terminal, and no row overflows it", async () => {

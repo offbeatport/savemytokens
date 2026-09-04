@@ -238,10 +238,17 @@ export function renderSettings(
     if (row.kind === "theme") {
       const names = themeNames();
       const current = config.theme[row.surface];
-      const rendered = names
-        .map((name) => (name === current ? paint(theme, "accent", `[${name}]`, color) : paint(theme, "dim", name, color)))
-        .join(" ");
-      out.push(`  ${mark} ${padEndVisible(row.surface === "tui" ? "control centre" : "status line", 15)} ${rendered}`);
+      const at = Math.max(0, names.indexOf(current));
+      const shown = loadTheme(current);
+      const name = `${paint(theme, "dim", "‹", color)} ${paint(theme, "accent", padEndVisible(current, 11), color)} ${paint(theme, "dim", "›", color)}`;
+      const position = paint(theme, "dim", `${at + 1}/${names.length}`, color);
+      const sample =
+        row.surface === "tui"
+          ? `${paint(shown, "accent", shown.tui.cursor ?? "", color)} ${paint(shown, "ok", shown.tui.active ?? "", color)} ${paint(shown, "dim", shown.tui.done ?? "", color)}  ${paint(shown, "ok", (shown.tui.fill ?? "|").repeat(4), color)}${paint(shown, "track", (shown.tui.empty ?? ".").repeat(4), color)}`
+          : renderSegments(["project", "pair", "5h"], preview, shown, color);
+      out.push(
+        `  ${mark} ${padEndVisible(row.surface === "tui" ? "control centre" : "status line", 15)} ${name} ${position}   ${sample}`,
+      );
       continue;
     }
     if (row.kind === "timeline") {
