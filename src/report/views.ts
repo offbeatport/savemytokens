@@ -6,11 +6,12 @@ import {
   loadMeter,
   meterBar,
   paint,
+  paintHead,
   pressureRole,
   type ProjectView,
   type Theme,
 } from "../runtime/kernel.mjs";
-import { padEndVisible, padStartVisible, visibleWidth } from "../util/ansi.js";
+import { clip, padEndVisible, padStartVisible, visibleWidth } from "../util/ansi.js";
 import { ago, compactNumber } from "../util/fmt.js";
 import { emptyBar, heatStrip, miniSpark, percentLabel, smallBar } from "./graphs.js";
 
@@ -43,11 +44,6 @@ function barCellsFor(columns: number): number {
   return 6;
 }
 const UNATTRIBUTED_FLOOR = 5;
-
-function clip(text: string, max: number): string {
-  if (max <= 1) return "";
-  return visibleWidth(text) <= max ? text : `${text.slice(0, Math.max(0, max - 1))}…`;
-}
 
 export function labelsFor(views: ProjectView[]): Map<string, string> {
   const labels = new Map<string, string>();
@@ -103,14 +99,14 @@ function columnWidths(context: ViewContext, columns: string[]): { label: number;
 
 function headerRow(context: ViewContext, widths: { label: number; prompt: number; bar: number; used: number }, columns: string[]): string {
   const { theme, color } = context;
-  const cells = [`   ${padEndVisible(clip("project", widths.label), widths.label)}`];
-  if (columns.includes("allocation")) cells.push(padStartVisible("allocation", 10));
-  if (columns.includes("used")) cells.push(padEndVisible("used of it", widths.used));
-  if (columns.includes("share")) cells.push(padStartVisible("share", 6));
-  if (columns.includes("tokens")) cells.push(padStartVisible("tokens", 7));
-  if (columns.includes("priority")) cells.push(padEndVisible("priority", 8));
-  if (columns.includes("last prompt") && widths.prompt > 0) cells.push(clip("last prompt", widths.prompt));
-  return paint(theme, "dim", cells.join(" "), color);
+  const cells = [`   ${padEndVisible(clip("PROJECT", widths.label), widths.label)}`];
+  if (columns.includes("allocation")) cells.push(padStartVisible("ALLOCATION", 10));
+  if (columns.includes("used")) cells.push(padEndVisible("USED OF IT", widths.used));
+  if (columns.includes("share")) cells.push(padStartVisible("SHARE", 6));
+  if (columns.includes("tokens")) cells.push(padStartVisible("TOKENS", 7));
+  if (columns.includes("priority")) cells.push(padEndVisible("PRIORITY", 8));
+  if (columns.includes("last prompt") && widths.prompt > 0) cells.push(clip("LAST PROMPT", widths.prompt));
+  return paintHead(theme, cells.join(" "), color);
 }
 
 function row(
@@ -155,12 +151,7 @@ function row(
 
 function idleHeaderRow(context: ViewContext, widths: { label: number; prompt: number; bar: number; used: number }): string {
   const { theme, color } = context;
-  return paint(
-    theme,
-    "dim",
-    `   ${padEndVisible("project", widths.label)} ${padStartVisible("last turn", 10)}  last prompt`,
-    color,
-  );
+  return paintHead(theme, `   ${padEndVisible("PROJECT", widths.label)} ${padStartVisible("LAST TURN", 10)}  LAST PROMPT`, color);
 }
 
 function idleRow(
@@ -176,7 +167,8 @@ function idleRow(
   const pin = view.settings.pinned ? paint(theme, "accent", theme.tui?.pin ?? "★", color) : " ";
   const label = padEndVisible(clip(view.label, widths.label), widths.label);
   const when = padStartVisible(ago(view.lastSeen, now), 10);
-  const tag = view.settings.parked ? " parked" : "";
+  const reserved = view.settings.share != null && view.settings.share > 0 ? ` ${percentLabel(view.settings.share * 100, 4)} held` : "";
+  const tag = view.settings.parked ? " parked" : reserved;
   const room = Math.max(10, context.columns - widths.label - 18 - tag.length);
   const prompt = clip(view.prompt || "—", room);
   return `${cursor}${pin} ${paint(theme, "dim", `${label} ${when}  ${prompt}${tag}`, color)}`;
@@ -257,8 +249,10 @@ export function detailRows(control: ControlPlan, context: ViewContext): string[]
   const live = view.bucket === "active";
   const buckets = view.sessions.flatMap((session) => loadMeter(control.provider.id, session.claimant.id).buckets);
 
+  const at = Math.max(0, Math.min(context.selected, rows.length - 1));
+  const walk = rows.length > 1 ? `   ${at + 1}/${rows.length} · ↑↓ moves to the next project` : "";
   const out = [
-    `  ${paint(theme, "accent", view.label, color)} ${paint(theme, "dim", `· ${view.bucket}${view.settings.pinned ? " · pinned" : ""}${view.settings.parked ? " · parked" : ""} · ${view.settings.priority}`, color)}`,
+    `  ${paint(theme, "accent", view.label, color)} ${paint(theme, "dim", `· ${view.bucket}${view.settings.pinned ? " · pinned" : ""}${view.settings.parked ? " · parked" : ""} · ${view.settings.priority}${walk}`, color)}`,
     `  ${paint(theme, "dim", clip(view.project, context.columns - 4), color)}`,
     "",
   ];

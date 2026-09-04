@@ -49,8 +49,10 @@ const HIDE = "\u001b[?25l";
 const SHOW = "\u001b[?25h";
 const CLEAR = "\u001b[2J\u001b[H";
 
+const MIN_COLUMNS = 60;
+
 function size(): { columns: number; rows: number } {
-  return { columns: Math.max(60, process.stdout.columns ?? 100), rows: Math.max(14, process.stdout.rows ?? 30) };
+  return { columns: Math.max(MIN_COLUMNS, process.stdout.columns ?? 100), rows: Math.max(14, process.stdout.rows ?? 30) };
 }
 
 function contextFor(control: ControlPlan, selected: number, interactive: boolean, expanded = false): ViewContext {
@@ -331,6 +333,13 @@ export async function runControl(options: Options): Promise<void> {
 
   const draw = (): void => {
     const context = contextFor(control, selected, true, expanded);
+    const actual = process.stdout.columns ?? context.columns;
+    if (actual < MIN_COLUMNS) {
+      process.stdout.write(
+        `${CLEAR}\n  ${paint(context.theme, "warn", `${actual} columns is too narrow`, context.color)}\n  ${paint(context.theme, "dim", `widen the terminal to ${MIN_COLUMNS} · q quits`, context.color)}\n`,
+      );
+      return;
+    }
     const body = showHelp
       ? helpOverlay(control, context)
       : mode === "setup"

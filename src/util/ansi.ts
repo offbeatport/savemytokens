@@ -34,3 +34,10 @@ export function padStartVisible(text: string, width: number): string {
   const pad = width - visibleWidth(text);
   return pad > 0 ? " ".repeat(pad) + text : text;
 }
+
+export function clip(text: string, max: number): string {
+  if (max <= 1) return "";
+  const visible = visibleWidth(text);
+  if (visible <= max) return text;
+  return `${text.slice(0, Math.max(0, text.length - (visible - max) - 1))}…`;
+}

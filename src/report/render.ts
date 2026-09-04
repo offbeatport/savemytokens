@@ -1,5 +1,5 @@
 import type { Audit, Finding, RunRecord, TaskSummary } from "../core/types.js";
-import { bold, dim, green, padEndVisible, padStartVisible, red, visibleWidth } from "../util/ansi.js";
+import { bold, clip, dim, green, padEndVisible, padStartVisible, red, visibleWidth } from "../util/ansi.js";
 import { ago, bar, compactNumber, money, percent, plural, shortDate, sparkline } from "../util/fmt.js";
 import { displayHome } from "../storage/paths.js";
 import { pricingNote } from "../core/pricing.js";
@@ -37,12 +37,6 @@ export function wrap(text: string, indent: string, max = width()): string[] {
   }
   if (line) lines.push(indent + line);
   return lines;
-}
-
-function clip(text: string, max: number): string {
-  const visible = visibleWidth(text);
-  if (visible <= max) return text;
-  return `${text.slice(0, Math.max(0, text.length - (visible - max) - 1))}…`;
 }
 
 function hanging(text: string, indent: string, marker: string, columns: number): string[] {

@@ -318,6 +318,8 @@ export function stageText(stage: number, view: AdviceView): string;
 export function builtinThemes(): string[];
 export function userThemes(): string[];
 export function loadTheme(name: string): Theme;
+export function truecolor(): boolean;
+export function paintHead(theme: Theme, text: string, enabled?: boolean): string;
 export function paint(theme: Theme, role: string, text: string, enabled?: boolean): string;
 export function meterBar(theme: Theme, ratio: number, width: number, role?: string, enabled?: boolean): string;
 export function pressureRole(pressure: number): string;

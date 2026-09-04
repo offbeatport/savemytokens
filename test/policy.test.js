@@ -525,7 +525,10 @@ test("bars grow with the terminal, and no row overflows it", async () => {
         );
       }
       if (columns.includes("used")) {
-        const bar = lines.map((line) => /\[[|.]+[»\]]/.exec(line)?.[0] ?? "").filter(Boolean)[0] ?? "";
+        const glyphs = context.theme.tui;
+        const cell = new RegExp(`[${glyphs.fill}${glyphs.empty}${glyphs.over}]+`, "u");
+        const head = lines.findIndex((line) => line.includes("PROJECT"));
+        const bar = lines.slice(head + 1).map((line) => cell.exec(line)?.[0] ?? "").filter(Boolean)[0] ?? "";
         widest.set(width, Math.max(widest.get(width) ?? 0, bar.length));
       }
     }
@@ -717,7 +720,7 @@ test("the status line offers shapes before pieces", async () => {
   }
 
   assert.deepEqual(DEFAULT_HUD_SEGMENTS, ["project", "pair", "5h", "reset"], "the default is four things, not six");
-  assert.equal(presetMatching(DEFAULT_HUD_SEGMENTS), "balanced", "and it is one of the named shapes");
+  assert.equal(presetMatching(DEFAULT_HUD_SEGMENTS), "default", "and it is one of the named shapes");
   assert.equal(presetMatching(["project", "spark"]), null, "an arrangement of your own is not mislabelled");
 
   for (const old of ["allocation", "compact", "global", "blocks", "runway", "spark"]) {
@@ -735,7 +738,7 @@ test("the status line offers shapes before pieces", async () => {
     quota: { five_hour: { usedPercent: 42, resetsAt: Math.floor(now / 1000) + 3600 } },
     now,
   };
-  const line = renderHud("balanced", view, loadTheme("default"), false);
+  const line = renderHud("default", view, loadTheme("default"), false);
   assert.match(line, /webinvoke/);
   assert.match(line, /21%\/50%/);
   assert.match(line, /5h 42%/);

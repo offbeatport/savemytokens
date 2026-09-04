@@ -11,6 +11,7 @@ import {
   builtinThemes,
   loadTheme,
   paint,
+  paintHead,
   policyNames,
   renderSegments,
   stageText,
@@ -19,7 +20,7 @@ import {
   type HudView,
   type Theme,
 } from "../runtime/kernel.mjs";
-import { padEndVisible } from "../util/ansi.js";
+import { clip, padEndVisible } from "../util/ansi.js";
 
 export const PRESERVE_KINDS = ["implementation", "tests", "end-to-end checks", "documentation", "exploration"];
 
@@ -150,6 +151,8 @@ export interface TightPreview {
   custom: string;
 }
 
+const INDENT = 4;
+
 function clockAt(ms: number): string {
   const at = new Date(ms);
   return `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
@@ -166,25 +169,47 @@ function whenStage(at: number, tight: TightPreview): string {
   return `~${clockAt(tight.now + hours * 3_600_000)}`;
 }
 
+function placeUnder(entries: Array<{ column: number; text: string }>, cells: number): string {
+  let line = "";
+  for (const entry of [...entries].sort((a, b) => a.column - b.column)) {
+    const gap = line.length === 0 ? 0 : 1;
+    const wanted = entry.column - Math.floor((entry.text.length - 1) / 2);
+    const start = Math.max(line.length + gap, Math.min(cells - entry.text.length, wanted));
+    if (start + entry.text.length > cells) continue;
+    line += " ".repeat(start - line.length) + entry.text;
+  }
+  return line;
+}
+
 function timelineRow(config: Config, tight: TightPreview, width: number, theme: Theme, color: boolean): string[] {
   const policy = ALL_POLICIES[config.policy] ?? ALL_POLICIES.finish;
   const stages = policy?.stages ?? [];
-  const cells = Math.max(24, Math.min(width - 20, 56));
-  const marks = new Map<number, string>();
-  for (const stage of stages) marks.set(Math.round((stage.at / 100) * (cells - 1)), "┬");
-  const here = Math.max(0, Math.min(cells - 1, Math.round(Math.min(1, tight.pressure) * (cells - 1))));
+  const cells = Math.max(20, Math.min(width - INDENT - 4, 56));
+  const columnFor = (percent: number) => Math.max(0, Math.min(cells - 1, Math.round((percent / 100) * (cells - 1))));
+  const marks = new Set(stages.map((stage) => columnFor(stage.at)));
+  const here = columnFor(Math.min(1, tight.pressure) * 100);
 
   let track = "";
   for (let index = 0; index < cells; index++) {
     if (marks.has(index)) track += paint(theme, "accent", "┬", color);
     else track += paint(theme, index <= here ? "ok" : "track", index <= here ? "━" : "─", color);
   }
-  const pointer = `${" ".repeat(here)}${paint(theme, "accent", "▲", color)}`;
-  const labels = stages.map((stage) => `${stage.at}% ${stage.actions.join("+")}`).join("   ");
+
+  const note = `${tight.label} is at ${Math.round(tight.pressure * 100)}% of its allocation`;
+  const room = width - INDENT - here - 2;
+  const pointerLine =
+    note.length <= room
+      ? `${" ".repeat(here)}${paint(theme, "accent", "▲", color)} ${paint(theme, "dim", note, color)}`
+      : `${" ".repeat(Math.max(0, here - note.length - 1))}${paint(theme, "dim", note, color)} ${paint(theme, "accent", "▲", color)}`;
+
+  const ticks = placeUnder(
+    stages.map((stage) => ({ column: columnFor(stage.at), text: `${stage.at}%` })),
+    cells,
+  );
   return [
-    `      ${track}`,
-    `      ${pointer} ${paint(theme, "dim", `${tight.label} is at ${Math.round(tight.pressure * 100)}% of its allocation`, color)}`,
-    `      ${paint(theme, "dim", labels || "nothing is ever injected", color)}`,
+    `${" ".repeat(INDENT)}${track}`,
+    `${" ".repeat(INDENT)}${pointerLine}`,
+    `${" ".repeat(INDENT)}${paint(theme, "dim", ticks || "nothing is ever injected", color)}`,
   ];
 }
 
@@ -214,7 +239,7 @@ export function renderSettings(
       continue;
     }
     if (row.kind === "header") {
-      out.push(`  ${paint(theme, "accent", row.label, color)}  ${paint(theme, "dim", row.hint ?? "", color)}`);
+      out.push(`  ${paintHead(theme, row.label, color)}  ${paint(theme, "dim", clip(row.hint ?? "", Math.max(0, width - row.label.length - 6)), color)}`);
       continue;
     }
     if (row.kind === "preset") {
@@ -222,20 +247,20 @@ export function renderSettings(
       const current = presetMatching(segments);
       const at = current ? names.indexOf(current) : -1;
       const label = current ?? "custom";
-      const about = current ? HUD_PRESET_ABOUT[current] ?? "" : "your own arrangement";
+      const about = clip(current ? HUD_PRESET_ABOUT[current] ?? "" : "your own arrangement", Math.max(0, width - 42));
       out.push(
         `  ${mark} ${padEndVisible("shape", 15)} ${paint(theme, "dim", "‹", color)} ${paint(theme, "accent", padEndVisible(label, 11), color)} ${paint(theme, "dim", "›", color)} ${paint(theme, "dim", at >= 0 ? `${at + 1}/${names.length}` : "   ", color)}   ${paint(theme, "dim", about, color)}`,
       );
       continue;
     }
     if (row.kind === "preview") {
-      out.push(`      ${renderSegments(segments, preview, loadTheme(config.theme.hud), color)}`);
+      out.push(`${" ".repeat(INDENT)}${renderSegments(segments, preview, loadTheme(config.theme.hud), color)}`);
       out.push("");
       continue;
     }
     if (row.kind === "column") {
       const on = columns.includes(row.id);
-      const about = COLUMN_ABOUT[row.id] ?? "";
+      const about = clip(COLUMN_ABOUT[row.id] ?? "", Math.max(0, width - 24));
       out.push(
         `  ${mark} ${on ? paint(theme, "ok", "◉", color) : paint(theme, "dim", "○", color)} ${padEndVisible(row.id, 12)} ${paint(theme, "dim", `— ${about}`, color)}`,
       );
@@ -246,7 +271,7 @@ export function renderSettings(
       const on = at !== -1;
       const order = on ? paint(theme, "dim", String(at + 1).padStart(2), color) : "  ";
       const name = padEndVisible(row.id, 9);
-      const about = SEGMENT_ABOUT[row.id] ?? "";
+      const about = clip(SEGMENT_ABOUT[row.id] ?? "", Math.max(0, width - 24));
       out.push(
         `  ${mark} ${on ? paint(theme, "ok", "◉", color) : paint(theme, "dim", "○", color)} ${order} ${on ? name : paint(theme, "dim", name, color)} ${paint(theme, "dim", `— ${about}`, color)}`,
       );
@@ -277,7 +302,8 @@ export function renderSettings(
       if (!tight) continue;
       const policy = ALL_POLICIES[config.policy] ?? ALL_POLICIES.finish;
       const parts = (policy?.stages ?? []).map((stage) => `${stage.actions[0]} ${whenStage(stage.at, tight)}`);
-      out.push(`      ${paint(theme, "dim", parts.length > 0 ? `at this pace   ${parts.join("  ·  ")}` : "", color)}`);
+      const pace = parts.length > 0 ? clip(`at this pace   ${parts.join("  ·  ")}`, Math.max(0, width - INDENT)) : "";
+      out.push(`${" ".repeat(INDENT)}${paint(theme, "dim", pace, color)}`);
       continue;
     }
     if (row.kind === "stage") {
@@ -295,7 +321,7 @@ export function renderSettings(
           policy,
           custom: tight.custom,
         });
-        for (const line of wrap(text, Math.max(30, width - 14))) out.push(`        ${paint(theme, "dim", line, color)}`);
+        for (const line of wrap(text, Math.max(30, width - INDENT - 8))) out.push(`${" ".repeat(INDENT + 6)}${paint(theme, "dim", line, color)}`);
       }
       continue;
     }

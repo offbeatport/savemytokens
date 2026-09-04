@@ -66,7 +66,7 @@ export const DEFAULT_CONFIG = {
   createdAt: 0,
   preferencesSetAt: 0,
   offeredInstallAt: 0,
-  theme: { tui: "default", hud: "default" },
+  theme: { tui: "catppuccin", hud: "catppuccin" },
   layout: { hud: "allocation" },
   policy: "finish",
   policyFor: {},
@@ -936,8 +936,16 @@ export function deferredAdvice(items) {
 }
 
 const BUILTIN_THEMES = {
-  default: {
-    name: "default",
+  catppuccin: {
+    name: "catppuccin",
+    tui: { cursor: "\u276f", pin: "\u2605", active: "\u25cf", done: "\u2713", blocked: "!", idle: "\u00b7", open: "", close: "", fill: "\u2588", empty: "\u2591", over: "\u25b6", meter: "\u2588", track: "\u2591" },
+    colors: { fg: "#cdd6f4", dim: "#9399b2", accent: "#89b4fa", ok: "#a6e3a1", warn: "#f9e2af", danger: "#f38ba8", track: "#585b70", fill: "#89b4fa" },
+    glyphs: { full: "\u2588", empty: "\u2591", sep: "\u00b7", arrow: "\u2192", tag: "SMT" },
+    border: { h: "\u2500", v: "\u2502", tl: "\u256d", tr: "\u256e", bl: "\u2570", br: "\u256f" },
+  },
+
+  tokyonight: {
+    name: "tokyonight",
     tui: { cursor: "\u276f", pin: "\u2605", active: "\u2022", done: "\u2713", blocked: "!", idle: "\u00b7", open: "[", close: "]", fill: "|", empty: ".", over: "\u00bb", meter: "\u2588", track: "\u2591" },
     colors: { fg: "#e6e6e6", dim: "#8a8a8a", accent: "#7aa2f7", ok: "#9ece6a", warn: "#e0af68", danger: "#f7768e", track: "#3b3b3b", fill: "#7aa2f7" },
     glyphs: { full: "\u2588", empty: "\u2591", sep: "\u00b7", arrow: "\u2192", tag: "SMT" },
@@ -1006,13 +1014,6 @@ const BUILTIN_THEMES = {
     glyphs: { full: "\u2589", empty: "\u2595", sep: "\u2502", arrow: "\u25b8", tag: "SMT" },
     border: { h: "\u2501", v: "\u2503", tl: "\u250f", tr: "\u2513", bl: "\u2517", br: "\u251b" },
   },
-  catppuccin: {
-    name: "catppuccin",
-    tui: { cursor: "\u276f", pin: "\u2605", active: "\u25cf", done: "\u2713", blocked: "!", idle: "\u00b7", open: "", close: "", fill: "\u2588", empty: "\u2591", over: "\u25b6", meter: "\u2588", track: "\u2591" },
-    colors: { fg: "#cdd6f4", dim: "#9399b2", accent: "#89b4fa", ok: "#a6e3a1", warn: "#f9e2af", danger: "#f38ba8", track: "#585b70", fill: "#89b4fa" },
-    glyphs: { full: "\u2588", empty: "\u2591", sep: "\u00b7", arrow: "\u2192", tag: "SMT" },
-    border: { h: "\u2500", v: "\u2502", tl: "\u256d", tr: "\u256e", bl: "\u2570", br: "\u256f" },
-  },
   onedark: {
     name: "onedark",
     tui: { cursor: "\u276f", pin: "\u2605", active: "\u25cf", done: "\u2713", blocked: "!", idle: "\u00b7", open: "", close: "", fill: "\u2588", empty: "\u2591", over: "\u25b6", meter: "\u2588", track: "\u2591" },
@@ -1064,7 +1065,15 @@ const BUILTIN_THEMES = {
   },
 };
 
-const THEME_RENAMES = { dracula: "violet", tokyonight: "default", "tokyo-night": "default", "catppuccin-mocha": "catppuccin", "rose-pine": "rose", "one-dark": "onedark" };
+const THEME_RENAMES = {
+  default: "catppuccin",
+  dracula: "violet",
+  "tokyo-night": "tokyonight",
+  "catppuccin-mocha": "catppuccin",
+  "catppuccin-macchiato": "catppuccin",
+  "rose-pine": "rose",
+  "one-dark": "onedark",
+};
 
 export function builtinThemes() {
   return Object.keys(BUILTIN_THEMES);
@@ -1077,8 +1086,8 @@ export function userThemes() {
 export function loadTheme(name) {
   const wanted = THEME_RENAMES[name] ?? name ?? "default";
   const user = readJson(path.join(THEME_DIR, `${wanted}.json`), null);
-  const base = BUILTIN_THEMES[wanted] || BUILTIN_THEMES.default;
-  const fallback = BUILTIN_THEMES.default;
+  const base = BUILTIN_THEMES[wanted] || BUILTIN_THEMES.catppuccin;
+  const fallback = BUILTIN_THEMES.catppuccin;
   if (!user || typeof user !== "object") return { ...base, tui: { ...fallback.tui, ...base.tui } };
   return {
     ...base,
@@ -1099,11 +1108,44 @@ function rgb(hex) {
   return [(number >> 16) & 255, (number >> 8) & 255, number & 255];
 }
 
+export function truecolor() {
+  const declared = String(process.env.COLORTERM || "").toLowerCase();
+  if (declared.includes("truecolor") || declared.includes("24bit")) return true;
+  const term = String(process.env.TERM || "").toLowerCase();
+  return term.includes("direct") || term.includes("truecolor") || term.includes("kitty");
+}
+
+function xterm256(parts) {
+  const [red, green, blue] = parts;
+  if (Math.abs(red - green) < 10 && Math.abs(green - blue) < 10) {
+    const level = Math.round(((red + green + blue) / 3 - 8) / 10);
+    if (level <= 0) return 16;
+    if (level >= 24) return 231;
+    return 232 + level;
+  }
+  const step = (value) => Math.round(Math.max(0, value - 55) / 40);
+  return 16 + 36 * step(red) + 6 * step(green) + step(blue);
+}
+
+function sgr(parts, bold) {
+  const weight = bold ? "1;" : "";
+  return truecolor()
+    ? `\u001b[${weight}38;2;${parts[0]};${parts[1]};${parts[2]}m`
+    : `\u001b[${weight}38;5;${xterm256(parts)}m`;
+}
+
 export function paint(theme, role, text, enabled = true) {
   if (!enabled || process.env.NO_COLOR !== undefined) return text;
   const parts = rgb(theme.colors?.[role]);
   if (!parts) return text;
-  return `\u001b[38;2;${parts[0]};${parts[1]};${parts[2]}m${text}\u001b[0m`;
+  return `${sgr(parts, false)}${text}\u001b[0m`;
+}
+
+export function paintHead(theme, text, enabled = true) {
+  if (!enabled || process.env.NO_COLOR !== undefined) return text;
+  const parts = rgb(theme.colors?.head ?? theme.colors?.fg);
+  if (!parts) return text;
+  return `${sgr(parts, true)}${text}\u001b[0m`;
 }
 
 export function meterBar(theme, ratio, width, role = "fill", enabled = true) {
@@ -1168,7 +1210,7 @@ export const HUD_SEGMENTS = [
 ];
 
 export const HUD_PRESETS = {
-  balanced: ["project", "pair", "5h", "reset"],
+  default: ["project", "pair", "5h", "reset"],
   minimal: ["pair", "5h"],
   window: ["5h", "reset", "7d"],
   pacing: ["5h", "pace", "reset", "project", "pair"],
@@ -1176,7 +1218,7 @@ export const HUD_PRESETS = {
 };
 
 export const HUD_PRESET_ABOUT = {
-  balanced: "the project, how it is doing, and the window",
+  default: "the project, how it is doing, and the window",
   minimal: "two numbers and nothing else",
   window: "only Anthropic's numbers, no per-project detail",
   pacing: "whether you are ahead of or behind the clock",
@@ -1184,19 +1226,20 @@ export const HUD_PRESET_ABOUT = {
 };
 
 const HUD_PRESET_ALIASES = {
-  allocation: "balanced",
+  balanced: "default",
+  allocation: "default",
   compact: "minimal",
   global: "window",
-  bar: "balanced",
-  blocks: "balanced",
-  dots: "balanced",
+  bar: "default",
+  blocks: "default",
+  dots: "default",
   pace: "pacing",
   runway: "pacing",
-  spark: "balanced",
+  spark: "default",
 };
 
 export const HUD_LAYOUTS = Object.keys(HUD_PRESETS);
-export const DEFAULT_HUD_SEGMENTS = HUD_PRESETS.balanced;
+export const DEFAULT_HUD_SEGMENTS = HUD_PRESETS.default;
 
 export function presetSegments(name) {
   return HUD_PRESETS[name] ?? HUD_PRESETS[HUD_PRESET_ALIASES[name]] ?? null;
