@@ -37,7 +37,7 @@ The core owns that loop. Nothing in it may name Claude.
 | **Enforcement** | what can actually be done about it, and how hard | `Enforcer` |
 
 ```ts
-type Unit = "token" | "usd" | "call" | "second" | "request";
+type Unit = "observed_usage" | "token" | "usd" | "call" | "second" | "request";
 
 interface Window {
   kind: "rolling" | "calendar" | "per-task" | "unbounded";
@@ -73,6 +73,7 @@ interface Sample {
   claimantId: string;
   amount: number;
   at: number;
+  metrics: { tokens: number; usd: number; requests: number };
 }
 
 interface Meter {
@@ -90,6 +91,11 @@ interface Enforcer {
 A **provider adapter** is a `{ Resource[], Meter, Enforcer }` triple. Claude Code is the first one.
 Nothing else in the codebase may import it.
 
+`observed_usage` is the unit for a resource whose real metering unit the provider does not publish.
+It is a proxy: the meter still records tokens, dollars and requests underneath, but the plan does
+not claim any of them *is* the quota. Claude Code uses it. The day Anthropic publishes the real
+unit, the adapter changes and nothing above it does.
+
 ### Capacity confidence is a first-class field, not a footnote
 
 Measured on real data (14 lockouts across 200 days of transcripts): Claude Code writes
@@ -100,8 +106,10 @@ cost-weighted, request count — and every one has a coefficient of variation ar
 
 Consequences the product must live with:
 
-- **Share of spend is exact.** Per-session, per-task attribution comes straight from the
-  transcripts and is already implemented.
+- **Token attribution is exact; its relationship to the quota is not.** Per-session and per-task
+  tokens come straight from the transcripts. How many of Anthropic's quota units those tokens
+  burned is unknown, so the product says *share of observed token usage* and never *share of your
+  Claude allowance*.
 - **Absolute percentage of Anthropic's limit is `estimated`,** and stays that way until a lockout
   calibrates it. Every lockout is a free data point: consumption in the preceding window was, by
   definition, 100%.
@@ -148,7 +156,7 @@ fenced off and carries its confidence.
 ```
 SaveMyTokens
 
-Where this window went                              measured
+Share of observed token usage, this window          measured
   webinvoke      42%   High     "Implement provider fallback..."
   buydiff        31%   Normal   "Fix comparison table..."
   smt            27%   Low      "Try alternate parser..."
@@ -156,11 +164,13 @@ Where this window went                              measured
 
 Window capacity                                     estimated
   ~340M tokens · confidence low · 3 lockouts seen
-  5h    ~29% used        weekly  ~14% used
+  quota consumption does not track tokens cleanly; treat as a rough gauge
 ```
 
-Shares are exact because per-session attribution comes from the transcripts. The capacity line is
-a learned estimate and says so until enough lockouts calibrate it.
+The shares are exact measurements *of observed token usage*, which is the honest claim: the
+transcripts say precisely how many tokens each session spent. They do not say what fraction of
+Anthropic's allowance that represents. The capacity block is a learned estimate, fenced off, and
+carries its confidence until enough lockouts calibrate it.
 
 ### Allocation
 
@@ -169,7 +179,8 @@ a learned estimate and says so until enough lockouts calibrate it.
   seconds renders the same field differently.
 - Default: split evenly across active sessions.
 - Priority (`high` / `normal` / `low`) decides who receives spare capacity first.
-- Allocation is the guaranteed share; priority is the claim on the pool.
+- A share is a **target**, not a guarantee. In `advise` mode SMT can tell a session to aim at 40%;
+  it cannot hold it there. The word "guaranteed" belongs to V1, once `deny` ships and is proven.
 
 ### Reallocation
 
@@ -193,11 +204,12 @@ an exit code or a job status. V0 trusts the self-report plus user override and v
 
 ### Guidance (enforcement level: advise)
 
-Injected through hooks as allocation runs down:
+Injected through hooks as a session eats into its target share. The trigger is share consumed, which
+is measured, not window remaining, which is not:
 
-- ~50% left — stay on completion.
-- ~20% left — stop optional exploration, finish and test.
-- ~10% left — verification and finalisation only.
+- ~50% of its share spent — stay on completion.
+- ~80% spent — stop optional exploration, finish and test.
+- ~90% spent — verification and finalisation only.
 - At the end, report `DONE`, `NEEDS_MORE` or `BLOCKED`.
 
 **This is advice, not enforcement.** A hook injects text; a model does not hold a budget reliably.
@@ -207,7 +219,7 @@ the UI reads that field rather than assuming.
 ### Status line
 
 ```
-SMT · webinvoke 18/40% · High · Claude ~71% left
+SMT · webinvoke 18/40 share · High · window estimate: low confidence
 ```
 
 Works whether or not the TUI is running.
@@ -269,8 +281,8 @@ Add adapters, not concepts. The loop is unchanged; each new provider supplies a
 
 | Provider | Resource | Unit | Capacity | Enforcement available |
 | --- | --- | --- | --- | --- |
-| Claude Code | 5h / weekly allowance | token | estimated → measured | advise, deny |
-| Codex | 5h / weekly allowance | token | **published** | advise |
+| Claude Code | 5h / weekly allowance | `observed_usage` | estimated → measured | advise, deny |
+| Codex | 5h / weekly allowance | `observed_usage` (percent published) | **published** | advise |
 | Anthropic / OpenAI API | spend | usd | published | deny, halt |
 | Tool and browser calls | calls | call | user-set | throttle, deny |
 | GPU / compute | runtime | second | user-set | throttle, halt |
@@ -310,6 +322,8 @@ Called out against the code as it stands today. Only the marked ones need changi
 | Consumption by transcript polling | APIs and GPUs push or are queried; no transcript exists | **Yes** — a `Meter` interface; the transcript reader is one implementation |
 | Enforcement assumed to be hook text | V1 needs deny, V3 needs halt; Codex supports neither | **Yes** — `Enforcer.supports` levels, declared per adapter |
 | Capacity assumed knowable | Claude's ceiling is a ±40% estimate today | **Yes** — `Capacity.confidence`, never rendered as fact |
+| Claude's resource typed as `token` | Its quota provably does not track tokens; baking that in makes every later number a lie | **Yes** — `observed_usage` as the unit, tokens as one metric under the meter |
+| Share described as guaranteed | `advise` cannot hold a session to a number | **Yes** — target share until `deny` ships in V1 |
 | `AdapterId` as a closed union in `src/core/types.ts` | Third-party adapters cannot be added | Later — widen to `string` when the first external adapter appears |
 | `SessionEvidence` shaped around Claude transcript artefacts (reads, hooks, attachments) | Meaningless for an API or GPU resource | Later — split observation from metering; V0 only needs the `Meter` slice |
 | Pricing keyed by model name | A call-metered or GPU-metered resource has no model | Later — key rates by resource, with model as one dimension |
@@ -317,7 +331,8 @@ Called out against the code as it stands today. Only the marked ones need changi
 
 ### What carries over from the audit product
 
-The transcript parser already produces exact per-session and per-task token attribution, including
+The transcript parser already produces exact per-session and per-task token attribution — of
+tokens, which is not the same thing as quota — including
 nested subagent transcripts. That is the V0 `Meter`, finished. Pricing, local storage, and the
 fenced install/uninstall plumbing carry over as-is.
 
