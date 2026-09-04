@@ -600,9 +600,12 @@ test("the tight section shows the real text, when it fires, and where you are", 
   const text = painted.join("\n");
 
   assert.match(text, /Stay on completion of what was asked/, "the selected stage shows the words Claude will get");
-  assert.match(text, /at this pace/, "and when each stage lands at the current burn");
   assert.match(text, /webinvoke is at 40% of its allocation/, "and where this project sits right now");
-  assert.match(text, /▲/, "the timeline marks it");
+  assert.match(text, /80%\s+~\d\d:\d\d\s+narrow/, "each stage carries when it lands at the current burn");
+  for (const line of text.split("\n")) {
+    const stage = /^ {2}(.) (.) +(\d+)%/.exec(line);
+    if (stage) assert.equal(line.indexOf("%"), text.split("\n").find((other) => /^ {2}. . +\d+%/.test(other))?.indexOf("%"), "every stage row lines up");
+  }
 
   const idle = renderSettings(
     config,

@@ -7,7 +7,6 @@ import {
   DEFAULT_COLUMNS,
   DEFAULT_HUD_SEGMENTS,
   HUD_SEGMENTS,
-  POLICIES,
   builtinThemes,
   loadTheme,
   paint,
@@ -20,7 +19,7 @@ import {
   type HudView,
   type Theme,
 } from "../runtime/kernel.mjs";
-import { clip, padEndVisible } from "../util/ansi.js";
+import { clip, padEndVisible, padStartVisible } from "../util/ansi.js";
 
 export const PRESERVE_KINDS = ["implementation", "tests", "end-to-end checks", "documentation", "exploration"];
 
@@ -59,8 +58,7 @@ export type SettingRow =
   | { kind: "segment"; id: string }
   | { kind: "theme"; surface: "tui" | "hud" }
   | { kind: "policy" }
-  | { kind: "timeline" }
-  | { kind: "pace" }
+  | { kind: "pressure" }
   | { kind: "stage"; at: number }
   | { kind: "preserve"; index: number }
   | { kind: "advice" }
@@ -88,8 +86,7 @@ export function settingsRows(config: Config): SettingRow[] {
   rows.push({ kind: "blank" });
   rows.push({ kind: "header", label: "WHEN IT GETS TIGHT", hint: "← → changes it" });
   rows.push({ kind: "policy" });
-  rows.push({ kind: "timeline" });
-  rows.push({ kind: "pace" });
+  rows.push({ kind: "pressure" });
   const policy = ALL_POLICIES[config.policy] ?? ALL_POLICIES.finish;
   for (const stage of policy?.stages ?? []) rows.push({ kind: "stage", at: stage.at });
   rows.push({ kind: "blank" });
@@ -116,7 +113,7 @@ export function withMoved(list: string[], id: string, delta: number): string[] {
 export function selectableRows(rows: SettingRow[]): number[] {
   const out: number[] = [];
   for (const [index, row] of rows.entries()) {
-    if (!["header", "blank", "preview", "timeline", "pace"].includes(row.kind)) out.push(index);
+    if (!["header", "blank", "preview", "pressure"].includes(row.kind)) out.push(index);
   }
   return out;
 }
@@ -167,50 +164,6 @@ function whenStage(at: number, tight: TightPreview): string {
   if (!Number.isFinite(hours) || hours < 0) return "now";
   if (hours > 12) return "not today";
   return `~${clockAt(tight.now + hours * 3_600_000)}`;
-}
-
-function placeUnder(entries: Array<{ column: number; text: string }>, cells: number): string {
-  let line = "";
-  for (const entry of [...entries].sort((a, b) => a.column - b.column)) {
-    const gap = line.length === 0 ? 0 : 1;
-    const wanted = entry.column - Math.floor((entry.text.length - 1) / 2);
-    const start = Math.max(line.length + gap, Math.min(cells - entry.text.length, wanted));
-    if (start + entry.text.length > cells) continue;
-    line += " ".repeat(start - line.length) + entry.text;
-  }
-  return line;
-}
-
-function timelineRow(config: Config, tight: TightPreview, width: number, theme: Theme, color: boolean): string[] {
-  const policy = ALL_POLICIES[config.policy] ?? ALL_POLICIES.finish;
-  const stages = policy?.stages ?? [];
-  const cells = Math.max(20, Math.min(width - INDENT - 4, 56));
-  const columnFor = (percent: number) => Math.max(0, Math.min(cells - 1, Math.round((percent / 100) * (cells - 1))));
-  const marks = new Set(stages.map((stage) => columnFor(stage.at)));
-  const here = columnFor(Math.min(1, tight.pressure) * 100);
-
-  let track = "";
-  for (let index = 0; index < cells; index++) {
-    if (marks.has(index)) track += paint(theme, "accent", "┬", color);
-    else track += paint(theme, index <= here ? "ok" : "track", index <= here ? "━" : "─", color);
-  }
-
-  const note = `${tight.label} is at ${Math.round(tight.pressure * 100)}% of its allocation`;
-  const room = width - INDENT - here - 2;
-  const pointerLine =
-    note.length <= room
-      ? `${" ".repeat(here)}${paint(theme, "accent", "▲", color)} ${paint(theme, "dim", note, color)}`
-      : `${" ".repeat(Math.max(0, here - note.length - 1))}${paint(theme, "dim", note, color)} ${paint(theme, "accent", "▲", color)}`;
-
-  const ticks = placeUnder(
-    stages.map((stage) => ({ column: columnFor(stage.at), text: `${stage.at}%` })),
-    cells,
-  );
-  return [
-    `${" ".repeat(INDENT)}${track}`,
-    `${" ".repeat(INDENT)}${pointerLine}`,
-    `${" ".repeat(INDENT)}${paint(theme, "dim", ticks || "nothing is ever injected", color)}`,
-  ];
 }
 
 export function renderSettings(
@@ -293,23 +246,21 @@ export function renderSettings(
       );
       continue;
     }
-    if (row.kind === "timeline") {
+    if (row.kind === "pressure") {
       if (!tight) continue;
-      out.push(...timelineRow(config, tight, width, theme, color));
-      continue;
-    }
-    if (row.kind === "pace") {
-      if (!tight) continue;
-      const policy = ALL_POLICIES[config.policy] ?? ALL_POLICIES.finish;
-      const parts = (policy?.stages ?? []).map((stage) => `${stage.actions[0]} ${whenStage(stage.at, tight)}`);
-      const pace = parts.length > 0 ? clip(`at this pace   ${parts.join("  ·  ")}`, Math.max(0, width - INDENT)) : "";
-      out.push(`${" ".repeat(INDENT)}${paint(theme, "dim", pace, color)}`);
+      const rate = tight.ratePerHour && tight.ratePerHour > 0.05 ? `, burning ${tight.ratePerHour.toFixed(1)}% of it an hour` : ", nothing burning";
+      const note = `${tight.label} is at ${Math.round(tight.pressure * 100)}% of its allocation${rate}`;
+      out.push(`${" ".repeat(INDENT)}${paint(theme, "dim", clip(note, Math.max(0, width - INDENT)), color)}`);
+      out.push("");
       continue;
     }
     if (row.kind === "stage") {
       const policy = ALL_POLICIES[config.policy] ?? ALL_POLICIES.finish;
       const stage = (policy?.stages ?? []).find((entry) => entry.at === row.at);
-      const head = `${padEndVisible(`${row.at}%`, 5)} ${paint(theme, here ? "accent" : "dim", (stage?.actions ?? []).join(" + "), color)}`;
+      const passed = tight ? tight.pressure >= row.at / 100 : false;
+      const dot = passed ? paint(theme, "warn", "●", color) : paint(theme, "dim", "○", color);
+      const when = tight ? whenStage(row.at, tight) : "";
+      const head = `${dot} ${padStartVisible(`${row.at}%`, 4)}  ${paint(theme, passed ? "warn" : "dim", padEndVisible(when, 10), color)} ${paint(theme, here ? "accent" : "fg", (stage?.actions ?? []).join(" + "), color)}`;
       out.push(`  ${mark} ${head}`);
       if (here && tight) {
         const text = stageText(row.at, {
@@ -329,9 +280,7 @@ export function renderSettings(
       const rendered = policyNames()
         .map((name) => (name === config.policy ? paint(theme, "accent", `[${name}]`, color) : paint(theme, "dim", name, color)))
         .join(" ");
-      const policy = POLICIES[config.policy] ?? POLICIES.finish;
-      const stages = (policy?.stages ?? []).map((stage) => `${stage.at}%`).join(" ") || "never";
-      out.push(`  ${mark} ${padEndVisible("policy", 15)} ${rendered}  ${paint(theme, "dim", stages, color)}`);
+      out.push(`  ${mark} ${padEndVisible("policy", 15)} ${rendered}`);
       continue;
     }
     if (row.kind === "preserve") {
