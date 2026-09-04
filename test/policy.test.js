@@ -541,3 +541,11 @@ test("an allocation never keeps floating point dust", async () => {
   assert.equal(cleanShare(null), null);
   assert.equal(cleanShare(Number.NaN), null);
 });
+
+test("left and right change things on the settings screen", () => {
+  const step = 0.05;
+  assert.deepEqual(actionFor("\u001b[C", "prefs", step), { kind: "share", delta: step }, "right changes a choice");
+  assert.deepEqual(actionFor("\u001b[D", "prefs", step), { kind: "share", delta: -step }, "left changes it back");
+  assert.deepEqual(actionFor("\u001b[A", "prefs", step), { kind: "up" });
+  assert.deepEqual(actionFor(" ", "prefs", step), { kind: "toggleCurrent" });
+});

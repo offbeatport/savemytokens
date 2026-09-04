@@ -51,12 +51,27 @@ function isOurs(entry: HookEntry): boolean {
   return Array.isArray(entry.hooks) && entry.hooks.some(isOurs);
 }
 
-function readSettings(): Record<string, any> {
+function readSettings(): Record<string, any> | null {
+  let raw: string;
   try {
-    return JSON.parse(fs.readFileSync(SETTINGS, "utf8"));
+    raw = fs.readFileSync(SETTINGS, "utf8");
   } catch {
     return {};
   }
+  if (raw.trim().length === 0) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function unreadableSettings(): void {
+  process.stdout.write(
+    `\n${bold("SaveMyTokens")}\n\n${SETTINGS} is not valid JSON, so it could not be read.\nRefusing to touch it — fix the file and try again. Nothing was changed.\n\n`,
+  );
+  process.exitCode = 1;
 }
 
 function writeSettings(settings: Record<string, any>): void {
@@ -125,6 +140,11 @@ export interface InstallOptions {
 }
 
 export function runInstall(options: InstallOptions): void {
+  const parsed = readSettings();
+  if (parsed === null) {
+    unreadableSettings();
+    return;
+  }
   if (sandboxMismatch()) {
     process.stdout.write(
       `\n${bold("SaveMyTokens")}\n\nSAVEMYTOKENS_HOME points somewhere else, but the Claude settings do not.\nRefusing to edit ${SETTINGS} from a sandboxed run — set SAVEMYTOKENS_SETTINGS\nor CLAUDE_CONFIG_DIR too, or unset SAVEMYTOKENS_HOME.\n\n`,
@@ -132,7 +152,7 @@ export function runInstall(options: InstallOptions): void {
     process.exitCode = 1;
     return;
   }
-  const settings = readSettings();
+  const settings = parsed;
   const existingStatusLine = settings.statusLine?.command;
   const ours = ourCommand(existingStatusLine);
   const conflict = typeof existingStatusLine === "string" && !ours;
@@ -229,6 +249,11 @@ function sandboxMismatch(): boolean {
 }
 
 export function runUninstall(purge: boolean): void {
+  const parsed = readSettings();
+  if (parsed === null) {
+    unreadableSettings();
+    return;
+  }
   if (sandboxMismatch()) {
     process.stdout.write(
       `\n${bold("SaveMyTokens")}\n\nSAVEMYTOKENS_HOME points somewhere else, but the Claude settings do not.\nRefusing to edit ${SETTINGS} from a sandboxed run — set SAVEMYTOKENS_SETTINGS\nor CLAUDE_CONFIG_DIR too, or unset SAVEMYTOKENS_HOME.\n\n`,
@@ -236,7 +261,7 @@ export function runUninstall(purge: boolean): void {
     process.exitCode = 1;
     return;
   }
-  const settings = readSettings();
+  const settings = parsed;
   let removed = 0;
 
   for (const [event] of HOOK_EVENTS) {

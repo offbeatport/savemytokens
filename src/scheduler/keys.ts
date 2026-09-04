@@ -59,6 +59,8 @@ export function actionFor(key: string, mode: "plan" | "prefs", step: number): Ac
     if (key === ESC || key === "q") return { kind: "skip" };
     if (key === `${ESC}[A` || key === "k") return { kind: "up" };
     if (key === `${ESC}[B` || key === "j") return { kind: "down" };
+    if (key === `${ESC}[C` || key === "l") return { kind: "share", delta: step };
+    if (key === `${ESC}[D` || key === "h") return { kind: "share", delta: -step };
     if (key === " ") return { kind: "toggleCurrent" };
     if (key === "e") return { kind: "edit" };
     if (key === "s") return { kind: "save" };

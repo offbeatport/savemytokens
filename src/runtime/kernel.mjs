@@ -392,8 +392,24 @@ export function commitMeter(adapter, id, record, buckets, fresh, now = Date.now(
   return record;
 }
 
+function truncatedFile(record, files) {
+  for (const file of files) {
+    const previous = record.files[file];
+    if (previous === undefined) continue;
+    try {
+      if (fs.statSync(file).size < previous) return true;
+    } catch {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function sampleFiles(adapter, id, files, now = Date.now()) {
-  const record = loadMeter(adapter, id);
+  let record = loadMeter(adapter, id);
+  if (truncatedFile(record, files)) {
+    record = { ...newMeter(adapter, id), project: record.project, prompts: record.prompts ?? [] };
+  }
   const seen = new Set(record.seen);
   const buckets = openBuckets(record);
   let lastLockout = record.lockouts.length > 0 ? record.lockouts[record.lockouts.length - 1] : 0;
