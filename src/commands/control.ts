@@ -39,7 +39,7 @@ import {
   type HudView,
   type Theme,
 } from "../runtime/kernel.mjs";
-import { hookInstalled, runInstall } from "./install.js";
+import { hookInstalled, installPlan, runInstall } from "./install.js";
 import { colorEnabled, padEndVisible, visibleWidth } from "../util/ansi.js";
 import { ago } from "../util/fmt.js";
 
@@ -237,30 +237,47 @@ function wrapPlain(text: string, width: number): string[] {
   return out;
 }
 
-export function setupScreen(choice: boolean, theme: Theme, color: boolean, columns: number): string[] {
+export function setupScreen(choice: boolean, theme: Theme, color: boolean, columns: number, details = false): string[] {
   const yes = choice ? paint(theme, "ok", "[ Install ]", color) : paint(theme, "dim", "  Install  ", color);
   const no = choice ? paint(theme, "dim", "  Not now  ", color) : paint(theme, "warn", "[ Not now ]", color);
-  const inner = Math.max(24, Math.min(columns - 10, 56));
+  const inner = Math.max(20, Math.min(columns - 6, details ? 60 : 46));
   const out: string[] = [];
   const middle = (line: string): void => {
     out.push(centre(line, inner));
   };
-  const flush = (text: string, role: string): void => {
-    for (const line of wrapPlain(text, inner)) out.push(paint(theme, role, line, color));
-  };
 
   middle(paint(theme, "accent", "Install SaveMyTokens?", color));
   out.push("");
-  flush("It needs four hooks and a status line in Claude Code to see which sessions are open and how much of your window is left. The status line is the only place Anthropic publishes that number.", "fg");
-  out.push("");
-  flush("Without them it reads transcripts already on disk and nothing more: no live sessions, no window, nothing said to Claude.", "dim");
+  for (const line of wrapPlain("It adds four hooks and a status line to Claude Code. Without them, nothing here is live.", inner)) {
+    out.push(paint(theme, "fg", line, color));
+  }
   out.push("");
   middle(`${yes}    ${no}`);
   out.push("");
-  middle(paint(theme, "dim", "← → choose · enter confirm", color));
+
+  if (details) {
+    for (const change of installPlan()) {
+      out.push(paint(theme, "fg", clipLine(change.file, inner), color));
+      for (const line of change.lines) out.push(`  ${paint(theme, "dim", clipLine(line, inner - 2), color)}`);
+      out.push("");
+    }
+    for (const line of wrapPlain("Nothing else is touched, and no network call is made.", inner)) {
+      out.push(paint(theme, "dim", line, color));
+    }
+    out.push("");
+  }
+
+  const keys = `← → choose · enter confirm · d ${details ? "hide" : "what changes"}`;
+  middle(paint(theme, "dim", clipLine(keys, inner), color));
   out.push("");
-  flush("settings.json is backed up first. Undo any time with: npx savemytokens uninstall", "dim");
+  const long = "Undo any time: npx savemytokens uninstall";
+  const undo = long.length <= inner ? long : "npx savemytokens uninstall";
+  middle(paint(theme, "dim", undo, color));
   return out;
+}
+
+function clipLine(text: string, width: number): string {
+  return text.length <= width ? text : `${text.slice(0, Math.max(0, width - 1))}…`;
 }
 
 function tightPreview(control: ControlPlan): TightPreview {
@@ -340,6 +357,7 @@ export async function runControl(options: Options): Promise<void> {
   const config = loadConfig();
   const offerInstall = !hookInstalled() && !config.offeredInstallAt;
   let mode: "plan" | "settings" | "setup" | "detail" = offerInstall ? "setup" : "plan";
+  let setupDetails = false;
   let settingsCursor = 0;
   let setupChoice = true;
   let expanded = false;
@@ -377,7 +395,7 @@ export async function runControl(options: Options): Promise<void> {
     const body = showHelp
       ? helpOverlay(control, context)
       : mode === "setup"
-        ? setupScreen(setupChoice, context.theme, context.color, context.columns)
+        ? setupScreen(setupChoice, context.theme, context.color, context.columns, setupDetails)
         : mode === "settings"
           ? renderSettings(
               control.config,
@@ -396,7 +414,7 @@ export async function runControl(options: Options): Promise<void> {
             : planRows(control, context);
     const footer =
       mode === "setup" && !showHelp
-        ? [paint(context.theme, "dim", keyHints(["← → choose", "enter confirm", "q quit"], context.columns), context.color)]
+        ? [paint(context.theme, "dim", keyHints(["← → choose", "enter confirm", "d what changes", "q quit"], context.columns), context.color)]
         : mode === "detail" && !showHelp
           ? [
               paint(
@@ -456,6 +474,7 @@ export async function runControl(options: Options): Promise<void> {
       if (mode === "setup") {
         if (action.kind === "share") setupChoice = action.delta > 0 ? false : true;
         else if (action.kind === "up" || action.kind === "down") setupChoice = !setupChoice;
+        else if (action.kind === "state" && action.state === "done") setupDetails = !setupDetails;
         else if (action.kind === "resume" || action.kind === "save") {
           const stored = loadConfig();
           stored.offeredInstallAt = Date.now();

@@ -303,7 +303,8 @@ test("the first-run dialog fits any terminal it is drawn in", async () => {
   const theme = loadTheme("default");
 
   for (const columns of [40, 60, 80, 100, 140]) {
-    const body = setupScreen(true, theme, false, columns);
+    for (const details of [false, true]) {
+    const body = setupScreen(true, theme, false, columns, details);
     const framed = boxed(body, theme, false, columns);
     for (const line of framed) {
       assert.ok(line.length <= columns, `a ${columns}-column terminal overflowed: ${line.length} chars`);
@@ -313,6 +314,16 @@ test("the first-run dialog fits any terminal it is drawn in", async () => {
     assert.equal(top.length, bottom.length, "the box closes at the same width it opened");
     assert.ok(framed.some((line) => line.includes("[ Install ]")), "the default choice is visible");
     assert.ok(framed.some((line) => line.includes("Install SaveMyTokens?")), "and it names the product, not one of its parts");
+    assert.ok(framed.some((line) => line.includes("savemytokens uninstall")), "and how to undo it");
+    const text = framed.join("\n");
+    if (details) {
+      assert.match(text, /settings\.json/, "d shows the file it edits");
+      assert.match(text, /SessionStart/, "and every hook it adds");
+      assert.match(text, /settings\.backup\.json/, "and that it copies the file first");
+    } else {
+      assert.doesNotMatch(text, /SessionStart/, "and hides the detail until asked");
+    }
+    }
   }
 });
 

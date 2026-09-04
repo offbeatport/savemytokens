@@ -29,6 +29,30 @@ function quoted(value: string): string {
   return /[\s"']/.test(value) ? `"${value}"` : value;
 }
 
+export interface InstallChange {
+  file: string;
+  lines: string[];
+}
+
+export function installPlan(): InstallChange[] {
+  const short = (full: string) => full.replace(os.homedir(), "~");
+  const rel = (name: string) => path.relative(os.homedir(), hookPath(name)).replace(/^\.savemytokens\//, "");
+  return [
+    {
+      file: short(SETTINGS),
+      lines: [
+        `+ statusLine        ${rel("statusline.mjs")}`,
+        ...HOOK_EVENTS.map(([event, action]) => `+ ${event.padEnd(17)} ${rel("hook.mjs")} ${action}`),
+        `copied first to ${short(path.join(HOME, "settings.backup.json"))}`,
+      ],
+    },
+    {
+      file: `${short(HOOKS_DIR)}`,
+      lines: ["+ kernel.mjs, hook.mjs, statusline.mjs"],
+    },
+  ];
+}
+
 export function hookPath(name: string): string {
   return path.join(HOOKS_DIR, name);
 }
