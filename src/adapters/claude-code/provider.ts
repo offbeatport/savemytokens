@@ -53,7 +53,7 @@ export function sweep(since: number, now = Date.now()): void {
     const record = sampleFiles(ADAPTER_ID, id, [ref.file, ...(ref.extraFiles ?? [])], now);
     const project = record.project || "";
     const existing = known.get(id);
-    const lastSeen = Math.max(record.lastAt || 0, existing?.lastSeen ?? 0, record.lastAt ? 0 : ref.mtimeMs);
+    const lastSeen = record.lastAt > 0 ? record.lastAt : Math.min(existing?.lastSeen ?? ref.mtimeMs, ref.mtimeMs);
     upsertClaimant(ADAPTER_ID, id, {
       project: existing?.project || project,
       label: existing?.label || (project ? path.basename(project) : id.slice(0, 8)),
@@ -68,7 +68,7 @@ export function sweep(since: number, now = Date.now()): void {
     const files = Object.keys(loadMeter(ADAPTER_ID, claimant.id).files);
     if (files.length === 0) continue;
     const record = sampleFiles(ADAPTER_ID, claimant.id, files, now);
-    if (record.lastAt > claimant.lastSeen) {
+    if (record.lastAt > 0 && record.lastAt !== claimant.lastSeen) {
       upsertClaimant(ADAPTER_ID, claimant.id, { lastSeen: record.lastAt, prompt: record.prompt || claimant.prompt });
     }
   }

@@ -396,6 +396,7 @@ test("window movement while nothing local ran is reported separately", () => {
   const text = execFileSync("node", [CLI, "status"], { env: box.env, encoding: "utf8" });
   assert.match(text, /8% of the window was spent outside these sessions/);
   assert.doesNotMatch(text, /another machine, or claude\.ai$/m, "it no longer asserts a cause it cannot prove");
+  assert.doesNotMatch(text, /these hold a share/, "section headers carry no explanation");
 });
 
 test("only active sessions hold a share; parking hands it back", () => {

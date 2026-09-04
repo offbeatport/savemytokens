@@ -357,3 +357,11 @@ test("m lifts the caps, not just the screen budget", async () => {
   assert.equal(full.parked.length, 7);
   assert.equal(full.hidden, 0, "expanding shows every one of them");
 });
+
+test("a session is never marked seen later than its newest turn", async () => {
+  const { bucketFor } = await import("../dist/runtime/kernel.mjs");
+  const now = Date.now();
+  const sixDaysAgo = now - 6 * 24 * 60 * 60 * 1000;
+  const claimant = { state: "active", endedAt: null, pinned: false, parked: false, heartbeat: 0, lastSeen: sixDaysAgo };
+  assert.equal(bucketFor(claimant, now, false), "parked", "an old session cannot look active");
+});

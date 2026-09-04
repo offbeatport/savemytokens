@@ -25,7 +25,8 @@ export interface ViewContext {
 }
 
 const STATE_MARK: Record<string, string> = { active: "•", "needs-more": "+", done: "✓", blocked: "!" };
-const BAR_CELLS = 10;
+const BAR_CELLS = 6;
+const TARGET_COL = 13;
 const UNATTRIBUTED_FLOOR = 5;
 
 function clip(text: string, max: number): string {
@@ -81,9 +82,36 @@ function headerRow(context: ViewContext, widths: { label: number; prompt: number
   return paint(
     theme,
     "dim",
-    `     ${padEndVisible("session", widths.label)} ${padStartVisible("target", 6)} ${padStartVisible("used", 5)} ${padStartVisible("share", 5)} ${padEndVisible("priority", 8)} ${padEndVisible("progress", BAR_CELLS + 2)} last prompt`,
+    `    ${padEndVisible("session", widths.label)} ${padStartVisible("target", 6)} ${padStartVisible("used", 5)} ${padStartVisible("share", 5)} ${padEndVisible("priority", 8)} ${padEndVisible("of target", TARGET_COL)} last prompt`,
     color,
   );
+}
+
+function idleHeaderRow(context: ViewContext, widths: { label: number; prompt: number }): string {
+  const { theme, color } = context;
+  return paint(
+    theme,
+    "dim",
+    `    ${padEndVisible("session", widths.label)} ${padStartVisible("last turn", 10)} ${padStartVisible("share", 5)}  last prompt`,
+    color,
+  );
+}
+
+function idleRow(
+  view: ClaimantPlanView,
+  index: number,
+  context: ViewContext,
+  widths: { label: number; prompt: number },
+  now: number,
+): string {
+  const { theme, color } = context;
+  const cursor = context.interactive && context.selected === index ? paint(theme, "accent", "❯", color) : " ";
+  const pin = view.claimant.pinned ? paint(theme, "accent", "★", color) : " ";
+  const label = padEndVisible(clip(context.labels.get(view.claimant.id) ?? view.claimant.label, widths.label), widths.label);
+  const when = padStartVisible(ago(view.claimant.lastSeen, now), 10);
+  const share = padStartVisible(percentLabel(view.observed * 100, 4), 5);
+  const prompt = clip(view.claimant.prompt || "—", widths.prompt + TARGET_COL + 6);
+  return `${cursor}${pin}· ${paint(theme, "dim", `${label} ${when} ${share}  ${prompt}`, color)}`;
 }
 
 function row(
@@ -117,15 +145,16 @@ function row(
       : paint(theme, "dim", ago(view.claimant.lastSeen, now), color),
     8,
   );
-  const bar = live
-    ? smallBar(view.pressure.value, BAR_CELLS, theme, color, role)
-    : paint(theme, "dim", `[${".".repeat(BAR_CELLS)}]`, color);
+  const spent = live
+    ? `${padStartVisible(paint(theme, role, percentLabel(view.pressure.value * 100, 4), color), 4)} ${smallBar(view.pressure.value, BAR_CELLS, theme, color, role)}`
+    : padEndVisible(paint(theme, "dim", "—", color), TARGET_COL);
+  const bar = padEndVisible(spent, TARGET_COL);
   return `${cursor}${pin}${mark} ${label} ${target} ${used} ${share} ${priority} ${bar} ${paint(theme, "dim", clip(view.claimant.prompt || "—", widths.prompt), color)}`;
 }
 
-function sectionTitle(name: string, count: number, note: string, context: ViewContext): string {
+function sectionTitle(name: string, count: number, context: ViewContext): string {
   const { theme, color } = context;
-  return `  ${paint(theme, "accent", name, color)} ${paint(theme, "dim", `${count}${note ? ` · ${note}` : ""}`, color)}`;
+  return `  ${paint(theme, "accent", name, color)} ${paint(theme, "dim", String(count), color)}`;
 }
 
 function footerNote(control: ControlPlan, context: ViewContext): string[] {
@@ -153,33 +182,34 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
   let printed = 0;
   const budget = context.expanded ? Number.MAX_SAFE_INTEGER : Math.max(6, context.rows - 13);
 
-  const section = (name: string, views: ClaimantPlanView[], note: string): void => {
+  const section = (name: string, views: ClaimantPlanView[], idle: boolean): void => {
     if (views.length === 0) return;
     out.push("");
-    out.push(sectionTitle(name, views.length, note, context));
+    out.push(sectionTitle(name, views.length, context));
     for (const view of views) {
       if (printed >= budget) {
         index += 1;
         continue;
       }
-      out.push(row(view, index, context, widths, now));
+      out.push(idle ? idleRow(view, index, context, widths, now) : row(view, index, context, widths, now));
       index += 1;
       printed += 1;
     }
   };
 
-  section("ACTIVE", set.active, set.active.length > 0 ? "a Claude session is open — these hold a share" : "");
-  section("RECENT", set.recent, "worked on today, nothing running");
-  section("PARKED", set.parked, "");
+  section("ACTIVE", set.active, false);
+  if (set.recent.length > 0 || set.parked.length > 0) {
+    out.push("");
+    out.push(idleHeaderRow(context, widths));
+  }
+  section("RECENT", set.recent, true);
+  section("PARKED", set.parked, true);
 
   const shown = printed;
   const total = set.active.length + set.recent.length + set.parked.length + set.hidden;
   if (total > shown) {
     out.push("");
-    out.push(`  ${paint(context.theme, "dim", `+${total - shown} more · m shows everything`, context.color)}`);
-  } else if (context.expanded && total > 8) {
-    out.push("");
-    out.push(`  ${paint(context.theme, "dim", "showing everything · m trims it back", context.color)}`);
+    out.push(`  ${paint(context.theme, "dim", `+${total - shown} more`, context.color)}`);
   }
 
   out.push("");
@@ -286,7 +316,7 @@ export function helpOverlay(control: ControlPlan, context: ViewContext): string[
     `    ${paint(theme, "dim", "target    the share you want it to aim for — your decision, not a measurement", color)}`,
     `    ${paint(theme, "dim", "used      how much of the whole window it has spent", color)}`,
     `    ${paint(theme, "dim", "share     its part of the tokens measured on disk", color)}`,
-    `    ${paint(theme, "dim", "progress  how far through its own target it is · » means over", color)}`,
+    `    ${paint(theme, "dim", "of target how much of its own target share it has spent · » means over", color)}`,
     "",
     `    ${paint(theme, "dim", "5h and 7d are Anthropic's numbers. share is measured from your transcripts.", color)}`,
     `    ${paint(theme, "dim", "\"spent outside these sessions\" is window that moved while none of them had a turn:", color)}`,
