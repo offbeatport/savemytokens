@@ -1,10 +1,17 @@
+<div align="center">
+
 # SaveMyTokens
 
-**Decide which Claude Code session gets your Claude allowance.**
+### Decide which Claude Code session gets your Claude allowance.
 
-```
-npx savemytokens
-```
+<code>npx savemytokens</code>
+
+<img src="https://img.shields.io/badge/dependencies-0-1a7f37?style=flat-square" alt="zero dependencies">
+<img src="https://img.shields.io/badge/node-%E2%89%A5%2018.17-2b7489?style=flat-square" alt="node 18.17+">
+<img src="https://img.shields.io/badge/local%20only-no%20network%20call-6e40c9?style=flat-square" alt="local only">
+<img src="https://img.shields.io/badge/license-MIT-24292f?style=flat-square" alt="MIT">
+
+</div>
 
 ```
   5h █████░░░░░░░  42% resets 18:30    7d ██░░░░░░░░░░  18% resets Sun
@@ -25,29 +32,29 @@ npx savemytokens
   3 sessions are sharing this window.
 ```
 
-## What you get
+<br>
 
-- **The real numbers.** Your 5-hour and weekly usage exactly as Anthropic publishes them — never an
-  invented "% remaining".
-- **A split you control.** Give each session a target share and a priority. Spare capacity goes to
-  the highest priority first.
-- **Claude working to its budget.** As a session eats into its share it is told to narrow scope and
-  finish, and to write down what it dropped — which comes back next time you work on that project.
-- **Unused share returned.** When a session finishes, whatever it did not spend goes to the others.
-- **Your window in the status line.** `SMT · webinvoke target 50% · used 21% · HIGH · 5h 42% 18:30`
+|  |  |
+| :-- | :-- |
+| **The real numbers** | Your 5-hour and weekly usage exactly as Anthropic publishes them — never an invented *"% remaining"*. |
+| **A split you control** | Give each session a target share and a priority. Spare capacity goes to the highest priority first. |
+| **Claude working to it** | As a session eats into its share it is told to narrow scope and finish, and to write down what it dropped — which comes back next time you work on that project. |
+| **Unused share returned** | When a session finishes, whatever it did not spend goes to the others. |
+| **In your status line** | `SMT · webinvoke target 50% · used 21% · HIGH · 5h 42% 18:30` |
 
-## Commands
+<br>
 
-```
-npx savemytokens                        the control centre
-npx savemytokens share buydiff 40       pin a target share
-npx savemytokens priority buydiff high  who gets spare capacity first
-npx savemytokens policy strict          wind down earlier when it gets tight
-npx savemytokens hud                    pick a status line, previewed on your numbers
-npx savemytokens audit                  what your last 7 days wasted
-npx savemytokens uninstall              remove every trace
-```
+| command | |
+| :-- | :-- |
+| `npx savemytokens` | the control centre |
+| `npx savemytokens share buydiff 40` | pin a target share |
+| `npx savemytokens priority buydiff high` | who gets spare capacity first |
+| `npx savemytokens policy strict` | wind down earlier when it gets tight |
+| `npx savemytokens hud` | pick a status line, previewed on your numbers |
+| `npx savemytokens audit` | what your last 7 days wasted |
+| `npx savemytokens uninstall` | remove every trace |
 
-Requires Node 18.17+. Everything is local: no daemon, no account, and no network call in this tool.
-
-MIT.
+<div align="center">
+<br>
+<sub>No daemon · no account · nothing leaves your machine</sub>
+</div>
