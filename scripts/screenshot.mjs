@@ -5,10 +5,11 @@ import { loadTheme } from "../dist/runtime/kernel.mjs";
 import { helpOverlay, labelsFor, planRows } from "../dist/report/views.js";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const COLUMNS = 96;
-const CELL = 8.4;
-const LINE = 20;
-const PAD = 22;
+const COLUMNS = 112;
+const FONT_SIZE = 12.5;
+const CELL = FONT_SIZE * 0.6;
+const LINE = FONT_SIZE * 1.5;
+const PAD = 20;
 const RADIUS = 10;
 const FONT = "ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace";
 
@@ -185,14 +186,14 @@ function escape(text) {
 
 function toSvg(lines, theme, { title }) {
   const width = Math.round(COLUMNS * CELL + PAD * 2);
-  const chrome = 38;
+  const chrome = 34;
   const height = Math.round(lines.length * LINE + PAD * 2 + chrome);
   const dots = ["#ff5f56", "#ffbd2e", "#27c93f"]
-    .map((color, at) => `<circle cx="${PAD + 6 + at * 18}" cy="19" r="6" fill="${color}"/>`)
+    .map((color, at) => `<circle cx="${PAD + 5 + at * 16}" cy="17" r="5" fill="${color}"/>`)
     .join("");
   const body = lines
     .map((line, at) => {
-      const y = PAD + chrome + at * LINE + 14;
+      const y = PAD + chrome + at * LINE + FONT_SIZE;
       const spans = runs(line)
         .map((run) => {
           const attrs = [`fill="${run.fill ?? theme.colors.fg}"`];
@@ -209,8 +210,8 @@ function toSvg(lines, theme, { title }) {
   <rect width="${width}" height="${chrome}" rx="${RADIUS}" fill="#11111b"/>
   <rect y="${chrome - RADIUS}" width="${width}" height="${RADIUS}" fill="#11111b"/>
   ${dots}
-  <text x="${width / 2}" y="24" text-anchor="middle" font-family="${FONT}" font-size="12" fill="#6c7086">${escape(title)}</text>
-  <g font-family="${FONT}" font-size="14">
+  <text x="${width / 2}" y="21" text-anchor="middle" font-family="${FONT}" font-size="11" fill="#6c7086">${escape(title)}</text>
+  <g font-family="${FONT}" font-size="${FONT_SIZE}">
   ${body}
   </g>
 </svg>
@@ -225,11 +226,13 @@ function write(name, lines, theme, title) {
 }
 
 const theme = loadTheme("catppuccin");
+const HEAD_LEFT = " SaveMyTokens · Claude Code · 5h";
+const HEAD_RIGHT = "read just now  plan ";
 const frame = (body, footer) => [
-  ` [38;2;137;180;250mSaveMyTokens[0m [38;2;147;153;178m· Claude Code · 5h[0m${" ".repeat(Math.max(1, COLUMNS - 43 - 17))}[38;2;147;153;178mread just now[0m  [38;2;137;180;250mplan[0m `,
-  `[38;2;147;153;178m${"─".repeat(COLUMNS)}[0m`,
+  ` \u001b[38;2;137;180;250mSaveMyTokens\u001b[0m \u001b[38;2;147;153;178m· Claude Code · 5h\u001b[0m${" ".repeat(Math.max(1, COLUMNS - HEAD_LEFT.length - HEAD_RIGHT.length))}\u001b[38;2;147;153;178mread just now\u001b[0m  \u001b[38;2;137;180;250mplan\u001b[0m `,
+  `\u001b[38;2;147;153;178m${"─".repeat(COLUMNS)}\u001b[0m`,
   ...body,
-  `[38;2;147;153;178m${"─".repeat(COLUMNS)}[0m`,
+  `\u001b[38;2;147;153;178m${"─".repeat(COLUMNS)}\u001b[0m`,
   footer,
 ];
 
