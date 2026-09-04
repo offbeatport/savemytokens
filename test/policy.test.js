@@ -118,3 +118,26 @@ test("keys map to actions, and repeated arrows all count", () => {
   const actions = keyActions("\u001b[C\u001b[C\u001b[C", "plan", 0.05);
   assert.equal(actions.length, 3, "three arrow presses in one chunk are three moves");
 });
+
+test("the preferences screen is reachable on demand, and navigable", () => {
+  assert.deepEqual(actionFor("P", "plan", 0.05), { kind: "preferences" });
+  assert.deepEqual(actionFor("\u001b[A", "prefs", 0.05), { kind: "up" });
+  assert.deepEqual(actionFor("\u001b[B", "prefs", 0.05), { kind: "down" });
+  assert.deepEqual(actionFor(" ", "prefs", 0.05), { kind: "toggleCurrent" });
+  assert.deepEqual(actionFor("e", "prefs", 0.05), { kind: "edit" });
+  assert.deepEqual(actionFor("3", "prefs", 0.05), { kind: "toggle", index: 2 });
+  assert.deepEqual(actionFor("\u001b", "prefs", 0.05), { kind: "skip" });
+});
+
+test("your own line is injected with the advice", () => {
+  const withCustom = adviceFor(80, {
+    target: 0.4,
+    observed: 0.5,
+    pressure: 0.85,
+    basis: "budget",
+    preserve: ["tests"],
+    custom: "Always run pnpm test and push before you stop.",
+  });
+  assert.match(withCustom, /Always run pnpm test and push before you stop\.$/);
+  assert.doesNotMatch(adviceFor(80, { target: 0.4, pressure: 0.85, basis: "budget", preserve: [] }), /pnpm test/);
+});

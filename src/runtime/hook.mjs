@@ -77,6 +77,7 @@ function settingsFor(project) {
   return {
     preserve: config.preserveFor?.[project] ?? config.preserveFor?.default ?? [],
     policy: policyFor(config, project),
+    custom: config.customAdvice?.[project] ?? config.customAdvice?.default ?? "",
   };
 }
 
@@ -84,7 +85,7 @@ function guidance(id, project, now) {
   const plan = schedule(ADAPTER, now);
   const view = viewFor(plan, id);
   if (!view) return "";
-  const { preserve, policy } = settingsFor(project);
+  const { preserve, policy, custom } = settingsFor(project);
   const stage = stageFor(view.pressure.value, policy);
   if (stage === 0) return "";
   const advice = view.claimant.advice ?? { stage: 0, window: 0 };
@@ -97,6 +98,7 @@ function guidance(id, project, now) {
     basis: view.pressure.basis,
     preserve,
     policy,
+    custom,
   });
 }
 

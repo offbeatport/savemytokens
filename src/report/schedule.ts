@@ -183,6 +183,15 @@ export function renderSchedule(control: ControlPlan, options: ScheduleRenderOpti
 
   out.push("");
   if (interactive) {
+    const preserve = control.config.preserveFor[process.cwd()] ?? control.config.preserveFor.default;
+    out.push(
+      paint(
+        theme,
+        "dim",
+        `    preserving ${preserve && preserve.length > 0 ? preserve.join(", ") : "testing and finalisation (default)"} · P to change`,
+        color,
+      ),
+    );
     out.push(
       paint(
         theme,

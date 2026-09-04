@@ -1,11 +1,12 @@
 import type { Options } from "../cli-options.js";
 import { renderSchedule } from "../report/schedule.js";
-import { keyActions, type Action } from "../scheduler/keys.js";
+import { keyActions, splitKeys, type Action } from "../scheduler/keys.js";
 import {
   activeViews,
   buildPlan,
   cyclePriority,
   equalize,
+  saveCustomAdvice,
   savePreference,
   setPriority,
   setShare,
@@ -19,6 +20,8 @@ const REFRESH_MS = 2500;
 const STEP = 0.05;
 const PRESERVE_KINDS = ["implementation", "tests", "end-to-end checks", "documentation", "exploration"];
 const DEFAULT_PRESERVE = [0, 1];
+const CUSTOM_ROW = PRESERVE_KINDS.length;
+const MAX_CUSTOM = 200;
 
 const ALT_ON = "\u001b[?1049h";
 const ALT_OFF = "\u001b[?1049l";
@@ -68,18 +71,33 @@ function toJson(control: ControlPlan): string {
   );
 }
 
-function preferencesScreen(selected: Set<number>): string {
+function preferencesScreen(selected: Set<number>, cursor: number, custom: string, editing: boolean): string {
   const theme = loadTheme(loadConfig().theme.tui);
   const color = colorEnabled;
   const out = ["", `  ${paint(theme, "accent", "SaveMyTokens", color)}`, ""];
   out.push("  When your Claude window gets tight, what should be preserved?");
+  out.push(`  ${paint(theme, "dim", "Optional. Without it the advice preserves testing and finalisation.", color)}`);
   out.push("");
   for (const [index, kind] of PRESERVE_KINDS.entries()) {
+    const here = cursor === index && !editing;
+    const arrow = here ? paint(theme, "accent", "❯", color) : " ";
     const mark = selected.has(index) ? paint(theme, "ok", "x", color) : " ";
-    out.push(`    ${index + 1} [${mark}] ${kind}`);
+    out.push(`   ${arrow} ${index + 1} [${mark}] ${kind}`);
   }
   out.push("");
-  out.push(`  ${paint(theme, "dim", "1-5 toggle   enter save   esc skip", color)}`);
+  const onCustom = cursor === CUSTOM_ROW;
+  const arrow = onCustom && !editing ? paint(theme, "accent", "❯", color) : " ";
+  const body = editing
+    ? `${custom}${paint(theme, "accent", "▏", color)}`
+    : custom
+      ? custom
+      : paint(theme, "dim", "nothing — press enter to write one", color);
+  out.push(`   ${arrow} ${paint(theme, "dim", "your own line, injected with the advice:", color)}`);
+  out.push(`      ${body}`);
+  out.push("");
+  out.push(
+    `  ${paint(theme, "dim", editing ? "type it   enter keep   esc cancel" : "↑↓ move   space toggle   1-5 jump   enter edit   s save   esc back", color)}`,
+  );
   out.push("");
   return out.join("\n");
 }
@@ -104,7 +122,10 @@ export async function runControl(options: Options): Promise<void> {
     return;
   }
 
-  let mode: "prefs" | "plan" = control.config.preferencesSetAt > 0 ? "plan" : "prefs";
+  let mode: "prefs" | "plan" = "plan";
+  let editing = false;
+  let cursor = 0;
+  let custom = "";
   const chosen = new Set(DEFAULT_PRESERVE);
   let current = control;
   let selected = 0;
@@ -116,7 +137,8 @@ export async function runControl(options: Options): Promise<void> {
   const rows = () => activeViews(current.schedule);
 
   const draw = (): void => {
-    const frame = mode === "prefs" ? preferencesScreen(chosen) : snapshot(current, true, selected);
+    const frame =
+      mode === "prefs" ? preferencesScreen(chosen, cursor, custom, editing) : snapshot(current, true, selected);
     process.stdout.write(CLEAR + frame);
   };
 
@@ -136,6 +158,8 @@ export async function runControl(options: Options): Promise<void> {
   const savePreferences = (kinds: string[]): void => {
     savePreference(process.cwd(), kinds);
     savePreference("default", kinds);
+    saveCustomAdvice(process.cwd(), custom);
+    saveCustomAdvice("default", custom);
   };
 
   const timer = setInterval(refresh, REFRESH_MS);
@@ -154,15 +178,27 @@ export async function runControl(options: Options): Promise<void> {
       }
 
       if (mode === "prefs") {
+        const toggle = (index: number): void => {
+          if (chosen.has(index)) chosen.delete(index);
+          else chosen.add(index);
+        };
         if (action.kind === "toggle" && action.index < PRESERVE_KINDS.length) {
-          if (chosen.has(action.index)) chosen.delete(action.index);
-          else chosen.add(action.index);
+          cursor = action.index;
+          toggle(action.index);
+        } else if (action.kind === "toggleCurrent" && cursor < PRESERVE_KINDS.length) {
+          toggle(cursor);
+        } else if (action.kind === "up") {
+          cursor = Math.max(0, cursor - 1);
+        } else if (action.kind === "down") {
+          cursor = Math.min(CUSTOM_ROW, cursor + 1);
+        } else if (action.kind === "edit" || (action.kind === "save" && cursor === CUSTOM_ROW && !editing)) {
+          cursor = CUSTOM_ROW;
+          editing = true;
         } else if (action.kind === "save") {
           savePreferences([...chosen].sort().map((index) => PRESERVE_KINDS[index] ?? ""));
           mode = "plan";
           refresh();
         } else if (action.kind === "skip") {
-          savePreferences(DEFAULT_PRESERVE.map((index) => PRESERVE_KINDS[index] ?? ""));
           mode = "plan";
           refresh();
         }
@@ -171,6 +207,18 @@ export async function runControl(options: Options): Promise<void> {
 
       const view = rows()[selected];
       switch (action.kind) {
+        case "preferences": {
+          const stored = current.config.preserveFor[process.cwd()] ?? current.config.preserveFor.default;
+          chosen.clear();
+          for (const [index, kind] of PRESERVE_KINDS.entries()) {
+            if (stored ? stored.includes(kind) : DEFAULT_PRESERVE.includes(index)) chosen.add(index);
+          }
+          custom = current.config.customAdvice[process.cwd()] ?? current.config.customAdvice.default ?? "";
+          cursor = 0;
+          editing = false;
+          mode = "prefs";
+          break;
+        }
         case "up":
           selected = Math.max(0, selected - 1);
           break;
@@ -215,6 +263,24 @@ export async function runControl(options: Options): Promise<void> {
     };
 
     stdin.on("data", (chunk: string) => {
+      if (editing) {
+        for (const key of splitKeys(String(chunk))) {
+          if (key === "\r" || key === "\n" || key === "\u001b") {
+            editing = false;
+            cursor = 0;
+          } else if (key === "\u007f" || key === "\b") {
+            custom = custom.slice(0, -1);
+          } else if (key === "\u0003") {
+            stop();
+            resolve();
+            return;
+          } else if (key.length === 1 && key >= " ") {
+            custom = (custom + key).slice(0, MAX_CUSTOM);
+          }
+        }
+        draw();
+        return;
+      }
       for (const action of keyActions(String(chunk), mode, STEP)) {
         if (!apply(action)) return;
       }

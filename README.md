@@ -108,7 +108,16 @@ What each move actually asks for:
 - **`verify`** — finish what is already open, run the tests, leave the tree clean.
 - **`handoff`** — one line on where it stopped, then the release signal.
 
-Each stage fires once per window.
+Each stage fires once per window, and the wording names what you want preserved — implementation and
+tests by default. Press `P` in the control centre to change that, add **your own line** to be injected
+with the advice ("run pnpm test before you stop"), or set it from a script:
+
+```
+npx savemytokens policy preserve tests documentation
+```
+
+Nothing here is a first-run gate: `npx savemytokens` goes straight to the control centre with working
+defaults, and the preferences screen is there when you want it.
 
 ### Doing the rest afterwards
 

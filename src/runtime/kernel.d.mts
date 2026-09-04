@@ -111,6 +111,7 @@ export interface Config {
   theme: { tui: string; hud: string };
   layout: { hud: string };
   preserveFor: Record<string, string[]>;
+  customAdvice: Record<string, string>;
   wrappedStatusLine: string | null;
   contribute: boolean;
 }
@@ -150,6 +151,7 @@ export interface AdviceView {
   basis?: string;
   preserve: string[];
   policy?: Policy;
+  custom?: string;
 }
 
 export function readJson<T>(file: string, fallback: T): T;

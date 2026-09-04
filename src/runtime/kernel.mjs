@@ -66,6 +66,7 @@ export const DEFAULT_CONFIG = {
   policy: "finish",
   policyFor: {},
   preserveFor: {},
+  customAdvice: {},
   wrappedStatusLine: null,
   contribute: false,
 };
@@ -80,6 +81,7 @@ export function loadConfig() {
     layout: { ...DEFAULT_CONFIG.layout, ...(stored.layout || {}) },
     policyFor: { ...(stored.policyFor || {}) },
     preserveFor: { ...(stored.preserveFor || {}) },
+    customAdvice: { ...(stored.customAdvice || {}) },
   };
 }
 
@@ -718,7 +720,8 @@ export function adviceFor(stage, view) {
       ? `${spent}% of your ${target}% target share of this Claude window is spent`
       : `you are at ${Math.round(view.observed * 100)}% of measured usage against a ${target}% target`;
   const body = actionsFor(stage, policy).map((action) => (ACTION_TEXT[action] ?? (() => ""))(view));
-  return `[savemytokens] ${basis}. ${body.join(" ")}`.trim();
+  const custom = typeof view.custom === "string" && view.custom.trim() ? ` ${view.custom.trim()}` : "";
+  return `[savemytokens] ${basis}. ${body.join(" ")}${custom}`.trim();
 }
 
 export function deferredAdvice(items) {

@@ -135,6 +135,15 @@ export function savePreference(project: string, kinds: string[]): void {
   saveConfig(config);
 }
 
+export function saveCustomAdvice(project: string, text: string): void {
+  const config = loadConfig();
+  const key = project || "default";
+  const value = text.trim();
+  if (value) config.customAdvice[key] = value;
+  else delete config.customAdvice[key];
+  saveConfig(config);
+}
+
 export function setPolicy(name: string, project: string | null): boolean {
   if (!policyNames().includes(name)) return false;
   const config = loadConfig();

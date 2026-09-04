@@ -13,7 +13,10 @@ export type Action =
   | { kind: "refresh" }
   | { kind: "toggle"; index: number }
   | { kind: "save" }
-  | { kind: "skip" };
+  | { kind: "skip" }
+  | { kind: "preferences" }
+  | { kind: "toggleCurrent" }
+  | { kind: "edit" };
 
 const ESC = "\u001b";
 const FINAL = /[@-~]/;
@@ -48,6 +51,11 @@ export function actionFor(key: string, mode: "plan" | "prefs", step: number): Ac
   if (mode === "prefs") {
     if (key === "\r" || key === "\n") return { kind: "save" };
     if (key === ESC || key === "q") return { kind: "skip" };
+    if (key === `${ESC}[A` || key === "k") return { kind: "up" };
+    if (key === `${ESC}[B` || key === "j") return { kind: "down" };
+    if (key === " ") return { kind: "toggleCurrent" };
+    if (key === "e") return { kind: "edit" };
+    if (key === "s") return { kind: "save" };
     const index = Number(key) - 1;
     if (Number.isInteger(index) && index >= 0 && index <= 8) return { kind: "toggle", index };
     return { kind: "none" };
@@ -85,6 +93,8 @@ export function actionFor(key: string, mode: "plan" | "prefs", step: number): Ac
       return { kind: "state", state: "needs-more" };
     case "r":
       return { kind: "refresh" };
+    case "P":
+      return { kind: "preferences" };
     default:
       return { kind: "none" };
   }

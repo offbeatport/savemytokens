@@ -172,8 +172,9 @@ not lost. `savemytokens defer` lists it; `defer clear` drops it.
 Pressure is `used ÷ target` against the published window. With no published window it degrades to
 `share ÷ target`, which only means anything with two or more sessions running, so with one session
 and no reading SMT says nothing at all. Each stage fires once per window. The advice names what you
-chose to preserve on first run — implementation, tests, end-to-end checks, documentation,
-exploration.
+want preserved — implementation and tests by default, changed with `P` in the control centre or
+`savemytokens policy preserve` — and can carry a line of your own, injected verbatim with it.
+There is no first-run questionnaire: the control centre opens on working defaults.
 
 **This is advice, not enforcement.** A hook injects text; a model does not hold a budget reliably.
 `Enforcer.supports` is `["advise"]` for the Claude adapter and the UI reads that field.
