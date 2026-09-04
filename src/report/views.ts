@@ -355,42 +355,97 @@ export function detailRows(control: ControlPlan, context: ViewContext): string[]
   return out;
 }
 
+const HELP_KEYS: Array<[string, string]> = [
+  ["↑ ↓", "select a project"],
+  ["⏎", "open it and see its sessions — esc comes back"],
+  ["← →", "move its allocation by 5 points"],
+  ["u", "drop the target and go back to an even split"],
+  ["e", "equalize — drop every pinned target at once"],
+  ["p", "priority: high → normal → low, who gets spare capacity first"],
+  ["f", "pin the row so it keeps its place"],
+  ["x", "park it — out of the plan, holding nothing"],
+  ["d b a n", "mark it done, blocked, active or needs-more by hand"],
+  ["m", "show every project, not just the first screenful"],
+  ["P", "settings: columns, theme, status line, what to protect"],
+  ["r", "read everything again now"],
+  ["? q", "this help · quit"],
+];
+
+function helpSection(title: string, context: ViewContext): string[] {
+  return ["", `  ${paintHead(context.theme, title.toUpperCase(), context.color)}`, ""];
+}
+
+function helpProse(text: string, context: ViewContext): string[] {
+  const { theme, color } = context;
+  const room = Math.max(24, context.columns - 6);
+  const out: string[] = [];
+  let line = "";
+  for (const word of text.split(" ")) {
+    if (line.length === 0) line = word;
+    else if (line.length + 1 + word.length <= room) line += ` ${word}`;
+    else {
+      out.push(`    ${paint(theme, "dim", line, color)}`);
+      line = word;
+    }
+  }
+  if (line) out.push(`    ${paint(theme, "dim", line, color)}`);
+  out.push("");
+  return out;
+}
+
 export function helpOverlay(control: ControlPlan, context: ViewContext): string[] {
   const { theme, color } = context;
   const policy = control.config.policy;
-  const stages = policy === "strict" ? "35/60/80" : policy === "relaxed" ? "80/95" : "50/80/90";
-  return [
-    `  ${paint(theme, "accent", "keys", color)}`,
-    "",
-    "    ↑↓        select a project",
-    "    ⏎         open it, and see its sessions · esc goes back",
-    "    ←→        move its allocation by 5 points",
-    "    u         unpin the target, back to an even split",
-    "    p         priority: high → normal → low",
-    "    e         equalize — clear every pinned target",
-    "    d b a n   mark done · blocked · active · needs-more",
-    "    f x       pin a row · park it",
-    "    m         show every session, not just the first screenful",
-    "    P         settings: columns, theme, status line, what to preserve",
-    "    r ? q     refresh · this help · quit",
-    "",
-    `  ${paint(theme, "accent", "the working set", color)}`,
-    "",
-    `    ${paint(theme, "dim", "ACTIVE   a Claude session is open right now — only these get a share", color)}`,
-    `    ${paint(theme, "dim", "RECENT   worked on in the last day, nothing running", color)}`,
-    `    ${paint(theme, "dim", "PARKED   older, or parked by hand", color)}`,
-    "",
-    `  ${paint(theme, "accent", "the columns", color)}`,
-    "",
-    `    ${paint(theme, "dim", "allocation  how much of the window you want this project to get", color)}`,
-    `    ${paint(theme, "dim", "used of it  how much of that allocation it has spent · » means over", color)}`,
-    `    ${paint(theme, "dim", "a project's allocation is split across its live sessions by what they burn", color)}`,
-    "",
-    `    ${paint(theme, "dim", "5h and 7d are Anthropic's numbers. share is measured from your transcripts.", color)}`,
-    `    ${paint(theme, "dim", "\"spent outside these sessions\" is window that moved while none of them had a turn:", color)}`,
-    `    ${paint(theme, "dim", "claude.ai or another machine, or work done before SaveMyTokens was watching.", color)}`,
-    `    ${paint(theme, "dim", "used is their number split by that share, so the split between rows is ours.", color)}`,
-    "",
-    `    ${paint(theme, "dim", `Claude is told to wind down at ${stages}% of its target · npx savemytokens policy`, color)}`,
-  ];
+  const stages = policy === "strict" ? "35/60/80" : policy === "relaxed" ? "80/95" : policy === "off" ? "" : "50/80/90";
+  const keyWidth = Math.max(...HELP_KEYS.map(([key]) => key.length));
+  const room = Math.max(16, context.columns - keyWidth - 8);
+
+  const out: string[] = [`  ${paintHead(theme, "KEYS", color)}`, ""];
+  for (const [key, what] of HELP_KEYS) {
+    const words = what.split(" ");
+    const wrapped: string[] = [];
+    let line = "";
+    for (const word of words) {
+      if (line.length === 0) line = word;
+      else if (line.length + 1 + word.length <= room) line += ` ${word}`;
+      else {
+        wrapped.push(line);
+        line = word;
+      }
+    }
+    if (line) wrapped.push(line);
+    for (const [at, text] of wrapped.entries()) {
+      const gutter = at === 0 ? paint(theme, "accent", padEndVisible(key, keyWidth), color) : " ".repeat(keyWidth);
+      out.push(`    ${gutter}  ${paint(theme, "dim", text, color)}`);
+    }
+  }
+
+  out.push(...helpSection("the three tables", context));
+  out.push(...helpProse("ACTIVE — a Claude session is open there right now. Only these spend the window, so only these hold an allocation.", context));
+  out.push(...helpProse("RECENT — worked on in the last day with nothing running. Set a target here and it waits for you.", context));
+  out.push(...helpProse("PARKED — older, or parked by hand with x.", context));
+  out.pop();
+
+  out.push(...helpSection("where the numbers come from", context));
+  out.push(...helpProse("5h and 7d are Anthropic's own numbers, read from the status line. Share is measured from the tokens in your transcripts.", context));
+  out.push(...helpProse("Allocation is what you asked for. Used of it is Anthropic's number split by measured share — the split between rows is ours, not theirs.", context));
+  out.push(...helpProse("A project's allocation is divided across its live sessions by what each one burns.", context));
+
+  const drift = control.unattributed ?? 0;
+  if (drift >= UNATTRIBUTED_FLOOR) {
+    out.push(...helpProse("Window spent outside these projects is claude.ai, another machine, or work done before SaveMyTokens was watching.", context));
+  }
+  out.pop();
+
+  out.push(...helpSection("when it gets tight", context));
+  out.push(
+    ...helpProse(
+      stages
+        ? `Claude is told to wind down at ${stages}% of a project's target. Change it with P, or npx savemytokens policy.`
+        : "Nothing is ever said to Claude — the policy is off. Change it with P, or npx savemytokens policy.",
+      context,
+    ),
+  );
+  out.pop();
+  return out;
 }

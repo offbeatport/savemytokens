@@ -781,3 +781,42 @@ test("a theme you write yourself is checked, not just accepted", async () => {
   assert.match(output, /wants at least 4.5:1/, "and one too dark to read");
   assert.match(output, /2 problems to fix/);
 });
+
+test("the help page fits, and every key it lists is a key that works", async () => {
+  const { helpOverlay } = await import("../dist/report/views.js");
+  const { buildPlan, visibleRows } = await import("../dist/scheduler/plan.js");
+  const { loadTheme } = await import("../dist/runtime/kernel.mjs");
+  const { keyActions } = await import("../dist/scheduler/keys.js");
+  const control = buildPlan(Date.now(), false);
+
+  for (const columns of [60, 80, 100, 140]) {
+    const lines = helpOverlay(control, {
+      theme: loadTheme("catppuccin"),
+      color: false,
+      columns,
+      rows: 40,
+      selected: 0,
+      interactive: true,
+      expanded: false,
+      labels: visibleRows(control.schedule).reduce((map, view) => map.set(view.project, view.label), new Map()),
+    });
+    for (const line of lines) {
+      assert.ok(line.length <= columns, `${columns} columns overflowed by ${line.length - columns}: ${JSON.stringify(line)}`);
+    }
+  }
+
+  const listed = helpOverlay(control, {
+    theme: loadTheme("catppuccin"),
+    color: false,
+    columns: 140,
+    rows: 40,
+    selected: 0,
+    interactive: true,
+    expanded: false,
+    labels: new Map(),
+  }).join("\n");
+  for (const key of ["u", "e", "p", "f", "x", "d", "b", "a", "n", "m", "P", "r", "q"]) {
+    assert.ok(listed.includes(key), `${key} is documented`);
+    assert.ok(keyActions(key).length > 0, `${key} actually does something`);
+  }
+});
