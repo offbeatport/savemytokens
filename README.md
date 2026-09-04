@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="https://raw.githubusercontent.com/offbeatport/savemytokens/main/assets/logo.svg" alt="" width="64" height="64">
+
 # SaveMyTokens
 
 ### Decide which project gets your Claude allowance.
