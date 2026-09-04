@@ -106,7 +106,7 @@ function keepAlive(payload, now) {
   const id = String(payload.session_id ?? "");
   if (!id) return;
   const project = payload.cwd || payload.workspace?.current_dir || "";
-  const label = payload.session_name || (project ? path.basename(project) : "session");
+  const label = project ? path.basename(project) : String(payload.session_name || "session");
   const current = schedule(ADAPTER, now);
   const view = viewFor(current, id);
   if (view && now - view.claimant.lastSeen < LIVENESS_THROTTLE_MS && view.claimant.label === label) return;
