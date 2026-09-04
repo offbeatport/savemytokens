@@ -1312,16 +1312,16 @@ export const HUD_SEGMENTS = [
 ];
 
 export const HUD_PRESETS = {
-  default: ["pair", "5h", "reset"],
-  minimal: ["pair"],
+  default: ["bar", "pair", "5h", "reset"],
+  minimal: ["bar", "pair"],
   window: ["5h", "reset", "7d"],
-  pacing: ["pair", "pace", "5h", "reset"],
+  pacing: ["bar", "pace", "5h", "reset"],
   everything: ["project", "target", "used", "priority", "meter5h", "5h", "7d", "reset"],
 };
 
 export const HUD_PRESET_ABOUT = {
-  default: "your share, the window, and when it resets",
-  minimal: "your share and nothing else",
+  default: "a bar for your share, then the numbers",
+  minimal: "the bar and your share, nothing else",
   window: "only Anthropic's numbers, no per-project detail",
   pacing: "whether you are ahead of or behind the clock",
   everything: "every number there is",
@@ -1382,7 +1382,8 @@ const SEGMENTS = {
     const value = typeof view.used === "number" ? view.used : (view.observed ?? 0) * 100;
     return `${paint(theme, pressureRole(view.pressure ?? 0), percentText(value), on)}${paint(theme, "dim", `/${percentText((view.target ?? 0) * 100)}`, on)}`;
   },
-  bar: (view, theme, on) => hudMeter(theme, view.pressure ?? 0, 8, pressureRole(view.pressure ?? 0), on, "|", "."),
+  bar: (view, theme, on) =>
+    hudMeter(theme, view.pressure ?? 0, 8, pressureRole(view.pressure ?? 0), on, theme.glyphs?.hudFull ?? "\u28ff", theme.glyphs?.hudEmpty ?? "\u28c0"),
   priority: (view, theme, on) => paint(theme, "dim", String(view.priority ?? "normal").toUpperCase(), on),
   "5h": (view, theme, on) => {
     const window = windowOf(view, "five_hour");
@@ -1429,16 +1430,22 @@ const SEGMENTS = {
   },
 };
 
+const BARE_SEGMENTS = new Set(["bar", "meter5h", "spark"]);
+
 export function renderSegments(segments, view, theme, enabled = true) {
   const sep = ` ${theme.glyphs?.sep ?? "\u00b7"} `;
-  const parts = [];
+  let line = "";
+  let bare = false;
   for (const name of segments) {
     const render = SEGMENTS[name];
     if (!render) continue;
     const text = render(view, theme, enabled);
-    if (text) parts.push(text);
+    if (!text) continue;
+    if (!line) line = text;
+    else line += (bare ? " " : sep) + text;
+    bare = BARE_SEGMENTS.has(name);
   }
-  return parts.join(sep) + (view.stale ? paint(theme, "dim", " stale", enabled) : "");
+  return line + (view.stale ? paint(theme, "dim", " stale", enabled) : "");
 }
 
 export function renderHud(layout, view, theme, enabled = true) {

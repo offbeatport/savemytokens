@@ -747,8 +747,8 @@ test("the status line offers shapes before pieces", async () => {
 
   assert.deepEqual(
     DEFAULT_HUD_SEGMENTS,
-    ["pair", "5h", "reset"],
-    "the default is three things, and the project name is not one: you are already in it",
+    ["bar", "pair", "5h", "reset"],
+    "a bar first, then the numbers, and never the project name: you are already in it",
   );
   assert.equal(presetMatching(DEFAULT_HUD_SEGMENTS), "default", "and it is one of the named shapes");
   assert.equal(presetMatching(["project", "spark"]), null, "an arrangement of your own is not mislabelled");
@@ -769,6 +769,8 @@ test("the status line offers shapes before pieces", async () => {
     now,
   };
   const line = renderHud("default", view, loadTheme("default"), false);
+  assert.match(line, /[\u2800-\u28ff]/, "a bar comes first");
+  assert.doesNotMatch(line, /[\u2800-\u28ff] \u00b7/, "and runs straight into the numbers, with no separator");
   assert.match(line, /21%\/50%/, "what this session has spent of what it was given");
   assert.match(line, /5h 42%/, "and where the window is");
   assert.match(line, /in 1h/, "and when it comes back");
