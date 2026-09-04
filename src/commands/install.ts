@@ -1,15 +1,68 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { HOOK_FILENAME, HOOK_SCRIPT, NUDGE_CONTEXT_TOKENS } from "../hooks/nudge.js";
+import { fileURLToPath } from "node:url";
 import { RULES_BLOCK, RULES_END, RULES_START } from "../hooks/rules.js";
-import { HOME, ensureHome } from "../storage/paths.js";
-import { bold, dim, green } from "../util/ansi.js";
-import { compactNumber } from "../util/fmt.js";
+import { HOME, HOOKS_DIR, loadConfig, saveConfig } from "../runtime/kernel.mjs";
+import { bold, dim, green, yellow } from "../util/ansi.js";
 
-const SETTINGS = process.env.SAVEMYTOKENS_SETTINGS || path.join(os.homedir(), ".claude", "settings.json");
-const EVENT = "UserPromptSubmit";
-const MEMORY = process.env.SAVEMYTOKENS_MEMORY || path.join(os.homedir(), ".claude", "CLAUDE.md");
+const CLAUDE_HOME = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
+const SETTINGS = process.env.SAVEMYTOKENS_SETTINGS || path.join(CLAUDE_HOME, "settings.json");
+const MEMORY = process.env.SAVEMYTOKENS_MEMORY || path.join(CLAUDE_HOME, "CLAUDE.md");
+const RUNTIME_FILES = ["kernel.mjs", "hook.mjs", "statusline.mjs"];
+
+export const HOOK_EVENTS: Array<[string, string]> = [
+  ["SessionStart", "session-start"],
+  ["UserPromptSubmit", "prompt"],
+  ["Stop", "stop"],
+  ["SessionEnd", "session-end"],
+];
+
+interface HookEntry {
+  type?: string;
+  command?: string;
+  timeout?: number;
+  hooks?: HookEntry[];
+}
+
+function quoted(value: string): string {
+  return /[\s"']/.test(value) ? `"${value}"` : value;
+}
+
+export function hookPath(name: string): string {
+  return path.join(HOOKS_DIR, name);
+}
+
+function hookCommand(event: string): string {
+  return `${quoted(process.execPath)} ${quoted(hookPath("hook.mjs"))} ${event}`;
+}
+
+function statusLineCommand(): string {
+  return `${quoted(process.execPath)} ${quoted(hookPath("statusline.mjs"))}`;
+}
+
+function ourCommand(command: unknown): boolean {
+  if (typeof command !== "string") return false;
+  return command.includes(HOOKS_DIR) || command.includes("savemytokens") || command.includes("nudge.cjs");
+}
+
+function isOurs(entry: HookEntry): boolean {
+  if (ourCommand(entry.command)) return true;
+  return Array.isArray(entry.hooks) && entry.hooks.some(isOurs);
+}
+
+function readSettings(): Record<string, any> {
+  try {
+    return JSON.parse(fs.readFileSync(SETTINGS, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function writeSettings(settings: Record<string, any>): void {
+  fs.mkdirSync(path.dirname(SETTINGS), { recursive: true });
+  fs.writeFileSync(SETTINGS, JSON.stringify(settings, null, 2) + "\n");
+}
 
 function readMemory(): string {
   try {
@@ -27,8 +80,7 @@ function stripRules(text: string): string {
 }
 
 function writeRules(): void {
-  const existing = readMemory();
-  const body = stripRules(existing);
+  const body = stripRules(readMemory());
   const next = body.length > 0 ? body + "\n\n" + RULES_BLOCK + "\n" : RULES_BLOCK + "\n";
   fs.mkdirSync(path.dirname(MEMORY), { recursive: true });
   fs.writeFileSync(MEMORY, next);
@@ -38,127 +90,162 @@ export function rulesInstalled(): boolean {
   return readMemory().includes(RULES_START);
 }
 
-export function hookPath(): string {
-  return path.join(HOME, "hooks", HOOK_FILENAME);
+export function hookInstalled(): boolean {
+  return fs.existsSync(hookPath("hook.mjs"));
 }
 
-interface HookEntry {
-  type?: string;
-  command?: string;
-  timeout?: number;
-  hooks?: HookEntry[];
-}
-
-function isOurs(entry: HookEntry): boolean {
-  if (typeof entry.command === "string" && entry.command.includes(HOOK_FILENAME)) return true;
-  return Array.isArray(entry.hooks) && entry.hooks.some((inner) => isOurs(inner));
-}
-
-function readSettings(): Record<string, any> {
-  try {
-    return JSON.parse(fs.readFileSync(SETTINGS, "utf8"));
-  } catch {
-    return {};
+function copyRuntime(): void {
+  const from = fileURLToPath(new URL("../runtime/", import.meta.url));
+  fs.mkdirSync(HOOKS_DIR, { recursive: true });
+  for (const name of RUNTIME_FILES) {
+    fs.copyFileSync(path.join(from, name), path.join(HOOKS_DIR, name));
   }
+  fs.chmodSync(path.join(HOOKS_DIR, "hook.mjs"), 0o755);
+  fs.chmodSync(path.join(HOOKS_DIR, "statusline.mjs"), 0o755);
 }
 
-function usesNestedShape(entries: HookEntry[]): boolean {
-  return entries.some((entry) => Array.isArray(entry.hooks));
-}
-
-export function runInstall(dryRun: boolean): void {
-  const settings = readSettings();
+function addHooks(settings: Record<string, any>): number {
   const hooks = (settings.hooks ??= {});
-  const entries: HookEntry[] = Array.isArray(hooks[EVENT]) ? hooks[EVENT] : [];
-  const already = entries.some(isOurs);
+  let added = 0;
+  for (const [event, action] of HOOK_EVENTS) {
+    const entries: HookEntry[] = Array.isArray(hooks[event]) ? hooks[event] : [];
+    const kept = entries.filter((entry) => !isOurs(entry));
+    kept.push({ hooks: [{ type: "command", command: hookCommand(action), timeout: 10 }] });
+    hooks[event] = kept;
+    added++;
+  }
+  return added;
+}
 
-  const command = `node ${hookPath()}`;
-  const leaf: HookEntry = { type: "command", command, timeout: 5 };
-  const entry: HookEntry = usesNestedShape(entries) || entries.length === 0 ? { hooks: [leaf] } : leaf;
+export interface InstallOptions {
+  dryRun: boolean;
+  force: boolean;
+  rules: boolean;
+}
 
+export function runInstall(options: InstallOptions): void {
+  const settings = readSettings();
+  const existingStatusLine = settings.statusLine?.command;
+  const ours = ourCommand(existingStatusLine);
+  const conflict = typeof existingStatusLine === "string" && !ours;
   const out: string[] = ["", bold("SaveMyTokens"), ""];
 
-  if (already) {
-    out.push("The nudge hook is already installed.");
-    out.push(dim(`  ${hookPath()}`));
-    out.push("");
-    out.push(dim("Remove it with: npx savemytokens uninstall"));
-    out.push("");
-    process.stdout.write(out.join("\n") + "\n");
-    return;
-  }
-
-  out.push(`It warns you when you start a new task while carrying more than ${compactNumber(NUDGE_CONTEXT_TOKENS)}`);
-  out.push("tokens of finished work — the moment the waste is still cheap to undo.");
+  out.push("It gives every Claude Code session a target share of your Claude window, and tells");
+  out.push("Claude what share it is working within.");
   out.push("");
   out.push(bold("What it does to your machine"));
   out.push("");
-  out.push(`  writes  ${hookPath()}`);
-  out.push(`  adds    one ${EVENT} entry to ~/.claude/settings.json`);
-  out.push(`  adds    a fenced token-discipline block to ${MEMORY}`);
+  out.push(`  writes  ${HOOKS_DIR}/{kernel,hook,statusline}.mjs`);
+  out.push(`  adds    ${HOOK_EVENTS.map(([event]) => event).join(", ")} hooks to ${SETTINGS}`);
+  out.push(
+    conflict && !options.force
+      ? `  keeps   your existing status line ${dim("(--force wraps it and appends the SMT segment)")}`
+      : conflict
+        ? `  wraps   your existing status line, then appends the SMT segment`
+        : `  sets    the status line, the only place Anthropic publishes your 5h and 7d usage`,
+  );
   out.push(`  backs up the current settings to ${path.join(HOME, "settings.backup.json")}`);
+  if (options.rules) out.push(`  adds    a fenced token-discipline block to ${MEMORY}`);
   out.push("");
-  out.push(dim("  It reads the tail of the current transcript and prints one line. It never blocks a"));
-  out.push(dim("  prompt, never edits a file, never makes a network call, and exits 0 on every path,"));
-  out.push(dim("  so a bug in it cannot break a session. Remove it with: npx savemytokens uninstall"));
-  out.push("");
-  out.push(bold("CLAUDE.md gains"));
-  out.push("");
-  for (const line of RULES_BLOCK.split("\n")) out.push(`  ${line}`);
-  out.push("");
-  out.push(bold("settings.json gains"));
-  out.push("");
-  for (const line of JSON.stringify({ hooks: { [EVENT]: [entry] } }, null, 2).split("\n")) out.push(`  ${line}`);
+  out.push(dim("  Hooks read your transcripts, write only to ~/.savemytokens, never block a prompt,"));
+  out.push(dim("  never make a network call, and exit 0 on every path. Remove with: npx savemytokens uninstall"));
   out.push("");
 
-  if (dryRun) {
+  if (conflict && !options.force) {
+    out.push(yellow("  Your status line is already set to something else:"));
+    out.push(dim(`    ${existingStatusLine}`));
+    out.push("  Without it SMT cannot read your published 5h/7d usage — every other part still works.");
+    out.push(`  Run ${bold("npx savemytokens install --force")} to keep yours and append the SMT segment.`);
+    out.push("");
+  }
+
+  if (options.dryRun) {
+    const preview = {
+      statusLine: { type: "command", command: statusLineCommand(), padding: 0 },
+      hooks: Object.fromEntries(
+        HOOK_EVENTS.map(([event, action]) => [event, [{ hooks: [{ type: "command", command: hookCommand(action), timeout: 10 }] }]]),
+      ),
+    };
+    out.push(bold("settings.json gains"));
+    out.push("");
+    for (const line of JSON.stringify(preview, null, 2).split("\n")) out.push(`  ${line}`);
+    out.push("");
     out.push(dim("--dry-run: nothing was written."));
     out.push("");
     process.stdout.write(out.join("\n") + "\n");
     return;
   }
 
-  ensureHome();
-  writeRules();
-  fs.mkdirSync(path.dirname(hookPath()), { recursive: true });
-  fs.writeFileSync(hookPath(), HOOK_SCRIPT, { mode: 0o755 });
+  fs.mkdirSync(HOME, { recursive: true });
   if (fs.existsSync(SETTINGS)) fs.copyFileSync(SETTINGS, path.join(HOME, "settings.backup.json"));
+  copyRuntime();
+  if (options.rules) writeRules();
 
-  entries.push(entry);
-  hooks[EVENT] = entries;
-  fs.mkdirSync(path.dirname(SETTINGS), { recursive: true });
-  fs.writeFileSync(SETTINGS, JSON.stringify(settings, null, 2) + "\n");
+  addHooks(settings);
+
+  const config = loadConfig();
+  if (!conflict || options.force) {
+    if (conflict && options.force) config.wrappedStatusLine = existingStatusLine;
+    settings.statusLine = { type: "command", command: statusLineCommand(), padding: 0 };
+  }
+  if (!config.createdAt) config.createdAt = Date.now();
+  saveConfig(config);
+  writeSettings(settings);
 
   out.push(`${green("Installed.")} It takes effect in sessions you start from now on.`);
+  out.push(dim("  Open the control centre with: npx savemytokens"));
   out.push("");
   process.stdout.write(out.join("\n") + "\n");
 }
 
-export function runUninstall(): void {
+export function runUninstall(purge: boolean): void {
   const settings = readSettings();
-  const entries: HookEntry[] = Array.isArray(settings.hooks?.[EVENT]) ? settings.hooks[EVENT] : [];
-  const kept = entries.filter((entry) => !isOurs(entry));
-  const removed = entries.length - kept.length;
+  let removed = 0;
 
-  if (removed > 0) {
-    if (kept.length > 0) settings.hooks[EVENT] = kept;
-    else delete settings.hooks[EVENT];
-    fs.writeFileSync(SETTINGS, JSON.stringify(settings, null, 2) + "\n");
+  for (const [event] of HOOK_EVENTS) {
+    const entries: HookEntry[] = Array.isArray(settings.hooks?.[event]) ? settings.hooks[event] : [];
+    const kept = entries.filter((entry) => !isOurs(entry));
+    removed += entries.length - kept.length;
+    if (kept.length > 0) settings.hooks[event] = kept;
+    else if (settings.hooks) delete settings.hooks[event];
   }
+
+  const config = loadConfig();
+  let statusLineRestored = false;
+  if (ourCommand(settings.statusLine?.command)) {
+    if (config.wrappedStatusLine) {
+      settings.statusLine = { type: "command", command: config.wrappedStatusLine, padding: 0 };
+      statusLineRestored = true;
+    } else {
+      delete settings.statusLine;
+    }
+    removed++;
+  }
+
+  if (removed > 0) writeSettings(settings);
+
   try {
-    fs.rmSync(hookPath());
+    fs.rmSync(HOOKS_DIR, { recursive: true, force: true });
   } catch {}
+
   const memory = readMemory();
   const strippedRules = memory.includes(RULES_START);
   if (strippedRules) fs.writeFileSync(MEMORY, stripRules(memory) + "\n");
 
+  if (purge) {
+    try {
+      fs.rmSync(HOME, { recursive: true, force: true });
+    } catch {}
+  }
+
   const out = ["", bold("SaveMyTokens"), ""];
   out.push(
     removed > 0 || strippedRules
-      ? "Removed the hook, its settings entry and the CLAUDE.md block. Nothing else was touched."
+      ? "Removed the hooks, the status line and the scripts. Nothing else was touched."
       : "Nothing was installed.",
   );
-  out.push(dim(`Your audit history in ${HOME} is untouched.`));
+  if (statusLineRestored) out.push(dim("Your own status line is back in place."));
+  out.push(dim(purge ? `Deleted ${HOME}.` : `Your local state in ${HOME} is untouched — remove it with --purge.`));
   out.push("");
   process.stdout.write(out.join("\n") + "\n");
 }
@@ -181,8 +268,4 @@ export function nudgeStats(): NudgeStats | null {
   } catch {
     return null;
   }
-}
-
-export function hookInstalled(): boolean {
-  return fs.existsSync(hookPath());
 }

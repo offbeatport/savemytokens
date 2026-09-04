@@ -1,15 +1,17 @@
 {
   "name": "savemytokens",
   "version": "0.1.0",
-  "description": "Find what wastes tokens in your AI coding sessions, and what to change. Local, private, zero setup.",
+  "description": "Give every Claude Code session a target share of your Claude window, and keep Claude aware of it. Local, private, zero setup.",
   "keywords": [
     "claude",
     "claude-code",
+    "statusline",
+    "rate-limit",
+    "quota",
+    "scheduler",
     "tokens",
-    "context",
-    "llm",
     "cost",
-    "audit",
+    "tui",
     "cli"
   ],
   "homepage": "https://savemytokens.com",
@@ -35,8 +37,8 @@
     "node": ">=18.17"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsc -p tsconfig.json && node dist/cli.js",
+    "build": "tsc -p tsconfig.json && node scripts/copy-runtime.mjs",
+    "dev": "npm run build && node dist/cli.js",
     "test": "npm run build && node --test test/*.test.js",
     "prepublishOnly": "npm run build"
   },

@@ -6,7 +6,8 @@ import type { Adapter, DiscoverOptions, SessionRef } from "../types.js";
 import { mergeSidechain } from "./merge.js";
 import { parseClaudeSession } from "./parse.js";
 
-const DATA_DIR = path.join(os.homedir(), ".claude", "projects");
+const CLAUDE_HOME = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
+const DATA_DIR = path.join(CLAUDE_HOME, "projects");
 const MAX_SUBAGENT_DEPTH = 4;
 
 export function encodeProject(dir: string): string {

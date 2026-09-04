@@ -1,22 +1,7 @@
 import type { Audit, RunRecord } from "../core/types.js";
-import { CONFIG_FILE, LAST_AUDIT_FILE, RUNS_FILE, ensureHome, readJson, writeJson } from "./paths.js";
+import { LAST_AUDIT_FILE, RUNS_FILE, ensureHome, readJson, writeJson } from "./paths.js";
 
 const MAX_RUNS = 250;
-
-export interface Config {
-  version: number;
-  createdAt: number;
-  contribute: boolean;
-}
-
-export function loadConfig(): Config {
-  return readJson<Config>(CONFIG_FILE, { version: 1, createdAt: Date.now(), contribute: false });
-}
-
-export function saveConfig(config: Config): void {
-  ensureHome();
-  writeJson(CONFIG_FILE, config);
-}
 
 export function loadRuns(): RunRecord[] {
   const runs = readJson<RunRecord[]>(RUNS_FILE, []);

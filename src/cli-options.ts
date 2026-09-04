@@ -1,5 +1,6 @@
 export interface Options {
   command: string;
+  args: string[];
   days: number;
   project: string | null;
   projectExplicit: boolean;
@@ -8,15 +9,30 @@ export interface Options {
   save: boolean;
   interval: number;
   dryRun: boolean;
+  force: boolean;
+  rules: boolean;
+  purge: boolean;
   help: boolean;
   version: boolean;
 }
 
-const COMMANDS = new Set(["audit", "install", "uninstall", "watch", "history", "privacy", "help"]);
+const COMMANDS = new Set([
+  "control",
+  "status",
+  "audit",
+  "install",
+  "uninstall",
+  "watch",
+  "history",
+  "privacy",
+  "theme",
+  "help",
+]);
 
 export function parseArgs(argv: string[]): Options {
   const options: Options = {
-    command: "audit",
+    command: "control",
+    args: [],
     days: 7,
     project: null,
     projectExplicit: false,
@@ -25,15 +41,24 @@ export function parseArgs(argv: string[]): Options {
     save: true,
     interval: 60,
     dryRun: false,
+    force: false,
+    rules: false,
+    purge: false,
     help: false,
     version: false,
   };
+  let commandSeen = false;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === undefined) continue;
-    if (!arg.startsWith("-") && COMMANDS.has(arg)) {
-      options.command = arg;
+    if (!arg.startsWith("-")) {
+      if (!commandSeen && COMMANDS.has(arg)) {
+        options.command = arg;
+        commandSeen = true;
+      } else {
+        options.args.push(arg);
+      }
       continue;
     }
     switch (arg) {
@@ -71,6 +96,15 @@ export function parseArgs(argv: string[]): Options {
         break;
       case "--dry-run":
         options.dryRun = true;
+        break;
+      case "--force":
+        options.force = true;
+        break;
+      case "--rules":
+        options.rules = true;
+        break;
+      case "--purge":
+        options.purge = true;
         break;
       case "--interval": {
         const value = Number(argv[++i]);

@@ -4,9 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SaveMyTokens</title>
-    <meta name="description" content="Get more done. Find what wastes tokens in your AI coding sessions." />
+    <meta name="description" content="Give every Claude Code session a target share of your Claude window." />
     <meta property="og:title" content="SaveMyTokens" />
-    <meta property="og:description" content="Get more done." />
+    <meta property="og:description" content="Decide which session gets your Claude allowance." />
     <link rel="icon" href="data:," />
     <style>
       :root {
@@ -78,12 +78,14 @@
   <body>
     <main>
       <h1>SaveMyTokens</h1>
-      <p class="tagline">Get more done.</p>
-      <code>npx savemytokens</code>
+      <p class="tagline">Decide which session gets your Claude allowance.</p>
+      <code>npx savemytokens install</code>
       <p class="note">
-        Finds what wastes tokens in your Claude Code sessions, and what to change. Runs locally.
-        Nothing is uploaded.
+        Splits the 5-hour and weekly usage Anthropic publishes across the Claude Code sessions you
+        are actually running, gives each one a target share, and tells it the budget it is working
+        within. Published numbers only — never an invented "% remaining".
       </p>
+      <p class="note">Runs locally. No daemon, no account, nothing uploaded.</p>
       <p class="note">
         <a href="https://github.com/offbeatport/savemytokens">source</a> ·
         <a href="https://www.npmjs.com/package/savemytokens">npm</a>

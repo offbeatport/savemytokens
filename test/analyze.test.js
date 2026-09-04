@@ -170,7 +170,9 @@ test("uplift is derived from the combined waste ratio", () => {
 });
 
 test("argument parsing covers commands, windows and scopes", () => {
-  assert.equal(parseArgs([]).command, "audit");
+  assert.equal(parseArgs([]).command, "control");
+  assert.equal(parseArgs(["audit"]).command, "audit");
+  assert.deepEqual(parseArgs(["theme", "tui", "nord"]).args, ["tui", "nord"]);
   assert.equal(parseArgs([]).days, 7);
   assert.equal(parseArgs(["watch", "--interval", "30"]).command, "watch");
   assert.equal(parseArgs(["--days", "30"]).days, 30);

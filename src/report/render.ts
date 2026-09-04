@@ -170,7 +170,7 @@ export function renderAudit(input: RenderInput): string {
       `${green("Since you installed:")} ${nudges.fired} ${plural(nudges.fired, "warning")}, ${money(nudges.usdAtStake)} at stake ${dim(`(${ago(nudges.installedAt)})`)}`,
     );
   } else if (!installed) {
-    out.push(`${green("Do this:")}  ${bold("npx savemytokens install")}   ${dim("→ warns you before the next one")}`);
+    out.push(`${green("Do this:")}  ${bold("npx savemytokens install")}   ${dim("→ warns you before the next one, and gives each session a target share")}`);
   }
 
   out.push(...footer(audit, previous, history, verbose));

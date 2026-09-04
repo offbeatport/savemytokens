@@ -1,0 +1,201 @@
+import type {
+  Allocation,
+  AllocationResult,
+  Claimant,
+  ClaimantState,
+  Pressure,
+  Priority,
+} from "../core/resource.js";
+
+export const HOME: string;
+export const CLAIMANT_DIR: string;
+export const METER_DIR: string;
+export const QUOTA_DIR: string;
+export const THEME_DIR: string;
+export const HOOKS_DIR: string;
+export const CONFIG_FILE: string;
+
+export const FIVE_HOUR_MS: number;
+export const SEVEN_DAY_MS: number;
+export const WINDOW_MS: Record<string, number>;
+export const WINDOW_LABEL: Record<string, string>;
+export const STAGES: number[];
+
+export type WindowKey = "five_hour" | "seven_day" | "spend_limit";
+
+export interface QuotaWindow {
+  usedPercent: number;
+  resetsAt: number;
+}
+
+export interface QuotaReading {
+  at: number;
+  source: string;
+  sessionId?: string;
+  meteredTokens?: number;
+  windows: Partial<Record<WindowKey, QuotaWindow>>;
+}
+
+export interface AdviceState {
+  stage: number;
+  at: number;
+  window: number;
+}
+
+export interface ClaimantRecord extends Claimant {
+  schema: number;
+  advice: AdviceState;
+}
+
+export interface MeterRecord {
+  schema: number;
+  adapter: string;
+  id: string;
+  files: Record<string, number>;
+  buckets: number[][];
+  seen: string[];
+  lockouts: number[];
+  lastAt: number;
+  meteredAt: number;
+  project: string;
+  prompt: string;
+  signal: string | null;
+}
+
+export interface WindowUsage {
+  input: number;
+  output: number;
+  cacheWrite: number;
+  cacheRead: number;
+  requests: number;
+  tokens: number;
+  weighted: number;
+}
+
+export interface Config {
+  version: number;
+  createdAt: number;
+  theme: { tui: string; hud: string };
+  layout: { hud: string };
+  preserveFor: Record<string, string[]>;
+  wrappedStatusLine: string | null;
+  contribute: boolean;
+}
+
+export interface Theme {
+  name: string;
+  colors: Record<string, string>;
+  glyphs: Record<string, string>;
+  border: Record<string, string>;
+}
+
+export interface AllocationEntry {
+  id: string;
+  share: number | null;
+  priority: Priority;
+  state: ClaimantState;
+  consumed: number;
+  cap?: number | null;
+}
+
+export interface HudView {
+  label: string;
+  target: number;
+  observed: number;
+  used?: number | null;
+  pressure: number;
+  priority: string;
+  quota: Partial<Record<WindowKey, QuotaWindow>>;
+  stale?: boolean;
+  now?: number;
+}
+
+export interface AdviceView {
+  target: number;
+  observed: number;
+  pressure: number;
+  basis: string;
+  preserve: string[];
+}
+
+export function readJson<T>(file: string, fallback: T): T;
+export function writeJson(file: string, value: unknown): boolean;
+
+export const DEFAULT_CONFIG: Config;
+export function loadConfig(): Config;
+export function saveConfig(config: Config): boolean;
+
+export function claimantFile(adapter: string, id: string): string;
+export function meterFile(adapter: string, id: string): string;
+export function quotaFile(adapter: string): string;
+
+export function loadClaimant(adapter: string, id: string): ClaimantRecord | null;
+export function upsertClaimant(adapter: string, id: string, patch?: Partial<ClaimantRecord>): ClaimantRecord;
+export function loadClaimants(adapter: string): ClaimantRecord[];
+export function effectiveState(claimant: ClaimantRecord, now?: number): ClaimantState;
+export function isStale(claimant: ClaimantRecord, now?: number): boolean;
+
+export function saveQuota(adapter: string, reading: QuotaReading): boolean;
+export function loadQuota(adapter: string): QuotaReading | null;
+export function liveWindow(reading: QuotaReading | null, key: WindowKey, now?: number): QuotaWindow | null;
+export function windowBounds(
+  reading: QuotaReading | null,
+  key: WindowKey,
+  now?: number,
+): { from: number; to: number; anchored: boolean };
+
+export function loadMeter(adapter: string, id: string): MeterRecord;
+export function sampleFiles(adapter: string, id: string, files: string[], now?: number): MeterRecord;
+export function usageInWindow(record: MeterRecord, from: number, to: number): WindowUsage;
+export function signalIn(content: unknown): string | null;
+export function consumeSignal(adapter: string, id: string): string | null;
+
+export interface ClaimantPlanView {
+  claimant: ClaimantRecord;
+  allocation: Allocation;
+  usage: WindowUsage;
+  observed: number;
+  state: ClaimantState;
+  stale: boolean;
+  pressure: Pressure;
+  attributedPercent: number | null;
+}
+
+export interface SchedulePlanView {
+  adapter: string;
+  key: WindowKey;
+  now: number;
+  quota: QuotaReading | null;
+  live: QuotaWindow | null;
+  bounds: { from: number; to: number; anchored: boolean };
+  windowId: number;
+  claimants: ClaimantPlanView[];
+  unusedPool: number;
+  totalWeighted: number;
+  lockouts: number[];
+}
+
+export function schedule(
+  adapter: string,
+  now?: number,
+  key?: WindowKey,
+  quotaOverride?: QuotaReading | null,
+): SchedulePlanView;
+export function viewFor(plan: SchedulePlanView, id: string): ClaimantPlanView | null;
+export function allocate(entries: AllocationEntry[]): AllocationResult;
+export function pressureFor(consumedShare: number, target: number, quotaUsedPercent?: number | null): Pressure;
+export function stageFor(pressure: number): number;
+export function preserveText(preserve: string[]): string;
+export function openingAdvice(view: AdviceView): string;
+export function adviceFor(stage: number, view: AdviceView): string;
+
+export function builtinThemes(): string[];
+export function userThemes(): string[];
+export function loadTheme(name: string): Theme;
+export function paint(theme: Theme, role: string, text: string, enabled?: boolean): string;
+export function meterBar(theme: Theme, ratio: number, width: number, role?: string, enabled?: boolean): string;
+export function pressureRole(pressure: number): string;
+export function formatReset(resetsAt: number | undefined, now?: number): string;
+export function renderHud(layout: string, view: HudView, theme: Theme, enabled?: boolean): string;
+
+export type { Allocation, AllocationResult };

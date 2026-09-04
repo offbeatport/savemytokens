@@ -4,17 +4,16 @@
 
 **Tell SaveMyTokens what matters. It makes your scarce AI capacity go there.**
 
-Starts as a free local utility for individual developers running several Claude Code sessions at
-once. Grows into a scheduler for scarce AI capacity, and then into an economic control plane for
-autonomous software.
+A free local utility for developers running several Claude Code sessions at once. It grows into a
+scheduler for scarce AI capacity, and then into an economic control plane for autonomous software.
 
 - Resource scheduler, not project manager.
-- No permanent daemon. Hooks, status line, and shared local state do the work.
+- No permanent daemon. Hooks, the status line, and shared local state do the work.
 - Individual developers and HN/GitHub are the distribution wedge, not the final market.
 
-The scheduler is the product. The existing waste-audit engine is demoted to an optional
-`savemytokens audit`, kept because its measurements are the scheduler's meter and its findings are
-reallocation signals — not because reporting waste is the pitch any more.
+The scheduler is the product. The waste-audit engine is now `savemytokens audit` — kept because its
+measurements are the scheduler's meter and its findings are reallocation signals, not because
+reporting waste is the pitch.
 
 ---
 
@@ -36,310 +35,229 @@ The core owns that loop. Nothing in it may name Claude.
 | **Reallocation** | what happens when a claimant finishes, stalls, or overruns | `Scheduler` |
 | **Enforcement** | what can actually be done about it, and how hard | `Enforcer` |
 
-```ts
-type Unit = "observed_usage" | "token" | "usd" | "call" | "second" | "request";
+The types live in `src/core/resource.ts`. A **provider adapter** is a `{ Resource[], Meter, Enforcer }`
+triple; Claude Code is the first one, in `src/adapters/claude-code/provider.ts`. Nothing else in the
+codebase may import it.
 
-interface Window {
-  kind: "rolling" | "calendar" | "per-task" | "unbounded";
-  ms?: number;
-  resetsAt?: number;
-}
+`observed_usage` is the unit for a resource whose real metering unit the provider does not publish.
+The meter records tokens and requests underneath, but the plan never claims any of them *is* the
+quota.
 
-interface Capacity {
-  amount: number;
-  confidence: "published" | "measured" | "estimated" | "unknown";
-  learnedFrom?: number;
-}
+### Capacity is published, not guessed
 
-interface Resource {
-  id: string;
-  adapter: string;
-  unit: Unit;
-  window: Window;
-  capacity: Capacity;
-}
+Claude Code hands the status line command a JSON payload that contains, for subscription accounts:
 
-interface Claimant {
-  id: string;
-  resourceId: string;
-  label: string;
-  share: number;
-  priority: "high" | "normal" | "low";
-  cap?: number;
-  state: "active" | "done" | "needs-more" | "blocked";
-}
-
-interface Sample {
-  claimantId: string;
-  amount: number;
-  at: number;
-  metrics: { tokens: number; usd: number; requests: number };
-}
-
-interface Meter {
-  sample(since: number): Promise<Sample[]>;
-}
-
-type EnforcementLevel = "advise" | "warn" | "throttle" | "deny" | "halt";
-
-interface Enforcer {
-  supports: EnforcementLevel[];
-  apply(claimant: Claimant, level: EnforcementLevel, reason: string): Promise<void>;
+```json
+"rate_limits": {
+  "five_hour": { "used_percentage": 42.5, "resets_at": 1788000000 },
+  "seven_day": { "used_percentage": 12.0, "resets_at": 1788400000 },
+  "spend_limit": { "used_percentage": 8.0, "resets_at": 1788400000 }
 }
 ```
 
-A **provider adapter** is a `{ Resource[], Meter, Enforcer }` triple. Claude Code is the first one.
-Nothing else in the codebase may import it.
+Verified against Claude Code 2.1.260. That is the account's real usage against its real window, with
+the real reset time, so `Capacity.confidence` is **`published`** and SMT never estimates a ceiling.
+An earlier version of this plan proposed learning capacity from lockouts; that is deleted.
 
-`observed_usage` is the unit for a resource whose real metering unit the provider does not publish.
-It is a proxy: the meter still records tokens, dollars and requests underneath, but the plan does
-not claim any of them *is* the quota. Claude Code uses it. The day Anthropic publishes the real
-unit, the adapter changes and nothing above it does.
+Three consequences the product lives with:
 
-### Capacity confidence is a first-class field, not a footnote
+- **The numbers exist only in the status line payload.** They are in no transcript on disk (checked
+  across 595 recent ones). SMT's status line command captures each reading into
+  `~/.savemytokens/quota/` with its timestamp; everything else reads that file. No status line
+  installed means no published capacity, and the UI says so rather than inventing one.
+- **A reading ages, and a window ends.** Every reading carries `at` and `resets_at`. Past its reset a
+  reading is void, not stale-but-usable, and the UI drops it.
+- **Attribution between sessions is the inferred part.** The window percentage is account-wide.
+  Per-session tokens are exact, from the transcripts, so each session's slice is
+  `published_percent × its share of measured tokens`. Usage from another machine or from claude.ai is
+  folded into the local sessions' slices; when the window moves while no local session is running,
+  SMT counts that separately and shows it.
 
-Measured on real data (14 lockouts across 200 days of transcripts): Claude Code writes
-`quotaLimits` **only on the rejection record**, at the moment you are already blocked. Seven
-candidate metrics were tested against those lockouts — raw tokens, input-only, output-only,
-cost-weighted, request count — and every one has a coefficient of variation around **40%**. The
-5-hour ceiling is therefore not a clean function of anything in the transcripts.
-
-Consequences the product must live with:
-
-- **Token attribution is exact; its relationship to the quota is not.** Per-session and per-task
-  tokens come straight from the transcripts. How many of Anthropic's quota units those tokens
-  burned is unknown, so the product says *share of observed token usage* and never *share of your
-  Claude allowance*.
-- **Absolute percentage of Anthropic's limit is `estimated`,** and stays that way until a lockout
-  calibrates it. Every lockout is a free data point: consumption in the preceding window was, by
-  definition, 100%.
-- An estimated capacity is **never rendered as a fact**. Same discipline as the audit product's
-  measured-versus-estimated split, which already exists in `src/analyze`.
-- Codex publishes `rate_limits.primary.used_percent` for both windows on every turn — capacity
-  `published`. The same UI renders both, because confidence is a field rather than an assumption.
+Windows come from Anthropic too: the 5h window is `resets_at − 5h`, not `now − 5h`, so usage is never
+attributed across a reset boundary.
 
 ---
 
-## V0 — Claude allowance across your active sessions
+## V0 — shipped: Claude allowance across your active sessions
 
-> **See where your Claude usage goes. Allocate it across sessions. Tell Claude what share it should
-> work within.**
+> **See where your Claude usage goes, give each session a target share, and keep Claude aware of the
+> budget you want it to work within.**
 
-Scope is unchanged: make Claude Code's real allowance visible and useful, and split it across the
-sessions you are actually running. It is expressed in core terms so that V1 and V2 add adapters
-rather than rewrite the product.
-
-### Scope
-
-- One resource: Claude Code allowance, two windows (rolling 5h, calendar week).
-- Claimants are active Claude Code sessions, labelled by project.
-- Enforcement level: `advise` only.
-- Local, OSS, no daemon, no account, nothing uploaded.
+Local, OSS, no daemon, no account, nothing uploaded. Enforcement level: `advise` only.
 
 ### Install
 
 ```
-npx savemytokens              opens the control centre
+npx savemytokens              the control centre
 npx savemytokens install      hooks + status line
-npx savemytokens uninstall    removes hooks, status line, config, and optionally local state
+npx savemytokens uninstall    removes them (--purge also deletes local state)
+npx savemytokens status       one plain-text snapshot
+npx savemytokens theme        themes and HUD layouts
 npx savemytokens audit        the waste report, now an optional extra
 ```
 
-State lives in `~/.savemytokens/`. Hooks and the status line read and update it, so SMT keeps
-working when the TUI is closed.
+`install` writes `~/.savemytokens/hooks/{kernel,hook,statusline}.mjs`, registers `SessionStart`,
+`UserPromptSubmit`, `Stop` and `SessionEnd`, and sets the status line. A status line already
+configured is left alone; `--force` wraps it, running the existing command first and appending the
+SMT segment. The token-discipline block in `~/.claude/CLAUDE.md` is opt-in behind `--rules` — by
+default nothing outside `~/.savemytokens` and Claude Code's own `settings.json` is touched.
+
+The three scripts are copies, not references, so they keep working after the npx cache is cleared.
+They are the same modules the TUI imports, so metering, allocation and theming have one
+implementation.
 
 ### What it shows
 
-Exact and estimated never share a block. What is measured is stated flat; what is inferred is
-fenced off and carries its confidence.
-
 ```
-SaveMyTokens
+  SaveMyTokens · Claude Code
 
-Share of observed token usage, this window          measured
-  webinvoke      42%   High     "Implement provider fallback..."
-  buydiff        31%   Normal   "Fix comparison table..."
-  smt            27%   Low      "Try alternate parser..."
-  unused pool     0%
+  Claude capacity  published · read just now
+    5h    ████░░░░░░  43% used · resets 12:27
+    7d    █░░░░░░░░░  12% used · resets Mon
 
-Window capacity                                     estimated
-  ~340M tokens · confidence low · 3 lockouts seen
-  quota consumption does not track tokens cleanly; treat as a rough gauge
+    session      target   used   share  priority last prompt
+  ❯ webinvoke       50%    19%     44%  HIGH     Implement provider fallback…
+    buydiff         30%    14%     32%  NORMAL   Fix verdict table…
+  ✓ scratch          9%     9%     21%  LOW      Try alternate parser…
+
+    spare target capacity  11%
 ```
 
-The shares are exact measurements *of observed token usage*, which is the honest claim: the
-transcripts say precisely how many tokens each session spent. They do not say what fraction of
-Anthropic's allowance that represents. The capacity block is a learned estimate, fenced off, and
-carries its confidence until enough lockouts calibrate it.
+`target` and `used` are percentages of the published window and are comparable. `share` is the
+session's exact part of the measured tokens, and `used` is the published percentage times that
+share. Without a published window, `target` and `share` are portions of measured usage and the
+footnote says so.
 
 ### Allocation
 
-- Percentages stay the user-facing unit, because developers think in them. They are a
-  **rendering** of `Claimant.share`, not the storage format — a resource metered in dollars or GPU
-  seconds renders the same field differently.
-- Default: split evenly across active sessions.
-- Priority (`high` / `normal` / `low`) decides who receives spare capacity first.
-- A share is a **target**, not a guarantee. In `advise` mode SMT can tell a session to aim at 40%;
-  it cannot hold it there. The word "guaranteed" belongs to V1, once `deny` ships and is proven.
+- Default: even split across running sessions.
+- `←`/`→` pins a target; `p` cycles priority; `e` clears every pin back to an even split.
+- Spare capacity goes to the highest-priority tier first, split evenly inside it, and only reaches a
+  lower tier once the tier above is done or hits its cap.
+- A session that finishes releases **only the share it did not consume**. What it used stays
+  reserved, because it is really gone.
+- `blocked` receives nothing further until you intervene.
 
-### Reallocation
+### Consumption
 
-- A claimant that finishes returns its unused share to a shared pool.
-- The pool goes to active claimants, highest priority first.
-- Rebalance on start, stop, and release.
-- Lower priority may still receive spare capacity when higher-priority work is already done.
-
-### Release signals
-
-Claude self-reports one of `DONE`, `NEEDS_MORE`, `BLOCKED`, which map onto `Claimant.state`:
-
-| Signal | State | Effect |
-| --- | --- | --- |
-| `DONE` | `done` | release unused share to the pool |
-| `NEEDS_MORE` | `needs-more` | stay active, may draw from the pool |
-| `BLOCKED` | `blocked` | stop allocating until the user intervenes |
-
-The signal is Claude-specific; the state is not. A future API adapter derives the same state from
-an exit code or a job status. V0 trusts the self-report plus user override and verifies nothing.
+The meter reads Claude Code's transcripts incrementally: a stored byte offset per file, five-minute
+buckets, subagent transcripts included, duplicate message ids counted once. Hooks meter their own
+session; the status line meters at most every ten seconds; the control centre sweeps every session
+touched in the window. Nothing re-parses a transcript it has already read.
 
 ### Guidance (enforcement level: advise)
 
-Injected through hooks as a session eats into its target share. The trigger is share consumed, which
-is measured, not window remaining, which is not:
+Injected as hook output as a session eats into its target share:
 
-- ~50% of its share spent — stay on completion.
-- ~80% spent — stop optional exploration, finish and test.
-- ~90% spent — verification and finalisation only.
-- At the end, report `DONE`, `NEEDS_MORE` or `BLOCKED`.
+- **at start** — the target share, and the request to report `SMT: DONE`, `SMT: NEEDS_MORE` or
+  `SMT: BLOCKED` at the end.
+- **50%** of its target spent — stay on completion.
+- **80%** — stop optional exploration, finish and test.
+- **90%** — verification and finalisation only.
+
+Pressure is `used ÷ target` against the published window. With no published window it degrades to
+`share ÷ target`, which only means anything with two or more sessions running, so with one session
+and no reading SMT says nothing at all. Each stage fires once per window. The advice names what you
+chose to preserve on first run — implementation, tests, end-to-end checks, documentation,
+exploration.
 
 **This is advice, not enforcement.** A hook injects text; a model does not hold a budget reliably.
-V0's copy must not claim otherwise. `Enforcer.supports` is `["advise"]` for the Claude adapter and
-the UI reads that field rather than assuming.
+`Enforcer.supports` is `["advise"]` for the Claude adapter and the UI reads that field.
+
+### Release signals
+
+| Signal | State | Effect |
+| --- | --- | --- |
+| `SMT: DONE` | `done` | release the unused share to the pool |
+| `SMT: NEEDS_MORE` | `needs-more` | stay active, may draw from the pool |
+| `SMT: BLOCKED` | `blocked` | stop allocating until you intervene |
+
+The `Stop` hook reads the signal out of the transcript. `SessionEnd` releases too, and a session with
+no activity for 45 minutes is treated as done, because most sessions never report anything. Any of it
+can be overridden in the TUI with `d`, `b` and `a`.
 
 ### Status line
 
 ```
-SMT · webinvoke 18/40 share · High · window estimate: low confidence
+SMT · webinvoke target 50% · used 19% · HIGH · 5h 43% 12:27
 ```
 
-Works whether or not the TUI is running.
+Layouts `compact`, `allocation` and `global`; themes `default`, `minimal`, `nord`, `dracula`,
+`matrix`, plus anything in `~/.savemytokens/themes/*.json`. The TUI and the status line are themed
+independently. Themes are data, not code, and the whole tool still has zero runtime dependencies.
 
-### Appearance is part of V0
+### What V0 cannot see
 
-This thing lives in your terminal all day and its screenshot is the distribution mechanism. Themes
-and HUD layouts are function, not decoration, and they ship in V0.
+- No status line, no published capacity — everything else still works, on measured shares alone.
+- `rate_limits` is absent for API-key and Console users, and before the first API response of a
+  session.
+- Usage from another machine, or from claude.ai, lands in the local sessions' slices. SMT reports the
+  part of the window that moved while nothing local was running, which is the visible half of it.
+- Advice only. Nothing stops a session from blowing through its target.
 
-- Themes are **data**, not code: colours, borders, spacing, bar glyphs, density, symbols and Nerd
-  Font icons in a JSON file.
-- Built-ins: `default`, `minimal`, `nord`, `dracula`, `matrix`.
-- User themes load from `~/.savemytokens/themes/`.
-- The TUI and the status line theme independently.
-- A stable render API, so a community theme is a file someone can put on GitHub.
+### Deliberately out of scope for V0
 
-```bash
-npx savemytokens theme
-npx savemytokens theme tui nord
-npx savemytokens theme hud compact
-```
-
-HUD layouts: `compact`, `allocation`, `global`.
-
-First-run preferences, kept to one screen and skippable: which work should capacity be preserved
-for — implementation, tests, E2E, documentation, exploration. Saved per project.
-
-Two constraints this must not break: the theme engine stays dependency-free like the rest of the
-tool, so `npx savemytokens` is still instant; and every non-interactive path stays plain text, so
-output remains pipeable and greppable.
-
-### Out of scope for V0
-
-Project management, milestones, task graphs, TODO ownership, other agents, API-dollar budgets,
-cloud accounts, production agents, model routing, enterprise policy, a hosted theme gallery.
+Project management, milestones, task graphs, other agents, API-dollar budgets, cloud accounts,
+production agents, model routing, enterprise policy, a hosted theme gallery.
 
 ---
 
 ## V1 — Real enforcement, still local, still Claude
 
-Raise `Enforcer.supports` from `["advise"]` to `["advise", "warn", "throttle", "deny"]` and prove
-each level before shipping it.
+Raise `Enforcer.supports` from `["advise"]` to `["advise", "warn", "throttle", "deny"]` and prove each
+level before shipping it.
 
 - Hard and soft caps per claimant.
-- Reserved allowance for tests, E2E, and final verification.
-- Block low-value tool activity near a hard limit — shipped only after a shadow-mode period that
-  logs what *would* have been blocked and shows nothing broke.
-- Better attribution between concurrent sessions.
+- Reserved allowance for tests, end-to-end runs and final verification.
+- Block low-value tool activity near a hard limit — shipped only after a shadow-mode period that logs
+  what *would* have been blocked and shows nothing broke.
+- Better attribution between concurrent sessions, using the published window's movement as the
+  calibration signal.
 - User-defined borrowing rules for the shared pool.
 - Historical allocated-versus-actual per claimant.
-- Capacity confidence improves from `estimated` toward `measured` as lockouts calibrate it.
-
----
 
 ## V2 — Cross-platform capacity scheduler
 
-Add adapters, not concepts. The loop is unchanged; each new provider supplies a
-`{ Resource[], Meter, Enforcer }`.
+Add adapters, not concepts. Each new provider supplies a `{ Resource[], Meter, Enforcer }`.
 
 | Provider | Resource | Unit | Capacity | Enforcement available |
 | --- | --- | --- | --- | --- |
-| Claude Code | 5h / weekly allowance | `observed_usage` | estimated → measured | advise, deny |
-| Codex | 5h / weekly allowance | `observed_usage` (percent published) | **published** | advise |
+| Claude Code | 5h / 7d allowance | `observed_usage` | **published** | advise, deny |
+| Claude gateway | spend limit | `usd` | **published** | advise, deny |
+| Codex | 5h / weekly allowance | `observed_usage` | published | advise |
 | Anthropic / OpenAI API | spend | usd | published | deny, halt |
 | Tool and browser calls | calls | call | user-set | throttle, deny |
 | GPU / compute | runtime | second | user-set | throttle, halt |
 
-The user sets share, priority, optional urgency, and quality floor. SMT decides where spare
-capacity goes, what pauses, what runs where, and what does not fit.
-
----
-
 ## V3 — Production agent economics
 
-Same loop, different claimants: deployed agents, tasks, customers.
+Same loop, different claimants: deployed agents, tasks, customers. Budgets per agent, task and
+customer; limits on time, model calls, tool calls, external API spend and compute; kill switches,
+approval thresholds, team policy, audit history, margin controls.
 
-- Budgets per agent, task and customer.
-- Limits on time, model calls, tool calls, external API spend, compute.
-- Kill switches, approval thresholds, team policy, audit history, margin controls.
-
-The promise: autonomous software is given explicit economic authority, optimises to finish useful
-work inside it, and has a bounded worst case.
-
-Buyers: AI-native SaaS, agent platforms, teams running production agents.
-
-Monetisation: free local V0; paid team scheduler; production SDK on usage plus subscription;
-enterprise policy, audit and approvals.
+Buyers: AI-native SaaS, agent platforms, teams running production agents. Monetisation: free local
+V0; paid team scheduler; production SDK on usage plus subscription; enterprise policy, audit and
+approvals.
 
 ---
 
-## Architectural choices that would trap the product
+## Architectural choices that would have trapped the product
 
-Called out against the code as it stands today. Only the marked ones need changing now.
-
-| Choice | Why it traps | Change now? |
+| Choice | Why it traps | State |
 | --- | --- | --- |
-| Percentage as the stored unit | Does not survive dollars, calls or GPU seconds | **Yes** — store `share` plus `Resource.unit`; render as % |
-| 5-hour window hardcoded | Other resources use calendar, per-task or unbounded windows | **Yes** — `Window` type from the start |
-| "Session" as the allocation unit | Later units are tasks, customers, deployed agents | **Yes** — allocate to `Claimant`; a Claude session is one kind |
-| Consumption by transcript polling | APIs and GPUs push or are queried; no transcript exists | **Yes** — a `Meter` interface; the transcript reader is one implementation |
-| Enforcement assumed to be hook text | V1 needs deny, V3 needs halt; Codex supports neither | **Yes** — `Enforcer.supports` levels, declared per adapter |
-| Capacity assumed knowable | Claude's ceiling is a ±40% estimate today | **Yes** — `Capacity.confidence`, never rendered as fact |
-| Claude's resource typed as `token` | Its quota provably does not track tokens; baking that in makes every later number a lie | **Yes** — `observed_usage` as the unit, tokens as one metric under the meter |
-| Share described as guaranteed | `advise` cannot hold a session to a number | **Yes** — target share until `deny` ships in V1 |
+| Percentage as the stored unit | Does not survive dollars, calls or GPU seconds | **Fixed** — `share` is stored with `Resource.unit`, rendered as % |
+| 5-hour window hardcoded | Other resources use calendar, per-task or unbounded windows | **Fixed** — `Window` type, and the bounds come from `resets_at` |
+| "Session" as the allocation unit | Later units are tasks, customers, deployed agents | **Fixed** — allocation is to a `Claimant`; a Claude session is one kind |
+| Consumption by transcript polling | APIs and GPUs push or are queried; no transcript exists | **Fixed** — `Meter` interface; the transcript reader is one implementation |
+| Enforcement assumed to be hook text | V1 needs deny, V3 needs halt; Codex supports neither | **Fixed** — `Enforcer.supports`, declared per adapter |
+| Capacity assumed knowable | It was, all along, and published | **Fixed** — `Capacity.confidence`, `published` for Claude |
+| Claude's resource typed as `token` | Its quota is published as a percentage, not tokens | **Fixed** — `observed_usage`, tokens as one metric under the meter |
+| Share described as guaranteed | `advise` cannot hold a session to a number | **Fixed** — target share everywhere until `deny` ships |
+| Storage keyed by Claude session id and `~/.claude` paths | Collides once a second provider appears | **Fixed** — keyed by `(adapter, claimantId)` |
+| One shared state file | Concurrent sessions fire hooks at the same instant and lose writes | **Fixed** — one file per claimant, allocation derived, never stored |
 | `AdapterId` as a closed union in `src/core/types.ts` | Third-party adapters cannot be added | Later — widen to `string` when the first external adapter appears |
-| `SessionEvidence` shaped around Claude transcript artefacts (reads, hooks, attachments) | Meaningless for an API or GPU resource | Later — split observation from metering; V0 only needs the `Meter` slice |
+| `SessionEvidence` shaped around Claude transcript artefacts | Meaningless for an API or GPU resource | Later — the audit still uses it; the scheduler does not |
 | Pricing keyed by model name | A call-metered or GPU-metered resource has no model | Later — key rates by resource, with model as one dimension |
-| Storage keyed by Claude session id and `~/.claude` paths | Collides once a second provider appears | **Yes** — key by `(adapter, claimantId)` |
-
-### What carries over from the audit product
-
-The transcript parser already produces exact per-session and per-task token attribution — of
-tokens, which is not the same thing as quota — including
-nested subagent transcripts. That is the V0 `Meter`, finished. Pricing, local storage, and the
-fenced install/uninstall plumbing carry over as-is.
-
-The audit itself survives as `savemytokens audit`, off the main path. Its detectors become
-scheduler *signals*: a session bleeding capacity on dead carry is a reallocation input, and a
-claimant asking for more allowance while wasting a third of what it has is a decision the
-scheduler can make on evidence.
 
 ---
 

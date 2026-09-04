@@ -2,8 +2,10 @@
 import fs from "node:fs";
 import { parseArgs } from "./cli-options.js";
 import { runAudit } from "./commands/audit.js";
+import { runControl } from "./commands/control.js";
 import { runInstall, runUninstall } from "./commands/install.js";
 import { runPrivacy } from "./commands/privacy.js";
+import { runTheme } from "./commands/theme.js";
 import { runWatch } from "./commands/watch.js";
 import { renderHistory } from "./report/render.js";
 import { loadRuns } from "./storage/store.js";
@@ -20,16 +22,20 @@ function version(): string {
 
 function help(): string {
   return `
-${bold("savemytokens")} — what your AI coding sessions wasted, and the one thing to change.
+${bold("savemytokens")} — give every Claude Code session a target share of your Claude window.
 
-  npx savemytokens             audit this project, or all of them if you are not in one
-  npx savemytokens install     warn you when a new task drags finished work along
-  npx savemytokens uninstall   remove that hook
+  npx savemytokens             the control centre
+  npx savemytokens install     hooks + status line, so it works while the TUI is closed
+  npx savemytokens uninstall   remove them
+  npx savemytokens status      one plain-text snapshot
+  npx savemytokens theme       themes for the TUI and the status line
+  npx savemytokens audit       the token-waste report
 
-  -d, --days <n>   window to analyse (default 7)
-      --all        every project, not just this one
-  -v, --verbose    every finding, per-file detail, spend by project
+  -d, --days <n>   audit window (default 7)
       --json       machine-readable
+      --force      install: wrap an existing status line instead of leaving it alone
+      --rules      install: also write the token-discipline block into ~/.claude/CLAUDE.md
+      --purge      uninstall: also delete ~/.savemytokens
 
 ${dim("Everything runs locally. No account, no daemon, no upload. See what it stores: savemytokens privacy")}
 `;
@@ -49,10 +55,16 @@ async function main(): Promise<void> {
 
   switch (options.command) {
     case "install":
-      runInstall(options.dryRun);
+      runInstall({ dryRun: options.dryRun, force: options.force, rules: options.rules });
       return;
     case "uninstall":
-      runUninstall();
+      runUninstall(options.purge);
+      return;
+    case "theme":
+      runTheme(options.args);
+      return;
+    case "audit":
+      await runAudit(options);
       return;
     case "watch":
       await runWatch(options);
@@ -64,7 +76,7 @@ async function main(): Promise<void> {
       runPrivacy(version());
       return;
     default:
-      await runAudit(options);
+      await runControl(options);
   }
 }
 

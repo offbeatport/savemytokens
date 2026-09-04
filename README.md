@@ -1,131 +1,176 @@
 # SaveMyTokens
 
-**Get more done.**
+**See where your Claude usage goes, give each session a target share, and keep Claude aware of the
+budget you want it to work within.**
 
 ```
+npx savemytokens install
 npx savemytokens
 ```
 
 No daemon. No account. No setup. Nothing leaves your machine.
 
-SaveMyTokens reads the session logs Claude Code already writes on your disk, finds the token spend
-that bought you nothing, and tells you what to change. Then it remembers, so the next run shows
-whether the change actually worked.
+If you run three or four Claude Code sessions at once, they compete for one allowance and nothing
+tells you which one is eating it. SaveMyTokens reads the numbers Anthropic already publishes, splits
+them across your running sessions, and tells each session what share it should work within.
 
 ```
-$1,771 in 7 days · $439 wasted  all projects · 567 tasks
-hit your usage limit 14 times
+  SaveMyTokens · Claude Code
 
-  $61  ▇▇▇▇▇▇▇▇  picsuper   Build a new app, using 1. This stack: TanStack St…
-  $49  ▇▇▇▇▇▇    webinvoke  I want you to implement BuyDiff.com with this ui …
-  $39  ▇▇▇▇▇     cslopslop  ok, I want you to extract the ui library into it'…
+  Claude capacity  published · read just now
+    5h    ████░░░░░░  43% used · resets 12:27
+    7d    █░░░░░░░░░  12% used · resets Mon
 
-Finished work still riding along in context — $196
-  · 68 tasks started with more than 80k tokens of earlier work already in context
-  · none of them re-opened a single file from that earlier work, and their
-    prompts named their own subject
+    session      target   used   share  priority last prompt
+  ❯ webinvoke       50%    19%     44%  HIGH     Implement provider fallback chain…
+    buydiff         30%    14%     32%  NORMAL   Fix verdict table alignment…
+  ✓ scratch          9%     9%     21%  LOW      Try alternate parser…
 
-  $40  cslopslop  carried 985k × 81t  "Update Chat agent window scroolbar…"
-  $16  cslopslop  carried 916k × 34t  "When I first load the app and press…"
+    spare target capacity  11%
 
-  Do this: Press Ctrl+C and start a new session (or /clear) when the next thing
-  you type is not about the last thing you did.
-
-3 smaller findings worth $71 · npx savemytokens -v
-
-Do this:  npx savemytokens install   → warns you before the next one
+    ↑↓ select   ←→ target   p priority   e equalize   d done   b blocked   a active   q quit
 ```
 
-By default it scopes to the project you are standing in; `--all` widens it.
+And in every session's status line:
 
-## What `install` does
+```
+SMT · webinvoke target 50% · used 19% · HIGH · 5h 43% 12:27
+```
 
-Findings split by who has to act. You only ever see yours; the rest are handled for you.
+## Where each number comes from
 
-| | fixed by | how |
+This is the whole product, so it is worth being exact about it.
+
+| Number | Source | Honesty |
 | --- | --- | --- |
-| dead carry, hook noise, repeated reads, failed commands | **you** | shown in the report, one action each |
-| oversized output, cheap turns at expensive context, write churn | **Claude** | `install` writes the rules into `~/.claude/CLAUDE.md` |
+| `5h` / `7d` / spend bars | Anthropic, via the status line payload (`rate_limits.five_hour.used_percentage`, `resets_at`) | **published** — the account's real usage against its real window |
+| `share` | your transcripts on disk, token by token | **measured** — exact per session, including subagent transcripts |
+| `used`, `target` | published percentage × measured share | **inferred split** — the total is Anthropic's, the division between sessions is ours |
 
-The rules block is fenced with `<!-- savemytokens:start -->`, so `uninstall` removes exactly it and
-leaves the rest of your CLAUDE.md byte-identical.
+There is no estimated ceiling anywhere. SaveMyTokens never shows you a made-up "71% of Claude
+remaining".
 
-## The hook
+Two things follow from Anthropic publishing this **only to the status line**:
 
-`npx savemytokens install` adds one `UserPromptSubmit` hook. When you start a new task while
-carrying finished work, Claude Code tells you before the money is spent:
+- If you do not install the status line, there is no published capacity, and the control centre says
+  so instead of guessing. Everything else still works on measured shares.
+- `rate_limits` is absent for API-key and Console accounts, and before a session's first API
+  response.
 
-```
-[savemytokens] This reads as a new task and 459k tokens of earlier work are still
-in context, about $2.30 per 10 turns from here.
-```
+Usage from another machine, or from claude.ai, is invisible here and lands inside your local
+sessions' slices. When the window moves while no local session is running, SaveMyTokens counts that
+separately and shows it as its own line.
 
-It is **advisory only** and cannot break a session:
+## Allocation
 
-- **fail-open** — every path ends in `exit 0`, with a 5s timeout
-- **never blocks** a prompt, never edits a file, never makes a network call
-- **reversible** — `npx savemytokens uninstall` removes exactly the entry whose command points at
-  `nudge.cjs`, and your settings are backed up to `~/.savemytokens/settings.backup.json` first
-- **`--dry-run`** prints the exact JSON that would be added, and writes nothing
-- it stays quiet on follow-up prompts ("ok, now the other ones"), below 150k context, and more
-  than once per 30 minutes in a session
-
-## This is not a usage dashboard
-
-`ccusage` tells you what you consumed. SaveMyTokens tells you what was **wasteful**, what to
-**change**, and whether the change **worked**.
-
-## Usage
+- Sessions split the window evenly by default.
+- `←`/`→` pins a target share; `p` cycles priority; `e` clears every pin back to even.
+- Spare capacity goes to the **highest priority tier first**, split evenly inside it. A lower tier
+  gets it only once the tier above is finished or capped.
+- A session that finishes releases **only what it did not consume**. What it used is really gone, so
+  it stays reserved.
 
 ```
-npx savemytokens              audit the last 7 days
-npx savemytokens watch        observe continuously, report regressions
-npx savemytokens history      score over time
-npx savemytokens privacy      what is read, stored, and never sent
+webinvoke  HIGH    50%  →  finishes having used 32%
+buydiff    NORMAL  30%  →  38%   (the 18 points it never used)
+scratch    LOW     20%  →  20%   (unchanged; the tier above could still take more)
 ```
 
-| Option | Meaning |
-| --- | --- |
-| `-d, --days <n>` | window to analyse (default 7) |
-| `--here` | only the project in the current directory |
-| `--project <path>` | only that project directory |
-| `--json` | machine-readable output |
-| `-v, --verbose` | per-file detail, score breakdown, model split |
-| `--interval <s>` | `watch` poll seconds (default 60) |
-| `--no-save` | do not write to `~/.savemytokens` |
+## What Claude is told
 
-Requires Node 18.17+. First run over a month of history takes a few seconds; every run after that
-is instant, because per-session measurements are cached.
+`install` adds four hooks. They inject text; they never block a prompt, never edit a file, never make
+a network call, and exit 0 on every path.
 
-## Passive by design
+- **at session start** — the target share, and the request to report `SMT: DONE`, `SMT: NEEDS_MORE`
+  or `SMT: BLOCKED` when it stops.
+- **50%** of that target spent — stay on completion.
+- **80%** — stop optional exploration, finish and test.
+- **90%** — verification and finalisation only.
 
-`watch` is safe to leave running. It observes, records baselines, and reports regressions. It never
-blocks, rewrites, redirects or modifies Claude's behaviour, never touches a project or config file,
-and never uploads anything. Observe first, prove value, then decide whether you want fixes applied.
+Each stage fires once per window. The advice names what you said should be preserved on first run
+(implementation, tests, end-to-end checks, documentation, exploration).
 
-`npx savemytokens fix` is deliberately **not** in v1.
+`SMT: DONE` returns the unused share to the pool. So does `SessionEnd`, and so does 45 minutes of
+silence — most sessions never report anything, and a dead session must not hold a share forever. You
+can override any of it in the TUI with `d`, `b` and `a`.
 
-## What it measures
+**It is advice, not enforcement.** A hook injects text; a model does not hold a budget reliably.
+`Enforcer.supports` is `["advise"]` for Claude Code and the UI reads that field rather than assuming.
+Real caps are V1, behind a shadow-mode period.
 
-Every measurement comes from transcripts already on your disk.
+## Install
 
-| Agent | Source | State |
-| --- | --- | --- |
-| Claude Code | `~/.claude/projects` incl. nested `subagents/` transcripts most tools miss | supported |
-| Codex | `~/.codex/sessions/**/rollout-*.jsonl` | supported |
-| Gemini CLI | `~/.gemini` | detected, skipped — logs prompts but no token counts |
-| Grok | `~/.grok` | detected, skipped — local store is a title/cwd search index, no token counts |
+```
+npx savemytokens install            hooks + status line
+npx savemytokens install --dry-run  print the exact settings.json changes, write nothing
+npx savemytokens install --force    keep an existing status line and append the SMT segment
+npx savemytokens install --rules    also write the token-discipline block into ~/.claude/CLAUDE.md
+npx savemytokens uninstall          remove all of it   (--purge also deletes ~/.savemytokens)
+```
 
-An agent that does not write token counts to disk cannot be audited, and the tool says so rather
-than inventing numbers.
+It writes `~/.savemytokens/hooks/{kernel,hook,statusline}.mjs`, adds `SessionStart`,
+`UserPromptSubmit`, `Stop` and `SessionEnd` entries, sets the status line, and backs up your
+settings first. Those three scripts are copies rather than references, so they keep working after the
+npx cache is cleared — and they are the same modules the TUI imports, so there is one implementation
+of metering, allocation and theming, not two that drift.
 
-The unit is the **task** — one thing you asked for, and every turn it took to finish. Findings are
-attached to tasks you can recognise, priced in dollars, and tagged `one-time fix` or `habit`.
+If you already have a status line (ccusage, a custom PS1) it is **left alone**. `--force` wraps it:
+your command runs first, and the SMT segment is appended to its output.
+
+By default nothing outside `~/.savemytokens` and Claude Code's own `settings.json` is touched.
+
+## Themes
+
+The HUD lives in your terminal all day, so themes are part of V0. They are data, not code, and the
+tool still has zero runtime dependencies.
+
+```
+npx savemytokens theme              what is set, and what is available
+npx savemytokens theme tui nord
+npx savemytokens theme hud compact
+```
+
+Built in: `default`, `minimal`, `nord`, `dracula`, `matrix`. Your own go in
+`~/.savemytokens/themes/<name>.json` and override any subset of colours, glyphs and borders. HUD
+layouts: `compact`, `allocation`, `global`. The TUI and the status line are themed independently.
+
+Every non-interactive path stays plain text, so output remains pipeable and greppable:
+
+```
+npx savemytokens status         one snapshot, no cursor tricks
+npx savemytokens status --json  the whole plan, machine-readable
+```
+
+## How consumption is measured
+
+Claude Code's transcripts are read **incrementally**: a stored byte offset per file, five-minute
+buckets, subagent transcripts included, and a message id is never counted twice. Hooks meter their
+own session, the status line meters at most every ten seconds, and the control centre sweeps every
+session touched in the window. Nothing re-parses a transcript it has already read, so a prompt hook
+costs milliseconds.
+
+The 5-hour window is anchored to Anthropic's own `resets_at`, not to `now − 5h`, so usage is never
+counted across a reset boundary.
+
+Tokens are weighted into input-token equivalents before shares are computed, using the standard
+Anthropic price ratios — `input 1× · cache write 1.25× · cache read 0.1× · output 5×` — because raw
+token counts would let a cache-heavy session look far more expensive than it is.
+
+## The audit
+
+The original product is still here, one command away:
+
+```
+npx savemytokens audit            what the last 7 days wasted, and the one thing to change
+npx savemytokens audit -v         every finding, per-file detail, spend by project
+npx savemytokens history          efficiency score over time
+npx savemytokens watch            observe continuously, report regressions
+```
 
 | Detector | What it finds |
 | --- | --- |
 | `dead-carry` | tasks that began with finished work still in context and never re-opened a file from it |
-| `hook-noise` | hooks printing identical **plain-text** stdout into the transcript on every tool call. Structured JSON output (a `terminalSequence` notification, for instance) is consumed by Claude Code and never reaches the model, so it is not counted |
+| `hook-noise` | hooks printing identical plain-text stdout into the transcript on every tool call |
 | `repeated-reads` | the same file content re-sent unchanged, in one session or across its subagents |
 | `large-output` | tool results over 10 KB that then ride along in context for the rest of the session |
 | `roundtrips` | turns that did one cheap thing while re-reading the entire conversation |
@@ -133,101 +178,41 @@ attached to tasks you can recognise, priced in dollars, and tagged `one-time fix
 | `write-churn` | files written end-to-end more than once instead of edited |
 | `cold-cache` | sessions abandoned within three turns, after paying a full cache write |
 
-### How dead carry is proven, not guessed
+Dead carry has to clear four bars before a dollar is counted: 80k+ tokens resident at the start, 5+
+turns, a self-contained prompt (one opening with *"ok"*, *"now do the same"* is never counted), and
+no re-opened file from earlier work. Each one is printed with its prompt, project and price so you
+can overrule it.
 
-"You did not need that context" is the easiest claim to get wrong, so it has to clear four bars
-before a single dollar is counted:
+Dollar figures are list-price equivalents from `src/core/pricing.ts`, stamped with its source date.
+Override any model in `~/.savemytokens/pricing.json`. On a subscription you do not pay them
+directly — they are the size of the thing.
 
-1. the task started with **80k+ tokens** already resident,
-2. it ran **5+ turns**, so the carry actually cost something,
-3. its prompt was **self-contained** — a prompt opening with *"ok"*, *"now do the same"*, *"the
-   other ones"* refers to earlier context and is never counted,
-4. it **never re-opened a single file** touched by any earlier task in that session.
+The audit hook that warns you about dead carry at prompt time is part of the same installed hook, so
+`install` still gets you both.
 
-Only tasks that clear all four are counted, and each one is printed with its prompt, its project
-and its price so you can check it yourself.
+## Adapters
 
-### How cost is compared
+| Agent | Source | State |
+| --- | --- | --- |
+| Claude Code | `~/.claude/projects` incl. nested subagent transcripts | scheduler + audit |
+| Codex | `~/.codex/sessions/**/rollout-*.jsonl` | audit only |
+| Gemini CLI | `~/.gemini` | detected, skipped — logs prompts but no token counts |
+| Grok | `~/.grok` | detected, skipped — no token counts on disk |
 
-Tokens are not equal, so raw counts mislead. Everything is scored in **input-token equivalents**
-using the standard Anthropic price ratios:
-
-```
-input 1×    cache write 1.25×    cache read 0.1×    output 5×
-```
-
-Content that enters context is charged for its whole life, not just the turn it arrived in: it is
-written to cache once (1.25×) and re-read on every later turn of that session (0.1× each), up to
-the next compaction boundary. A 40 KB log dumped at turn 5 of a 200-turn session is not a 10k-token
-mistake — it is a 10k × (1.25 + 0.1 × 195) mistake. That is why the fixes are worth applying.
-
-### Measured vs estimated
-
-The report always separates the two, and so should you:
-
-- **Measured** — counted directly from the logs: token counts, turn counts, duplicate reads, bytes
-  of output, failures. These are facts.
-- **Estimated** — anything inferred: bytes converted to tokens at ~4 chars per token, and how much
-  of a pattern was realistically avoidable (round trips are discounted to 40% recoverable). Findings
-  overlap, so the headline combines them as `largest + 50% of the rest`, capped at 45%, and the
-  list is ranked by dollars weighted by certainty — a measured finding outranks a larger estimate.
-
-Dollar figures are list-price equivalents for the tokens you actually used, from a table in
-`src/core/pricing.ts` stamped with its source date (Anthropic 2026-06-24, OpenAI 2026-08-31).
-Prices drift; override any model with `~/.savemytokens/pricing.json`:
-
-```json
-{ "claude-opus-5": { "input": 5, "output": 25, "cacheRead": 0.5, "cacheWrite": 6.25 } }
-``` On a subscription you do not pay them directly — they are
-the size of the thing, and the usage-limit count is what it costs you in practice.
-
-Estimates are never presented as facts.
-
-### What it cannot see
-
-Claude Code makes a little traffic that is never written to a transcript — session titles, quota
-checks, and some background agent work. Those tokens are billed to you but invisible here, so
-totals can run slightly under Claude Code's own cost view.
-
-It also cannot read your mind. It knows a task never re-opened an earlier file; it cannot know you
-were holding a decision from that conversation in your head. That is why the receipts are printed:
-the tool makes the claim, you get to overrule it.
+Set `CLAUDE_CONFIG_DIR` if your Claude Code state does not live in `~/.claude`.
 
 ## Privacy
 
 Everything is local, by default and in fact — there is no network call in this tool.
 
-- Reads: `~/.claude/projects`, read-only.
-- Writes: `~/.savemytokens/` only. No project file is ever touched.
-- Uploads: nothing. Contribution is opt-in, off, and not implemented in v1.
+- Reads: your Claude Code transcripts, read-only.
+- Writes: `~/.savemytokens/` (claimants, meter buckets, quota readings, hooks, audit cache) and the
+  hook and status line entries in Claude Code's `settings.json`.
+- Uploads: nothing. Contribution is opt-in, off, and not implemented.
 
-`npx savemytokens privacy` prints exactly what it reads, exactly what it stores, and the exact JSON
-payload that *would* be sent if you ever opted in — counters only, no prompts, responses, paths,
-commands, repo names or code.
-
-The local cache under `~/.savemytokens/` does keep the first 120 characters of your prompts, because
-that is what makes a finding recognisable. It never leaves the machine, and `privacy` shows you the
-upload payload that excludes it.
-
-## Open source strategy
-
-Open, so you can verify what runs on your machine: the CLI, the adapters, the parsers, the privacy
-and sanitisation layer, local storage, and the waste-detection rules. All of it is this repository.
-
-Kept private: the anonymous crowd benchmark dataset, task/outcome normalisation, cross-user
-efficiency benchmarks, recommendation ranking, and learned optimisation recipes. Parsing Claude
-logs is not a moat; millions of tasks mapped to outcomes and proven recommendations is.
-
-## Roadmap
-
-v1 exists to find out whether strangers care. Next, in order, only if they do:
-
-1. `savemytokens fix` — apply safe, reversible optimisations and measure whether they reduce token
-   use without making outcomes worse.
-2. Codex and Gemini adapters (the adapter interface is already in place).
-3. Anonymous crowd benchmarks: *"this kind of task costs you 1.8× the median."*
-
-Long-term goal: find the cheapest proven way to get AI work done.
+`npx savemytokens privacy` prints exactly what is read, exactly what is stored, and the exact payload
+that *would* be sent if you ever opted in — counters only, no prompts, responses, paths, commands,
+repo names or code.
 
 ## Development
 
@@ -235,9 +220,14 @@ Long-term goal: find the cheapest proven way to get AI work done.
 pnpm install
 pnpm build
 pnpm test
-node dist/cli.js --days 7 --verbose
+node dist/cli.js status
 ```
 
-Point `SAVEMYTOKENS_HOME` at a scratch directory to keep test runs out of `~/.savemytokens`.
+Point `SAVEMYTOKENS_HOME` at a scratch directory to keep test runs out of `~/.savemytokens`, and
+`CLAUDE_CONFIG_DIR` at a fixture tree to keep them off your real transcripts.
+
+`src/runtime/*.mjs` is the shared runtime: it is copied into `~/.savemytokens/hooks/` at install
+time and imported directly by the TypeScript CLI, so the hooks, the status line and the control
+centre cannot disagree. Requires Node 18.17+.
 
 MIT.
