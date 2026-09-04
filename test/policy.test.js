@@ -668,3 +668,35 @@ test("palettes exist for both surfaces, and dracula is now violet", async () => 
     assert.ok(line.includes("webinvoke"), `${name} renders a status line`);
   }
 });
+
+test("every palette is readable, measured not asserted", async () => {
+  const { builtinThemes, loadTheme } = await import("../dist/runtime/kernel.mjs");
+
+  const channel = (value) => {
+    const v = value / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  const luminance = (hex) => {
+    const n = Number.parseInt(hex.slice(1), 16);
+    return 0.2126 * channel((n >> 16) & 255) + 0.7152 * channel((n >> 8) & 255) + 0.0722 * channel(n & 255);
+  };
+  const contrast = (a, b) => {
+    const first = luminance(a);
+    const second = luminance(b);
+    return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+  };
+
+  for (const name of builtinThemes()) {
+    const theme = loadTheme(name);
+    const background = name === "paper" ? "#ffffff" : "#1e1e1e";
+    for (const role of ["fg", "accent", "ok", "warn", "danger"]) {
+      const ratio = contrast(theme.colors[role], background);
+      assert.ok(ratio >= 4.5, `${name}'s ${role} is ${ratio.toFixed(1)}:1 against the terminal — WCAG AA wants 4.5`);
+    }
+    const dim = contrast(theme.colors.dim, background);
+    assert.ok(dim >= 2.5, `${name}'s dim text is ${dim.toFixed(1)}:1 — too faint to read`);
+    const track = contrast(theme.colors.track, background);
+    assert.ok(track >= 1.15, `${name}'s empty bar is ${track.toFixed(2)}:1 — invisible`);
+    assert.ok(track <= 4, `${name}'s empty bar is ${track.toFixed(2)}:1 — too loud for a background element`);
+  }
+});
