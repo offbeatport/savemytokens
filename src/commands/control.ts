@@ -1,5 +1,5 @@
 import type { Options } from "../cli-options.js";
-import { detailRows, helpOverlay, labelsFor, pickerRows, planRows, type ViewContext } from "../report/views.js";
+import { detailRows, helpOverlay, labelsFor, planRows, type ViewContext } from "../report/views.js";
 import { PRESERVE_KINDS, renderSettings, selectableRows, settingsRows, type TightPreview } from "../report/settings.js";
 import { keyActions, splitKeys, type Action } from "../scheduler/keys.js";
 import {
@@ -339,8 +339,7 @@ export async function runControl(options: Options): Promise<void> {
 
   const config = loadConfig();
   const offerInstall = !hookInstalled() && !config.offeredInstallAt;
-  let mode: "plan" | "settings" | "setup" | "detail" | "picker" = offerInstall ? "setup" : "plan";
-  let pickerCursor = 0;
+  let mode: "plan" | "settings" | "setup" | "detail" = offerInstall ? "setup" : "plan";
   let settingsCursor = 0;
   let setupChoice = true;
   let expanded = false;
@@ -394,15 +393,11 @@ export async function runControl(options: Options): Promise<void> {
             )
           : mode === "detail"
             ? detailRows(control, context)
-            : mode === "picker"
-              ? pickerRows(control, context, pickerCursor)
-              : planRows(control, context);
+            : planRows(control, context);
     const footer =
       mode === "setup" && !showHelp
         ? [paint(context.theme, "dim", keyHints(["← → choose", "enter confirm", "q quit"], context.columns), context.color)]
-        : mode === "picker" && !showHelp
-        ? [paint(context.theme, "dim", keyHints(["↑↓ choose", "⏎ add it", "esc back"], context.columns), context.color)]
-      : mode === "detail" && !showHelp
+        : mode === "detail" && !showHelp
           ? [
               paint(
                 context.theme,
@@ -423,8 +418,7 @@ export async function runControl(options: Options): Promise<void> {
             ),
           ]
         : footerFor(control, context, showHelp);
-    const title =
-      mode === "setup" ? "setup" : mode === "settings" ? "settings" : mode === "detail" ? "session" : mode === "picker" ? "add" : "plan";
+    const title = mode === "setup" ? "setup" : mode === "settings" ? "settings" : mode === "detail" ? "session" : "plan";
     process.stdout.write(CLEAR + fullScreen(control, body, footer, title, context, mode === "setup" && !showHelp));
   };
 
@@ -477,23 +471,6 @@ export async function runControl(options: Options): Promise<void> {
           const stored = loadConfig();
           stored.offeredInstallAt = Date.now();
           saveConfig(stored);
-          mode = "plan";
-          refresh();
-        }
-        return true;
-      }
-
-      if (mode === "picker") {
-        const candidates = workingSet(control.schedule, true).candidates;
-        if (action.kind === "up") pickerCursor = Math.max(0, pickerCursor - 1);
-        else if (action.kind === "down") pickerCursor = Math.min(Math.max(0, candidates.length - 1), pickerCursor + 1);
-        else if (action.kind === "back" || action.kind === "skip" || action.kind === "add") mode = "plan";
-        else if (action.kind === "resume" || action.kind === "save" || action.kind === "toggleCurrent") {
-          const chosen = candidates[pickerCursor];
-          if (chosen) {
-            joinPlan(chosen.project, control.provider.id);
-            selectedId = chosen.project;
-          }
           mode = "plan";
           refresh();
         }
@@ -609,8 +586,11 @@ export async function runControl(options: Options): Promise<void> {
           }
           break;
         case "add":
-          pickerCursor = 0;
-          mode = "picker";
+          if (view) {
+            joinPlan(view.project, control.provider.id);
+            selectedId = view.project;
+            refresh();
+          }
           break;
         case "refresh":
           refresh();

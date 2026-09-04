@@ -27,9 +27,10 @@ First published release.
 
 ### The control centre
 
-- One list: the projects sharing your window. A project joins the moment you open Claude Code in it
-  and stays after you close it, so a target outlives the session that earned it. `a` adds one from
-  everything SaveMyTokens has seen, `x` takes one out. A filled dot means a session is open there.
+- Two tables. ACTIVE is what shares your window; a project joins it the moment you open Claude Code
+  there and stays after you close it, so a target outlives the session that earned it. RECENT is
+  everything else SaveMyTokens has seen, holding nothing. `a` moves one up, `x` sends one back. A
+  filled dot means a session is open there right now.
 - A per-project drill-down into its sessions.
 - Reset every preference back to the defaults from the settings screen; allocations are kept.
 - Settings for columns, themes, status-line shape and what to protect when it gets tight.

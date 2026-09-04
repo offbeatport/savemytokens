@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="880" height="880" viewBox="0 0 880 880" role="img" aria-label="savemytokens · help">
-  <rect width="880" height="880" rx="10" fill="#181825"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="918" viewBox="0 0 880 918" role="img" aria-label="savemytokens · help">
+  <rect width="880" height="918" rx="10" fill="#181825"/>
   <rect width="880" height="34" rx="10" fill="#11111b"/>
   <rect y="24" width="880" height="10" fill="#11111b"/>
   <circle cx="25" cy="17" r="5" fill="#ff5f56"/><circle cx="41" cy="17" r="5" fill="#ffbd2e"/><circle cx="57" cy="17" r="5" fill="#27c93f"/>
@@ -22,31 +22,33 @@
   <text x="20" y="329" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">r    </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">read everything again now</tspan></text>
   <text x="20" y="347.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">? q  </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">this help · quit</tspan></text>
   <text x="20" y="366.5" xml:space="preserve"></text>
-  <text x="20" y="385.25" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">THE PLAN</tspan></text>
+  <text x="20" y="385.25" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">THE TWO TABLES</tspan></text>
   <text x="20" y="404" xml:space="preserve"></text>
-  <text x="20" y="422.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">One list: the projects sharing your window. A project joins on its own the moment you open Claude Code in</tspan></text>
-  <text x="20" y="441.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">it, and stays after you close it. Press a to add one yourself, x to take one out.</tspan></text>
+  <text x="20" y="422.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">ACTIVE is what shares your window. A project joins it on its own the moment you open Claude Code there,</tspan></text>
+  <text x="20" y="441.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">and stays after you close it, holding whatever target you gave it.</tspan></text>
   <text x="20" y="460.25" xml:space="preserve"></text>
-  <text x="20" y="479" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">A filled dot means a session is open there right now. Only those spend the window, so a project with</tspan></text>
-  <text x="20" y="497.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">nothing running lends its share to the rest and takes it back when you return. Its target is yours to set</tspan></text>
-  <text x="20" y="516.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">either way.</tspan></text>
-  <text x="20" y="535.25" xml:space="preserve"></text>
-  <text x="20" y="554" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">THE STATUS LINE</tspan></text>
+  <text x="20" y="479" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">RECENT is everything else SaveMyTokens has seen. Nothing there holds a share. Press a to move one up into</tspan></text>
+  <text x="20" y="497.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">ACTIVE, x to send one back down.</tspan></text>
+  <text x="20" y="516.5" xml:space="preserve"></text>
+  <text x="20" y="535.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">A filled dot means a session is open there right now. Only those spend the window, so one sitting in</tspan></text>
+  <text x="20" y="554" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">ACTIVE with nothing running lends its share to the rest and takes it back when you return.</tspan></text>
   <text x="20" y="572.75" xml:space="preserve"></text>
-  <text x="20" y="591.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Installed. It is the only place Anthropic publishes your 5h and 7d usage, and it is what proves a session</tspan></text>
-  <text x="20" y="610.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">is still open, so without it nothing here is live. Change its shape with P.</tspan></text>
-  <text x="20" y="629" xml:space="preserve"></text>
-  <text x="20" y="647.75" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">THE NUMBERS</tspan></text>
+  <text x="20" y="591.5" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">THE STATUS LINE</tspan></text>
+  <text x="20" y="610.25" xml:space="preserve"></text>
+  <text x="20" y="629" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Installed. It is the only place Anthropic publishes your 5h and 7d usage, and it is what proves a session</tspan></text>
+  <text x="20" y="647.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">is still open, so without it nothing here is live. Change its shape with P.</tspan></text>
   <text x="20" y="666.5" xml:space="preserve"></text>
-  <text x="20" y="685.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">5h and 7d are Anthropic's own. Share is measured from the tokens in your transcripts. Used of it is their</tspan></text>
-  <text x="20" y="704" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">number split by that share, so the split between rows is ours, not theirs.</tspan></text>
-  <text x="20" y="722.75" xml:space="preserve"></text>
-  <text x="20" y="741.5" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">WHEN IT GETS TIGHT</tspan></text>
+  <text x="20" y="685.25" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">THE NUMBERS</tspan></text>
+  <text x="20" y="704" xml:space="preserve"></text>
+  <text x="20" y="722.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">5h and 7d are Anthropic's own. Share is measured from the tokens in your transcripts. Used of it is their</tspan></text>
+  <text x="20" y="741.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">number split by that share, so the split between rows is ours, not theirs.</tspan></text>
   <text x="20" y="760.25" xml:space="preserve"></text>
-  <text x="20" y="779" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Claude is told to wind down at 50/80/90% of a project's target. Change it with P.</tspan></text>
+  <text x="20" y="779" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">WHEN IT GETS TIGHT</tspan></text>
   <text x="20" y="797.75" xml:space="preserve"></text>
-  <text x="20" y="816.5" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">ANYTHING ELSE</tspan></text>
+  <text x="20" y="816.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Claude is told to wind down at 50/80/90% of a project's target. Change it with P.</tspan></text>
   <text x="20" y="835.25" xml:space="preserve"></text>
-  <text x="20" y="854" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Questions, bugs and ideas: hello@offbeatport.com</tspan></text>
+  <text x="20" y="854" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">ANYTHING ELSE</tspan></text>
+  <text x="20" y="872.75" xml:space="preserve"></text>
+  <text x="20" y="891.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Questions, bugs and ideas: hello@offbeatport.com</tspan></text>
   </g>
 </svg>

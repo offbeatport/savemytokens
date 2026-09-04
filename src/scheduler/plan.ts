@@ -128,7 +128,8 @@ export function workingSet(plan: SchedulePlanView, full = false): WorkingSet {
 }
 
 export function visibleRows(plan: SchedulePlanView, full = false): ProjectView[] {
-  return workingSet(plan, full).members;
+  const set = workingSet(plan, full);
+  return [...set.members, ...set.candidates];
 }
 
 export function joinPlan(project: string, adapter = "claude-code"): void {

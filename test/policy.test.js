@@ -364,11 +364,11 @@ test("the plan is one list: what is in it, and what you can add", async () => {
   assert.deepEqual(
     set.members.map((view) => view.label),
     ["live", "pinned", "held", "joined"],
-    "one list: open first, then pinned, then by the share each holds",
+    "ACTIVE holds everything in the plan: open first, then pinned, then by the share each holds",
   );
-  assert.equal(set.candidates.length, 12, "the picker offers a screenful");
+  assert.equal(set.candidates.length, 12, "RECENT shows a screenful of what you could promote");
   assert.equal(set.hidden, 9, "the rest wait behind m");
-  assert.ok(set.candidates.some((view) => view.label === "removed"), "a project you removed can be added back");
+  assert.ok(set.candidates.some((view) => view.label === "removed"), "a project you dropped can be moved back up");
 
   const full = workingSet({ projects: [...seen, removed, pinned, held, joined, live] }, true);
   assert.equal(full.candidates.length, 21);
