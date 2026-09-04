@@ -54,3 +54,9 @@ First published release.
 - `uninstall` removes only what it added and restores a wrapped status line. Local state survives
   unless you pass `--purge`.
 - No network call, no account, no daemon.
+
+### A promise about that last one
+
+This version makes no network call. If a later version ever does, it will be opt-in and off by
+default, it will be announced here rather than discovered, and running entirely locally will stay
+supported. Read `savemytokens privacy` on any version to see what that version actually does.

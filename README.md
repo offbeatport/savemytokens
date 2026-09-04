@@ -145,6 +145,9 @@ bar the built-in themes have to clear.
   beyond those two facts would be a guess dressed up as a number.
 - **It cannot see usage it did not measure.** Another machine, claude.ai, or work done before you
   installed it shows up as unattributed window, labelled as such.
+- **It makes no network call.** No account, no telemetry, no daemon. If a later version ever does,
+  it will be opt-in, off by default, and announced in the changelog. `savemytokens privacy` prints
+  what the version you are running actually reads and writes.
 
 <div align="center">
 <br>

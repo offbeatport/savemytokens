@@ -26,7 +26,10 @@ export function runPrivacy(version: string): void {
   out.push("");
   out.push(bold("What leaves this machine"));
   out.push("");
-  out.push("  Nothing. There is no network call in this tool, and nothing to opt into.");
+  out.push("  Nothing. This version makes no network call at all, and there is nothing to opt into.");
+  out.push("");
+  out.push(`  ${dim("If that ever changes it will be opt-in, off by default, announced in the")}`);
+  out.push(`  ${dim("changelog, and local-only will stay a supported way to run this.")}`);
   out.push("");
   out.push(bold("If you ever opt in, this is the exact shape that would be sent"));
   out.push("");

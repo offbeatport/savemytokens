@@ -466,7 +466,9 @@
           <ul>
             <li><strong>It cannot stop a session.</strong> There is no API to pause Claude Code, so a share is advice given to Claude, not a hard cap.</li>
             <li><strong>It does not predict a lockout.</strong> Anthropic publishes a percentage and a reset time; anything past that would be a guess.</li>
-            <li><strong>It makes no network call.</strong> No account, no telemetry, no daemon. Everything lives in <code>~/.savemytokens</code>.</li>
+            <li><strong>It makes no network call.</strong> No account, no telemetry, no daemon. Everything
+              lives in <code>~/.savemytokens</code>. If a later version ever does, it will be opt-in,
+              off by default, and announced in the changelog.</li>
           </ul>
         </section>
       </main>
