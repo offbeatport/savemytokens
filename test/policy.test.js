@@ -184,74 +184,9 @@ test("only the run of SMT lines at the very end counts", () => {
   assert.deepEqual(defersIn(interrupted), [], "a defer line followed by more work is not a report");
 });
 
-test("every view and hud layout renders without throwing", async () => {
-  const { VIEWS } = await import("../dist/report/views.js");
+test("every hud layout renders on one line", async () => {
   const { HUD_LAYOUTS, renderHud, loadTheme } = await import("../dist/runtime/kernel.mjs");
-
-  assert.equal(VIEWS[0].name, "plan", "the table stays first");
-  assert.equal(VIEWS.length, 16);
-  assert.equal(new Set(VIEWS.map((view) => view.name)).size, 16, "no duplicate view names");
-
   const now = Date.now();
-  const control = {
-    provider: { id: "claude-code", label: "Claude Code" },
-    resources: [
-      {
-        id: "claude-code:five_hour",
-        adapter: "claude-code",
-        label: "5h",
-        unit: "observed_usage",
-        window: { kind: "rolling", ms: 18000000, resetsAt: Math.floor(now / 1000) + 3600 },
-        capacity: { amount: 100, confidence: "published" },
-        usedPercent: 42,
-      },
-    ],
-    config: { policy: "finish", policyFor: {}, preserveFor: {}, customAdvice: {}, theme: { tui: "default", hud: "default" }, layout: { hud: "allocation" } },
-    enforcement: ["advise"],
-    unattributed: null,
-    deferred: [],
-    others: [],
-    schedule: {
-      adapter: "claude-code",
-      key: "five_hour",
-      now,
-      quota: { at: now, source: "statusline", windows: {}, history: [{ at: now - 600000, metered: 1, turnAt: 1, five_hour: 30, seven_day: 10 }] },
-      live: { usedPercent: 42, resetsAt: Math.floor(now / 1000) + 3600 },
-      bounds: { from: now - 18000000, to: now + 3600000, anchored: true },
-      windowId: 1,
-      unusedPool: 0.1,
-      totalWeighted: 1000,
-      lockouts: [],
-      claimants: [
-        {
-          claimant: { id: "a", label: "webinvoke", project: "/tmp/webinvoke", priority: "high", startedAt: now - 3600000, lastSeen: now, prompt: "do the thing", state: "active" },
-          allocation: { claimantId: "a", target: 0.5, pinned: true, pool: 0, released: false },
-          usage: { input: 1, output: 1, cacheWrite: 0, cacheRead: 0, requests: 2, tokens: 2, weighted: 6 },
-          observed: 0.6,
-          state: "active",
-          stale: false,
-          pressure: { value: 0.5, basis: "budget" },
-          attributedPercent: 25,
-        },
-      ],
-    },
-  };
-  const context = {
-    theme: loadTheme("default"),
-    color: false,
-    columns: 100,
-    rows: 30,
-    selected: 0,
-    interactive: true,
-    labels: new Map([["a", "webinvoke"]]),
-  };
-
-  for (const view of VIEWS) {
-    const lines = view.render(control, context);
-    assert.ok(Array.isArray(lines) && lines.length > 0, `${view.name} rendered nothing`);
-    for (const line of lines) assert.equal(typeof line, "string", `${view.name} produced a non-string row`);
-  }
-
   assert.equal(HUD_LAYOUTS.length, 10);
   for (const layout of HUD_LAYOUTS) {
     const line = renderHud(
@@ -276,6 +211,69 @@ test("every view and hud layout renders without throwing", async () => {
     assert.ok(line.length > 0, `${layout} rendered nothing`);
     assert.ok(!line.includes("\n"), `${layout} must stay on one line`);
   }
+});
+
+test("the preferences screen is reachable on demand, and navigable", () => {
+  assert.deepEqual(actionFor("P", "plan", 0.05), { kind: "preferences" });
+  assert.deepEqual(actionFor("\u001b[A", "prefs", 0.05), { kind: "up" });
+  assert.deepEqual(actionFor("\u001b[B", "prefs", 0.05), { kind: "down" });
+  assert.deepEqual(actionFor(" ", "prefs", 0.05), { kind: "toggleCurrent" });
+  assert.deepEqual(actionFor("e", "prefs", 0.05), { kind: "edit" });
+  assert.deepEqual(actionFor("3", "prefs", 0.05), { kind: "toggle", index: 2 });
+  assert.deepEqual(actionFor("\u001b", "prefs", 0.05), { kind: "skip" });
+});
+
+test("your own line is injected with the advice", () => {
+  const withCustom = adviceFor(80, {
+    target: 0.4,
+    observed: 0.5,
+    pressure: 0.85,
+    basis: "budget",
+    preserve: ["tests"],
+    custom: "Always run pnpm test and push before you stop.",
+  });
+  assert.match(withCustom, /Always run pnpm test and push before you stop\.$/);
+  assert.doesNotMatch(adviceFor(80, { target: 0.4, pressure: 0.85, basis: "budget", preserve: [] }), /pnpm test/);
+});
+
+test("the release signal only counts as the last line, not mid-sentence", () => {
+  const prose = [{ type: "text", text: "You can override any of it with SMT: DONE in a sentence." }];
+  assert.equal(signalIn(prose), null, "writing about the protocol must not trigger it");
+
+  const doc = [{ type: "text", text: "The table lists SMT: DONE, SMT: NEEDS_MORE and SMT: BLOCKED.\nStill working." }];
+  assert.equal(signalIn(doc), null);
+
+  const real = [{ type: "text", text: "Shipped the parser and the tests pass.\n\nSMT: DONE" }];
+  assert.equal(signalIn(real), "DONE");
+  assert.equal(signalIn([{ type: "text", text: "blocked on creds\n\nSMT: BLOCKED\n" }]), "BLOCKED");
+});
+
+test("deferred lines must start their own line", () => {
+  assert.deepEqual(defersIn([{ type: "text", text: "write it as SMT: DEFER something to skip it" }]), []);
+  assert.deepEqual(defersIn([{ type: "text", text: "  SMT: DEFER wire the retry path\nSMT: DONE" }]), [
+    "wire the retry path",
+  ]);
+});
+
+test("only the run of SMT lines at the very end counts", () => {
+  const prose = [
+    {
+      type: "text",
+      text: "You write it as `SMT: DEFER <one line>` and it is captured per project.\n\nThat is the whole feature.",
+    },
+  ];
+  assert.deepEqual(defersIn(prose), [], "documenting the syntax must not queue work");
+  assert.equal(signalIn(prose), null);
+
+  const real = [
+    { type: "text", text: "Shipped the parser.\n\nSMT: DEFER wire the retry path\nSMT: DEFER add an e2e\nSMT: NEEDS_MORE" },
+  ];
+  const parsed = trailingSignals(real);
+  assert.deepEqual(parsed.defers, ["wire the retry path", "add an e2e"]);
+  assert.equal(parsed.signal, "NEEDS_MORE");
+
+  const interrupted = [{ type: "text", text: "SMT: DEFER something\n\nBut actually I kept going and did it." }];
+  assert.deepEqual(defersIn(interrupted), [], "a defer line followed by more work is not a report");
 });
 
 test("the working set sorts itself into active, recent and parked", async () => {

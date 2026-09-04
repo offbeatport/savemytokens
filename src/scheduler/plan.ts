@@ -177,12 +177,6 @@ export function setParked(id: string, parked: boolean, adapter = "claude-code"):
   upsertClaimant(adapter, id, { parked, ...(parked ? { state: "done" as ClaimantState } : {}) });
 }
 
-export function setView(name: string): void {
-  const config = loadConfig();
-  config.view = name;
-  saveConfig(config);
-}
-
 export function setPolicy(name: string, project: string | null): boolean {
   if (!policyNames().includes(name)) return false;
   const config = loadConfig();

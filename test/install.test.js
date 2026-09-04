@@ -121,6 +121,19 @@ test("uninstall --purge deletes the local state as well", () => {
   assert.equal(fs.existsSync(box.home), false);
 });
 
+test("--purge will not delete the default state directory unattended", () => {
+  const box = sandbox();
+  const env = { ...box.env };
+  delete env.SAVEMYTOKENS_HOME;
+  let output = "";
+  try {
+    execFileSync("node", [CLI, "uninstall", "--purge"], { env, encoding: "utf8" });
+  } catch (error) {
+    output = String(error.stdout ?? "");
+  }
+  assert.match(output, /Refusing to delete/);
+});
+
 test("the CLAUDE.md block is opt-in and removed byte-exactly", () => {
   const box = sandbox();
   const memory = path.join(box.dir, "CLAUDE.md");

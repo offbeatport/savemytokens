@@ -67,7 +67,6 @@ export const DEFAULT_CONFIG = {
   offeredInstallAt: 0,
   theme: { tui: "default", hud: "default" },
   layout: { hud: "allocation" },
-  view: "plan",
   policy: "finish",
   policyFor: {},
   preserveFor: {},
@@ -236,6 +235,7 @@ function newMeter(adapter, id) {
     meteredAt: 0,
     project: "",
     prompt: "",
+    prompts: [],
     signal: null,
     defers: [],
   };
@@ -385,7 +385,12 @@ export function sampleFiles(adapter, id, files, now = Date.now()) {
         }
       } else if (entry.type === "user" && typeof entry.message?.content === "string") {
         if (entry.promptSource === "typed" || entry.origin?.kind === "human") {
-          record.prompt = entry.message.content.replace(/\s+/g, " ").trim().slice(0, 120);
+          const text = entry.message.content.replace(/\s+/g, " ").trim().slice(0, 120);
+          record.prompt = text;
+          if (!Array.isArray(record.prompts)) record.prompts = [];
+          if (text && record.prompts[record.prompts.length - 1] !== text) {
+            record.prompts = [...record.prompts, text].slice(-5);
+          }
         }
       }
       if (!record.project && typeof entry.cwd === "string") record.project = entry.cwd;

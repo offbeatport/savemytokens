@@ -1,5 +1,5 @@
 import type { Options } from "../cli-options.js";
-import { VIEWS, helpOverlay, labelsFor, viewByName, type ViewContext } from "../report/views.js";
+import { detailRows, helpOverlay, labelsFor, planRows, type ViewContext } from "../report/views.js";
 import { keyActions, splitKeys, type Action } from "../scheduler/keys.js";
 import {
   buildPlan,
@@ -12,7 +12,6 @@ import {
   setPinned,
   setParked,
   setState,
-  setView,
   visibleRows,
   type ControlPlan,
 } from "../scheduler/plan.js";
@@ -38,9 +37,10 @@ function size(): { columns: number; rows: number } {
   return { columns: Math.max(60, process.stdout.columns ?? 100), rows: Math.max(14, process.stdout.rows ?? 30) };
 }
 
-function contextFor(control: ControlPlan, selected: number, interactive: boolean): ViewContext {
+function contextFor(control: ControlPlan, selected: number, interactive: boolean, expanded = false): ViewContext {
   const { columns, rows } = size();
   return {
+    expanded,
     theme: loadTheme(control.config.theme.tui),
     color: colorEnabled,
     columns,
@@ -105,7 +105,7 @@ function footerFor(control: ControlPlan, context: ViewContext, showHelp: boolean
     paint(
       theme,
       "dim",
-      "  ↑↓ select   ←→ target   p priority   f pin   x park   ⏎ resume   v view   ? help   q quit",
+      "  ↑↓ select   ⏎ open   ←→ target   p priority   f pin   x park   m all   ? help   q quit",
       color,
     ),
   ];
@@ -218,15 +218,14 @@ function preferencesScreen(
 
 export async function runControl(options: Options): Promise<void> {
   let control = buildPlan(Date.now(), true, options.window, options.adapter);
-  const startView = options.view || control.config.view || "plan";
 
   if (options.json) {
     process.stdout.write(`${toJson(control)}\n`);
     return;
   }
   if (!process.stdout.isTTY || !process.stdin.isTTY || options.command === "status") {
-    const context = contextFor(control, -1, false);
-    process.stdout.write(`\n${viewByName(startView).render(control, context).join("\n")}\n\n`);
+    const context = contextFor(control, -1, false, true);
+    process.stdout.write(`\n${planRows(control, context).join("\n")}\n\n`);
     return;
   }
 
@@ -234,23 +233,21 @@ export async function runControl(options: Options): Promise<void> {
   try {
     stdin.setRawMode(true);
   } catch {
-    const context = contextFor(control, -1, false);
-    process.stdout.write(`\n${viewByName(startView).render(control, context).join("\n")}\n\n`);
+    const context = contextFor(control, -1, false, true);
+    process.stdout.write(`\n${planRows(control, context).join("\n")}\n\n`);
     return;
   }
 
   const config = loadConfig();
   const offerInstall = !hookInstalled() && !config.offeredInstallAt;
-  let mode: "plan" | "prefs" | "setup" = offerInstall ? "setup" : "plan";
+  let mode: "plan" | "prefs" | "setup" | "detail" = offerInstall ? "setup" : "plan";
   let setupChoice = true;
-  let toast = "";
-  let viewIndex = Math.max(0, VIEWS.findIndex((view) => view.name === startView));
+  let expanded = false;
   let showHelp = false;
   let editing = false;
   let cursor = 0;
   let custom = "";
   let selected = 0;
-  let resume: ReturnType<typeof visibleRows>[number] | null = null;
   const chosen = new Set(DEFAULT_PRESERVE);
 
   stdin.resume();
@@ -258,22 +255,24 @@ export async function runControl(options: Options): Promise<void> {
   process.stdout.write(ALT_ON + HIDE);
 
   const rows = () => visibleRows(control.schedule);
-  const context = () => contextFor(control, selected, true);
+  const context = () => contextFor(control, selected, true, expanded);
 
   const draw = (): void => {
-    const context = contextFor(control, selected, true);
-    const view = VIEWS[viewIndex] ?? VIEWS[0];
-    if (!view) return;
+    const context = contextFor(control, selected, true, expanded);
     const body = showHelp
       ? helpOverlay(control, context)
       : mode === "setup"
         ? setupScreen(setupChoice, context.theme, context.color, context.columns)
         : mode === "prefs"
           ? preferencesScreen(chosen, cursor, custom, editing, context.theme, context.color)
-          : [...(toast ? [`  ${toast}`, ""] : []), ...view.render(control, context)];
+          : mode === "detail"
+            ? detailRows(control, context)
+            : planRows(control, context);
     const footer =
       mode === "setup" && !showHelp
         ? [paint(context.theme, "dim", "  ← → choose   enter confirm   q quit", context.color)]
+        : mode === "detail" && !showHelp
+          ? [paint(context.theme, "dim", "  ←→ target   p priority   f pin   x park   d done   esc back   q quit", context.color)]
         : mode === "prefs" && !showHelp
         ? [
             paint(
@@ -286,7 +285,7 @@ export async function runControl(options: Options): Promise<void> {
             ),
           ]
         : footerFor(control, context, showHelp);
-    const title = mode === "setup" ? "setup" : mode === "prefs" ? "preserve" : view.title;
+    const title = mode === "setup" ? "setup" : mode === "prefs" ? "preserve" : mode === "detail" ? "session" : "plan";
     process.stdout.write(CLEAR + fullScreen(control, body, footer, title, context, mode === "setup" && !showHelp));
   };
 
@@ -315,14 +314,6 @@ export async function runControl(options: Options): Promise<void> {
   process.stdout.on("resize", draw);
   draw();
 
-  const resumeHint = (): void => {
-    if (!resume) return;
-    const project = resume.claimant.project || process.cwd();
-    process.stdout.write(
-      `\nResume ${resume.claimant.label}:\n\n  cd ${project} && claude --resume ${resume.claimant.id}\n\nIt joins the split again as soon as it is running.\n\n`,
-    );
-  };
-
   await new Promise<void>((resolve) => {
     const finish = (): void => {
       stop();
@@ -345,12 +336,7 @@ export async function runControl(options: Options): Promise<void> {
           if (setupChoice) {
             try {
               runInstall({ dryRun: false, force: false, rules: false, quiet: true });
-              toast = paint(context().theme, "ok", "Status bar installed — it appears in sessions you start from now on.", colorEnabled);
-            } catch {
-              toast = paint(context().theme, "danger", "Could not write the Claude settings — try: npx savemytokens install", colorEnabled);
-            }
-          } else {
-            toast = paint(context().theme, "dim", "Not now. Install later with: npx savemytokens install", colorEnabled);
+            } catch {}
           }
           mode = "plan";
           refresh();
@@ -397,15 +383,15 @@ export async function runControl(options: Options): Promise<void> {
         case "help":
           showHelp = !showHelp;
           break;
-        case "view":
-          viewIndex = (viewIndex + action.delta + VIEWS.length) % VIEWS.length;
-          setView(VIEWS[viewIndex]?.name ?? "plan");
+        case "expand":
+          expanded = !expanded;
           break;
-        case "viewAt":
-          if (action.index < VIEWS.length) {
-            viewIndex = action.index;
-            setView(VIEWS[viewIndex]?.name ?? "plan");
-          }
+        case "resume":
+          mode = mode === "detail" ? "plan" : "detail";
+          break;
+        case "back":
+          if (mode === "detail") mode = "plan";
+          else if (showHelp) showHelp = false;
           break;
         case "preferences": {
           const stored = control.config.preserveFor[process.cwd()] ?? control.config.preserveFor.default;
@@ -466,13 +452,6 @@ export async function runControl(options: Options): Promise<void> {
             refresh();
           }
           break;
-        case "resume":
-          if (view && view.bucket !== "active") {
-            resume = view;
-            finish();
-            return false;
-          }
-          break;
         case "refresh":
           refresh();
           break;
@@ -507,5 +486,4 @@ export async function runControl(options: Options): Promise<void> {
     });
   });
 
-  resumeHint();
 }

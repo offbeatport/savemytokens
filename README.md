@@ -243,45 +243,52 @@ npx savemytokens status --json  the whole plan, machine-readable
 npx savemytokens --view burn    pick a layout (or press v in the TUI)
 ```
 
-## Sixteen ways to look at it
-
-The control centre is full-screen. `v` cycles layouts, digits pick the first ten, and the choice
-persists. `--view <name>` prints one without the TUI.
-
-**`plan`** is the table: session, target, used, share, priority, last prompt. Everything else is that
-table with something above it, or the same sessions drawn as bars.
-
-**A graph on top** — ten of them, over the published window:
-
-| view | what it draws |
-| --- | --- |
-| `spark` | one row: the window's shape so far |
-| `gauge` | a single bar with a marker where even pace would be |
-| `segments` | forty chunky segments, pace marked |
-| `pace` | used against elapsed — "21% in hand" or "burning faster than the clock" |
-| `line` | a braille line chart, four times the resolution of blocks |
-| `runway` | now → reset, with the point you run dry marked against it |
-| `big` | the number, five rows tall, readable across the room |
-| `columns` | tokens burned per slice, all sessions |
-| `stack` | the same, stacked by session — who burned when |
-| `heat` | one dense strip, darker where more burned |
-
-**A bar per session** — five styles:
-
-| view | what it shows |
-| --- | --- |
-| `bars` | `[\|\|\|\|\|.......]` — how much of its *own* target share is spent, `»` when over |
-| `blocks` | the same, in `▰▱` |
-| `target` | used across the whole window, with `┃` marking its target |
-| `twin` | target and used side by side |
-| `wide` | full-width bar under each session's name, priority, tokens and prompt |
+## One screen
 
 ```
-    session             how much of its own target share is spent
-  • savemytokens 10:50 [|||||||||||||||||||||||||||||||||||||||||||||||||.....]  91% of  29%
-  • reposhine          [||||||||||||||||||||..................................]  37% of  27%
-  • webinvoke 12:06    [||||||||||||||||||....................................]  34% of  15%
+  5h █████░░░░░░░  42% resets 20:40    7d ██░░░░░░░░░░  18% resets Tue
+
+     session            target  used share priority progress     last prompt
+
+  ACTIVE 3 · a Claude session is open — these hold a share
+  ❯ webinvoke             50%   19%   44% HIGH     [|||||||...] Implement provider fallback…
+  • buydiff               30%   14%   32% NORMAL   [||||......] Fix verdict table alignment…
+  • scratch               20%    9%   21% LOW      [|||.......] Try alternate parser…
+
+  RECENT 6 · worked on today, nothing running
+  · reposhine              0%    0%    2% 3h ago   [..........] This is the new plan for…
+
+  PARKED 4
+  · obp-ui                 0%    0%    0% 6d ago   [..........] yes, that's it. commit push
+
+  3 sessions are sharing this window, 1% of it unclaimed.
 ```
+
+Every row has the same columns. `progress` is how far through its *own* target a session is — a
+full bar means it is at its share, `»` means past it. `m` shows every session when the list is
+trimmed to fit.
+
+`⏎` opens a session:
+
+```
+  savemytokens 10:50 · active · normal
+  /Users/vladpalos/Development/savemytokens
+
+  target ███████████░░░░░░░░░░░░░░░░░░░░░░░  32%
+  used   ███░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   8%
+  spent  [||||||||..........................]  25% of its target
+
+  measured 100% of the tokens on disk · 30M tokens · 44 requests this window
+  started  10:50 · last turn just now
+
+  when it burned
+  ·····░▒▓▓█▓▓██▒▒▒▒·░▓▒···········
+  recent prompts
+    ok, the +9 more, should it be clickable…
+```
+
+Graphs live here, in a session, rather than as decoration above the list. A parked or recent session
+shows the command to resume it.
 
 ## Ten status lines
 

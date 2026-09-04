@@ -75,6 +75,7 @@ export interface MeterRecord {
   meteredAt: number;
   project: string;
   prompt: string;
+  prompts: string[];
   signal: string | null;
   defers: string[];
 }
@@ -117,7 +118,6 @@ export interface Config {
   policyFor: Record<string, string>;
   theme: { tui: string; hud: string };
   layout: { hud: string };
-  view: string;
   preserveFor: Record<string, string[]>;
   customAdvice: Record<string, string>;
   wrappedStatusLine: string | null;

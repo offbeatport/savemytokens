@@ -18,8 +18,8 @@ export type Action =
   | { kind: "toggleCurrent" }
   | { kind: "edit" }
   | { kind: "help" }
-  | { kind: "view"; delta: number }
-  | { kind: "viewAt"; index: number }
+  | { kind: "expand" }
+  | { kind: "back" }
   | { kind: "pin" }
   | { kind: "park" }
   | { kind: "resume" };
@@ -69,8 +69,9 @@ export function actionFor(key: string, mode: "plan" | "prefs", step: number): Ac
 
   switch (key) {
     case "q":
-    case ESC:
       return { kind: "quit" };
+    case ESC:
+      return { kind: "back" };
     case `${ESC}[A`:
     case "k":
       return { kind: "up" };
@@ -107,17 +108,13 @@ export function actionFor(key: string, mode: "plan" | "prefs", step: number): Ac
       return { kind: "pin" };
     case "x":
       return { kind: "park" };
+    case "m":
+      return { kind: "expand" };
     case "\r":
     case "\n":
       return { kind: "resume" };
-    case "v":
-      return { kind: "view", delta: 1 };
-    case "V":
-      return { kind: "view", delta: -1 };
-    default: {
-      if (/^[0-9]$/.test(key)) return { kind: "viewAt", index: key === "0" ? 9 : Number(key) - 1 };
+    default:
       return { kind: "none" };
-    }
   }
 }
 

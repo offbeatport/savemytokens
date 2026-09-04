@@ -376,7 +376,7 @@ test("window movement while nothing local ran is reported separately", () => {
   assert.equal(Math.round(out.unattributedPercent), 8, "the 8 points that moved with no local usage are called out");
 
   const text = execFileSync("node", [CLI, "status"], { env: box.env, encoding: "utf8" });
-  assert.match(text, /8% unattributed/);
+  assert.match(text, /8% of the window went while none of these were running/);
 });
 
 test("only active sessions hold a share; parking hands it back", () => {

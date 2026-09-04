@@ -269,9 +269,19 @@ export function runUninstall(purge: boolean): void {
   const strippedRules = memory.includes(RULES_START);
   if (strippedRules) fs.writeFileSync(MEMORY, stripRules(memory) + "\n");
 
+  const defaultHome = !process.env.SAVEMYTOKENS_HOME;
+  let purged = false;
+  if (purge && defaultHome && !process.stdin.isTTY) {
+    process.stdout.write(
+      `\n${bold("SaveMyTokens")}\n\nRefusing to delete ${HOME} from a non-interactive run.\nRun it from a terminal, or delete the directory yourself.\n\n`,
+    );
+    process.exitCode = 1;
+    return;
+  }
   if (purge) {
     try {
       fs.rmSync(HOME, { recursive: true, force: true });
+      purged = true;
     } catch {}
   }
 
@@ -282,7 +292,7 @@ export function runUninstall(purge: boolean): void {
       : "Nothing was installed.",
   );
   if (statusLineRestored) out.push(dim("Your own status line is back in place."));
-  out.push(dim(purge ? `Deleted ${HOME}.` : `Your local state in ${HOME} is untouched — remove it with --purge.`));
+  out.push(dim(purged ? `Deleted ${HOME}.` : `Your local state in ${HOME} is untouched — remove it with --purge.`));
   out.push("");
   process.stdout.write(out.join("\n") + "\n");
 }
