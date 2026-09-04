@@ -2,7 +2,7 @@
 
 # SaveMyTokens
 
-### Decide which Claude Code session gets your Claude allowance.
+### Decide which project gets your Claude allowance.
 
 <code>npx savemytokens</code>
 
@@ -37,7 +37,7 @@
 | **A split you control** | Give each **project** an allocation and a priority. Spare capacity goes to the highest priority first, and a project's allocation is split across its live sessions by what they burn. |
 | **Claude working to it** | As a session eats into its slice it is told to narrow scope and finish, and to write down what it dropped — which comes back next time you work on that project. |
 | **Unused capacity returned** | When a project finishes, whatever it did not spend goes to the others. |
-| **In your status line** | `SMT · webinvoke target 50% · used 21% · HIGH · 5h 42% 18:30` |
+| **In your status line** | `webinvoke · target 50% · used 21% · HIGH · 5h 42% · in 3h52` — built from segments you pick and order |
 
 <br>
 
