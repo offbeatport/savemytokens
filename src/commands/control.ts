@@ -60,15 +60,42 @@ function header(control: ControlPlan, viewName: string, theme: Theme, color: boo
   return left + " ".repeat(gap) + right;
 }
 
-function fullScreen(control: ControlPlan, body: string[], footer: string[], viewName: string, context: ViewContext): string {
+export function boxed(lines: string[], theme: Theme, color: boolean, columns: number): string[] {
+  const widest = Math.max(24, ...lines.map((line) => visibleWidth(line)));
+  const inner = Math.min(Math.max(0, columns - 4), widest + 4);
+  const h = theme.border.h ?? "─";
+  const v = theme.border.v ?? "│";
+  const left = Math.max(0, Math.floor((columns - inner - 2) / 2));
+  const pad = " ".repeat(left);
+  const edge = (start: string, end: string): string => `${pad}${paint(theme, "accent", `${start}${h.repeat(inner)}${end}`, color)}`;
+  const out = [edge(theme.border.tl ?? "┌", theme.border.tr ?? "┐")];
+  for (const line of lines) {
+    const body = visibleWidth(line) > inner - 2 ? line : padEndVisible(line, inner - 2);
+    out.push(`${pad}${paint(theme, "accent", v, color)} ${body} ${paint(theme, "accent", v, color)}`);
+  }
+  out.push(edge(theme.border.bl ?? "└", theme.border.br ?? "┘"));
+  return out;
+}
+
+function fullScreen(
+  control: ControlPlan,
+  body: string[],
+  footer: string[],
+  viewName: string,
+  context: ViewContext,
+  center = false,
+): string {
   const { theme, color, columns, rows } = context;
   const rule = paint(theme, "dim", (theme.border.h ?? "─").repeat(columns), color);
   const top = [header(control, viewName, theme, color, columns), rule];
   const bottom = [rule, ...footer];
   const room = Math.max(1, rows - top.length - bottom.length - 1);
-  const shown = body.slice(0, room);
-  const padding: string[] = new Array(Math.max(0, room - shown.length)).fill("");
-  return [...top, ...shown, ...padding, ...bottom].join("\n");
+  const framed = center ? boxed(body, theme, color, columns) : body;
+  const shown = framed.slice(0, room);
+  const spare = Math.max(0, room - shown.length);
+  const above: string[] = new Array(center ? Math.floor(spare / 2) : 0).fill("");
+  const below: string[] = new Array(spare - above.length).fill("");
+  return [...top, ...above, ...shown, ...below, ...bottom].join("\n");
 }
 
 function footerFor(control: ControlPlan, context: ViewContext, showHelp: boolean): string[] {
@@ -120,25 +147,46 @@ function toJson(control: ControlPlan): string {
   );
 }
 
-function setupScreen(choice: boolean, theme: Theme, color: boolean): string[] {
+function centre(line: string, width: number): string {
+  const pad = Math.max(0, Math.floor((width - visibleWidth(line)) / 2));
+  return " ".repeat(pad) + line;
+}
+
+function wrapPlain(text: string, width: number): string[] {
+  const out: string[] = [];
+  let line = "";
+  for (const word of text.split(" ")) {
+    if (line.length === 0) line = word;
+    else if (line.length + 1 + word.length <= width) line += ` ${word}`;
+    else {
+      out.push(line);
+      line = word;
+    }
+  }
+  if (line) out.push(line);
+  return out;
+}
+
+export function setupScreen(choice: boolean, theme: Theme, color: boolean, columns: number): string[] {
   const yes = choice ? paint(theme, "ok", "[ Yes ]", color) : paint(theme, "dim", "  Yes  ", color);
   const no = choice ? paint(theme, "dim", "  Not now  ", color) : paint(theme, "warn", "[ Not now ]", color);
-  return [
-    "",
-    `  ${paint(theme, "accent", "Enable live Claude usage in your status bar?", color)}`,
-    "",
-    "  Shows your 5h and weekly capacity, and this session's SaveMyTokens allocation.",
-    `  ${paint(theme, "dim", "It adds four hooks and a status line to Claude Code's settings.json, and backs it up first.", color)}`,
-    `  ${paint(theme, "dim", "Without it there is no published capacity to read — everything else still works.", color)}`,
-    "",
-    `    ${yes}   ${no}`,
-    "",
-    `  ${paint(theme, "dim", "← → choose · enter confirm", color)}`,
-    "",
-    `  ${paint(theme, "dim", "You can install or remove it later with:", color)}`,
-    `  ${paint(theme, "dim", "    npx savemytokens install", color)}`,
-    `  ${paint(theme, "dim", "    npx savemytokens uninstall", color)}`,
-  ];
+  const inner = Math.max(20, Math.min(columns - 10, 60));
+  const lines: string[] = [];
+  lines.push(...wrapPlain("Enable live Claude usage in your status bar?", inner).map((line) => paint(theme, "accent", line, color)));
+  lines.push("");
+  lines.push(...wrapPlain("Shows your 5h and weekly capacity, and this session's share of it.", inner));
+  lines.push(
+    ...wrapPlain("It adds four hooks and a status line to Claude Code's settings.json, backing that file up first.", inner).map(
+      (line) => paint(theme, "dim", line, color),
+    ),
+  );
+  lines.push("");
+  lines.push(`${yes}    ${no}`);
+  lines.push("");
+  lines.push(paint(theme, "dim", "← → choose · enter confirm", color));
+  lines.push("");
+  lines.push(...wrapPlain("Later, any time: npx savemytokens install · uninstall", inner).map((line) => paint(theme, "dim", line, color)));
+  return lines.map((line) => centre(line, inner));
 }
 
 function preferencesScreen(
@@ -219,7 +267,7 @@ export async function runControl(options: Options): Promise<void> {
     const body = showHelp
       ? helpOverlay(control, context)
       : mode === "setup"
-        ? setupScreen(setupChoice, context.theme, context.color)
+        ? setupScreen(setupChoice, context.theme, context.color, context.columns)
         : mode === "prefs"
           ? preferencesScreen(chosen, cursor, custom, editing, context.theme, context.color)
           : [...(toast ? [`  ${toast}`, ""] : []), ...view.render(control, context)];
@@ -239,7 +287,7 @@ export async function runControl(options: Options): Promise<void> {
           ]
         : footerFor(control, context, showHelp);
     const title = mode === "setup" ? "setup" : mode === "prefs" ? "preserve" : view.title;
-    process.stdout.write(CLEAR + fullScreen(control, body, footer, title, context));
+    process.stdout.write(CLEAR + fullScreen(control, body, footer, title, context, mode === "setup" && !showHelp));
   };
 
   const refresh = (): void => {

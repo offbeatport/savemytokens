@@ -298,3 +298,21 @@ test("the working set sorts itself into active, recent and parked", async () => 
   const parkedButBeating = { ...base, parked: true, heartbeat: now - 5_000, lastSeen: now - 5_000 };
   assert.equal(bucketFor(parkedButBeating, now, true), "parked", "parking holds until you resume it deliberately");
 });
+
+test("the first-run dialog fits any terminal it is drawn in", async () => {
+  const { boxed, setupScreen } = await import("../dist/commands/control.js");
+  const { loadTheme } = await import("../dist/runtime/kernel.mjs");
+  const theme = loadTheme("default");
+
+  for (const columns of [40, 60, 80, 100, 140]) {
+    const body = setupScreen(true, theme, false, columns);
+    const framed = boxed(body, theme, false, columns);
+    for (const line of framed) {
+      assert.ok(line.length <= columns, `a ${columns}-column terminal overflowed: ${line.length} chars`);
+    }
+    const top = framed[0] ?? "";
+    const bottom = framed[framed.length - 1] ?? "";
+    assert.equal(top.length, bottom.length, "the box closes at the same width it opened");
+    assert.ok(framed.some((line) => line.includes("[ Yes ]")), "the default choice is visible");
+  }
+});
