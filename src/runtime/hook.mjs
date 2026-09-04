@@ -1,11 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
+  addDeferred,
   adviceFor,
   consumeSignal,
+  deferredAdvice,
   loadConfig,
+  loadDeferred,
   loadMeter,
   openingAdvice,
+  policyFor,
   sampleFiles,
   schedule,
   stageFor,
@@ -68,16 +72,20 @@ function labelOf(project) {
   return project ? path.basename(project) : "session";
 }
 
-function preserveList(project) {
+function settingsFor(project) {
   const config = loadConfig();
-  return config.preserveFor?.[project] ?? config.preserveFor?.default ?? [];
+  return {
+    preserve: config.preserveFor?.[project] ?? config.preserveFor?.default ?? [],
+    policy: policyFor(config, project),
+  };
 }
 
 function guidance(id, project, now) {
   const plan = schedule(ADAPTER, now);
   const view = viewFor(plan, id);
   if (!view) return "";
-  const stage = stageFor(view.pressure.value);
+  const { preserve, policy } = settingsFor(project);
+  const stage = stageFor(view.pressure.value, policy);
   if (stage === 0) return "";
   const advice = view.claimant.advice ?? { stage: 0, window: 0 };
   if (advice.window === plan.windowId && advice.stage >= stage) return "";
@@ -87,7 +95,8 @@ function guidance(id, project, now) {
     observed: view.observed,
     pressure: view.pressure.value,
     basis: view.pressure.basis,
-    preserve: preserveList(project),
+    preserve,
+    policy,
   });
 }
 
@@ -165,6 +174,9 @@ function run() {
   const lines = [];
 
   if (event === "session-end") {
+    if (files.length > 0) sampleFiles(ADAPTER, id, files, now);
+    const { defers } = consumeSignal(ADAPTER, id);
+    addDeferred(ADAPTER, project || loadMeter(ADAPTER, id).project, defers, id, now);
     upsertClaimant(ADAPTER, id, { state: "done", endedAt: now, signal: "SESSION_END" });
     return;
   }
@@ -179,7 +191,12 @@ function run() {
 
   if (event === "session-start") {
     const view = viewFor(schedule(ADAPTER, now), id);
-    lines.push(openingAdvice({ target: view ? view.allocation.target : 1, preserve: preserveList(project) }));
+    const { preserve, policy } = settingsFor(project);
+    if (policy.name !== "off") {
+      lines.push(openingAdvice({ target: view ? view.allocation.target : 1, preserve, policy }));
+    }
+    const deferred = loadDeferred(ADAPTER, project, now);
+    if (deferred.length > 0) lines.push(deferredAdvice(deferred));
   }
 
   if (event === "prompt") {
@@ -196,7 +213,8 @@ function run() {
   }
 
   if (event === "stop") {
-    const signal = consumeSignal(ADAPTER, id);
+    const { signal, defers } = consumeSignal(ADAPTER, id);
+    addDeferred(ADAPTER, project || loadMeter(ADAPTER, id).project, defers, id, now);
     if (signal === "DONE") upsertClaimant(ADAPTER, id, { state: "done", signal, endedAt: now });
     else if (signal === "NEEDS_MORE") upsertClaimant(ADAPTER, id, { state: "needs-more", signal });
     else if (signal === "BLOCKED") upsertClaimant(ADAPTER, id, { state: "blocked", signal });

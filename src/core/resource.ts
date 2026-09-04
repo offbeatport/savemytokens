@@ -80,7 +80,9 @@ export interface Enforcer {
 export interface Provider {
   id: string;
   label: string;
-  resources(): Resource[];
+  detect(): boolean;
+  resources(now?: number): Resource[];
+  sweep(since: number, now?: number): void;
   meter: Meter;
   enforcer: Enforcer;
 }

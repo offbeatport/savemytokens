@@ -5,7 +5,8 @@ import type { SessionEvidence } from "../../core/types.js";
 import type { Adapter, DiscoverOptions, SessionRef } from "../types.js";
 import { parseCodexSession } from "./parse.js";
 
-const DATA_DIR = path.join(os.homedir(), ".codex", "sessions");
+const CODEX_HOME = process.env.CODEX_HOME || path.join(os.homedir(), ".codex");
+const DATA_DIR = path.join(CODEX_HOME, "sessions");
 const MAX_DEPTH = 5;
 
 function walk(dir: string, depth: number, since: number, out: SessionRef[]): void {

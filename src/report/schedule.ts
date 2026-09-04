@@ -29,17 +29,17 @@ function capacityLines(control: ControlPlan, options: ScheduleRenderOptions, now
   const out: string[] = [];
   const published = control.resources.filter((resource) => resource.usedPercent !== null);
 
+  const label = `${control.provider.label} capacity`;
   if (published.length === 0) {
-    out.push(`  ${paint(theme, "dim", "Claude capacity", color)}  ${paint(theme, "warn", "not published to this machine yet", color)}`);
-    out.push(`  ${paint(theme, "dim", "Anthropic publishes your 5h and 7d usage to the status line only.", color)}`);
-    out.push(`  ${paint(theme, "dim", "Run: npx savemytokens install", color)}`);
+    out.push(`  ${paint(theme, "dim", label, color)}  ${paint(theme, "warn", "not published to this machine yet", color)}`);
+    out.push(
+      `  ${paint(theme, "dim", control.provider.id === "claude-code" ? "Anthropic publishes your 5h and 7d usage to the status line only. Run: npx savemytokens install" : "No session has written a rate limit to disk in this window.", color)}`,
+    );
     return out;
   }
 
   const asOf = control.schedule.quota?.at ?? 0;
-  out.push(
-    `  ${paint(theme, "dim", "Claude capacity", color)}  ${paint(theme, "dim", `published · read ${ago(asOf, now)}`, color)}`,
-  );
+  out.push(`  ${paint(theme, "dim", label, color)}  ${paint(theme, "dim", `published · read ${ago(asOf, now)}`, color)}`);
   for (const resource of published) {
     const used = resource.usedPercent ?? 0;
     const key = resource.id.split(":")[1] ?? "";
@@ -95,7 +95,10 @@ export function renderSchedule(control: ControlPlan, options: ScheduleRenderOpti
   const views = activeViews(control.schedule);
   const out: string[] = [""];
 
-  out.push(`  ${paint(theme, "accent", "SaveMyTokens", color)} ${paint(theme, "dim", "· Claude Code", color)}`);
+  const windowLabel = control.schedule.key === "seven_day" ? "7-day window" : "5-hour window";
+  out.push(
+    `  ${paint(theme, "accent", "SaveMyTokens", color)} ${paint(theme, "dim", `· ${control.provider.label} · ${windowLabel}`, color)}`,
+  );
   out.push("");
   out.push(...capacityLines(control, options, now));
   out.push("");
@@ -115,7 +118,7 @@ export function renderSchedule(control: ControlPlan, options: ScheduleRenderOpti
 
   if (views.length === 0) {
     out.push("");
-    out.push(`    ${paint(theme, "dim", "No Claude Code sessions in this window.", color)}`);
+    out.push(`    ${paint(theme, "dim", `No ${control.provider.label} sessions in this window.`, color)}`);
   }
   for (const [index, view] of views.entries()) {
     out.push(rowFor(view, index, { label: labelWidth, prompt: promptWidth }, options, attributed));
@@ -131,6 +134,41 @@ export function renderSchedule(control: ControlPlan, options: ScheduleRenderOpti
     : `no published window on this machine, so target and share are portions of the ${compactNumber(control.schedule.totalWeighted)} weighted tokens measured on disk`;
   for (const line of basis.match(/.{1,92}(\s|$)/g) ?? [basis]) {
     out.push(`    ${paint(theme, "dim", line.trim(), color)}`);
+  }
+
+  const enforcement =
+    control.enforcement.length > 0
+      ? `enforcement: ${control.enforcement.join(", ")} only — a hook injects text, nothing here can hold a session to a number`
+      : `${control.provider.label} has no hook to inject through, so this view is visibility only`;
+  out.push(`    ${paint(theme, "dim", enforcement, color)}`);
+
+  const policy = control.config.policyFor?.[process.cwd()] ?? control.config.policy;
+  out.push(
+    `    ${paint(theme, "dim", `when a session passes its target: policy ${policy} · npx savemytokens policy`, color)}`,
+  );
+
+  if (control.deferred.length > 0) {
+    out.push("");
+    out.push(`    ${paint(theme, "warn", "deferred to the next session", color)}`);
+    for (const group of control.deferred.slice(0, 3)) {
+      const name = group.project.split("/").pop() || group.project;
+      for (const item of group.items.slice(-2)) {
+        out.push(`      ${paint(theme, "dim", `${name} · ${clip(item.text, columns - 20)}`, color)}`);
+      }
+    }
+  }
+
+  for (const other of control.others) {
+    const published = other.resources.filter((resource) => resource.usedPercent !== null);
+    if (published.length === 0) continue;
+    const parts = published.map((resource) => {
+      const key = resource.id.split(":")[1] ?? "";
+      return `${key === "seven_day" ? "7d" : "5h"} ${percent(resource.usedPercent ?? 0)}`;
+    });
+    out.push("");
+    out.push(
+      `    ${paint(theme, "dim", `${other.label}: ${parts.join(" · ")} — npx savemytokens --adapter ${other.id}`, color)}`,
+    );
   }
 
   if (control.unattributed !== null) {

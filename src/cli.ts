@@ -4,7 +4,9 @@ import { parseArgs } from "./cli-options.js";
 import { runAudit } from "./commands/audit.js";
 import { runControl } from "./commands/control.js";
 import { runInstall, runUninstall } from "./commands/install.js";
+import { runDefer, runPolicy } from "./commands/policy.js";
 import { runPrivacy } from "./commands/privacy.js";
+import { runSet } from "./commands/set.js";
 import { runTheme } from "./commands/theme.js";
 import { runWatch } from "./commands/watch.js";
 import { renderHistory } from "./report/render.js";
@@ -28,6 +30,11 @@ ${bold("savemytokens")} — give every Claude Code session a target share of you
   npx savemytokens install     hooks + status line, so it works while the TUI is closed
   npx savemytokens uninstall   remove them
   npx savemytokens status      one plain-text snapshot
+  npx savemytokens share <project> <percent|auto>
+  npx savemytokens priority <project> <high|normal|low>
+  npx savemytokens release <project>          hand its unused share back
+  npx savemytokens policy      what Claude does as the window fills
+  npx savemytokens defer       work pushed to the next session
   npx savemytokens theme       themes for the TUI and the status line
   npx savemytokens audit       the token-waste report
 
@@ -36,6 +43,8 @@ ${bold("savemytokens")} — give every Claude Code session a target share of you
       --force      install: wrap an existing status line instead of leaving it alone
       --rules      install: also write the token-discipline block into ~/.claude/CLAUDE.md
       --purge      uninstall: also delete ~/.savemytokens
+      --7d         allocate against the weekly window instead of the 5-hour one
+      --codex      Codex instead of Claude Code (visibility only)
 
 ${dim("Everything runs locally. No account, no daemon, no upload. See what it stores: savemytokens privacy")}
 `;
@@ -62,6 +71,17 @@ async function main(): Promise<void> {
       return;
     case "theme":
       runTheme(options.args);
+      return;
+    case "share":
+    case "priority":
+    case "release":
+      runSet(options);
+      return;
+    case "policy":
+      runPolicy(options);
+      return;
+    case "defer":
+      runDefer(options);
       return;
     case "audit":
       await runAudit(options);

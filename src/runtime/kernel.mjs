@@ -8,6 +8,7 @@ export const METER_DIR = path.join(HOME, "meter");
 export const QUOTA_DIR = path.join(HOME, "quota");
 export const THEME_DIR = path.join(HOME, "themes");
 export const HOOKS_DIR = path.join(HOME, "hooks");
+export const DEFER_DIR = path.join(HOME, "deferred");
 export const CONFIG_FILE = path.join(HOME, "config.json");
 
 export const FIVE_HOUR_MS = 5 * 60 * 60 * 1000;
@@ -20,6 +21,8 @@ const RETENTION_MS = 9 * 24 * 60 * 60 * 1000;
 const SEEN_LIMIT = 400;
 const LOCKOUT_GAP_MS = 5 * 60 * 1000;
 const STALE_MS = 45 * 60 * 1000;
+const DEFER_LIMIT = 12;
+const DEFER_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
 const CHUNK = 1 << 20;
 const MAX_BACKFILL = 32 * 1024 * 1024;
 const WEIGHTS = { input: 1, output: 5, cacheWrite: 1.25, cacheRead: 0.1 };
@@ -57,8 +60,11 @@ function listJson(dir) {
 export const DEFAULT_CONFIG = {
   version: 1,
   createdAt: 0,
+  preferencesSetAt: 0,
   theme: { tui: "default", hud: "default" },
   layout: { hud: "allocation" },
+  policy: "finish",
+  policyFor: {},
   preserveFor: {},
   wrappedStatusLine: null,
   contribute: false,
@@ -72,6 +78,7 @@ export function loadConfig() {
     ...stored,
     theme: { ...DEFAULT_CONFIG.theme, ...(stored.theme || {}) },
     layout: { ...DEFAULT_CONFIG.layout, ...(stored.layout || {}) },
+    policyFor: { ...(stored.policyFor || {}) },
     preserveFor: { ...(stored.preserveFor || {}) },
   };
 }
@@ -203,6 +210,7 @@ function newMeter(adapter, id) {
     project: "",
     prompt: "",
     signal: null,
+    defers: [],
   };
 }
 
@@ -264,13 +272,15 @@ function scanLines(file, from, to, onLine, skipFirst = false) {
   return position - carry.length;
 }
 
-export function sampleFiles(adapter, id, files, now = Date.now()) {
-  const record = loadMeter(adapter, id);
-  const seen = new Set(record.seen);
-  const buckets = new Map(record.buckets.map((row) => [row[0], [...row]]));
-  let lastLockout = record.lockouts.length > 0 ? record.lockouts[record.lockouts.length - 1] : 0;
-  const fresh = [];
+export function openBuckets(record) {
+  return new Map(record.buckets.map((row) => [row[0], [...row]]));
+}
 
+export function addSample(buckets, at, usage) {
+  addUsage(buckets, at, usage);
+}
+
+export function scanNew(record, files, onLine) {
   for (const file of files) {
     let size = 0;
     try {
@@ -283,8 +293,29 @@ export function sampleFiles(adapter, id, files, now = Date.now()) {
     const truncated = from === 0 && size > MAX_BACKFILL;
     if (truncated) from = size - MAX_BACKFILL;
     if (size <= from) continue;
+    record.files[file] = scanLines(file, from, size, onLine, truncated);
+  }
+  return record;
+}
 
-    const offset = scanLines(file, from, size, (line) => {
+export function commitMeter(adapter, id, record, buckets, fresh, now = Date.now()) {
+  const cutoff = now - RETENTION_MS;
+  record.buckets = [...buckets.values()].filter((row) => row[0] >= cutoff).sort((a, b) => a[0] - b[0]);
+  record.lockouts = record.lockouts.filter((at) => at >= cutoff).slice(-50);
+  record.seen = [...record.seen, ...fresh].slice(-SEEN_LIMIT);
+  record.meteredAt = now;
+  writeJson(meterFile(adapter, id), record);
+  return record;
+}
+
+export function sampleFiles(adapter, id, files, now = Date.now()) {
+  const record = loadMeter(adapter, id);
+  const seen = new Set(record.seen);
+  const buckets = openBuckets(record);
+  let lastLockout = record.lockouts.length > 0 ? record.lockouts[record.lockouts.length - 1] : 0;
+  const fresh = [];
+
+  scanNew(record, files, (line) => {
       if (line.length < 2 || line.charCodeAt(0) !== 123) return;
       const hasUsage = line.includes('"usage"');
       const hasPrompt = line.includes('"promptSource"');
@@ -322,41 +353,92 @@ export function sampleFiles(adapter, id, files, now = Date.now()) {
         }
         const text = signalIn(entry.message.content);
         if (text) record.signal = text;
+        for (const deferred of defersIn(entry.message.content)) {
+          if (!record.defers.includes(deferred)) record.defers.push(deferred);
+        }
       } else if (entry.type === "user" && typeof entry.message?.content === "string") {
         if (entry.promptSource === "typed" || entry.origin?.kind === "human") {
           record.prompt = entry.message.content.replace(/\s+/g, " ").trim().slice(0, 120);
         }
       }
       if (!record.project && typeof entry.cwd === "string") record.project = entry.cwd;
-    }, truncated);
+    });
 
-    record.files[file] = offset;
-  }
-
-  const cutoff = now - RETENTION_MS;
-  record.buckets = [...buckets.values()].filter((row) => row[0] >= cutoff).sort((a, b) => a[0] - b[0]);
-  record.lockouts = record.lockouts.filter((at) => at >= cutoff).slice(-50);
-  record.seen = [...record.seen, ...fresh].slice(-SEEN_LIMIT);
-  record.meteredAt = now;
-  writeJson(meterFile(adapter, id), record);
-  return record;
+  record.defers = record.defers.slice(-DEFER_LIMIT);
+  return commitMeter(adapter, id, record, buckets, fresh, now);
 }
 
 export function consumeSignal(adapter, id) {
   const record = loadMeter(adapter, id);
   const signal = record.signal;
-  if (signal) writeJson(meterFile(adapter, id), { ...record, signal: null });
-  return signal;
+  const defers = record.defers ?? [];
+  if (signal || defers.length > 0) writeJson(meterFile(adapter, id), { ...record, signal: null, defers: [] });
+  return { signal, defers };
+}
+
+function blockText(content) {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  const parts = [];
+  for (const block of content) if (typeof block?.text === "string") parts.push(block.text);
+  return parts.join("\n");
 }
 
 export function signalIn(content) {
-  const blocks = Array.isArray(content) ? content : [];
-  for (const block of blocks) {
-    const text = typeof block?.text === "string" ? block.text : "";
-    const match = /SMT:\s*(DONE|NEEDS_MORE|BLOCKED)/.exec(text);
-    if (match) return match[1];
+  const match = /SMT:\s*(DONE|NEEDS_MORE|BLOCKED)\b/.exec(blockText(content));
+  return match ? match[1] : null;
+}
+
+export function defersIn(content) {
+  const out = [];
+  const pattern = /SMT:\s*DEFER\s+(.+)/g;
+  let match;
+  while ((match = pattern.exec(blockText(content))) !== null) {
+    const text = String(match[1]).replace(/\s+/g, " ").trim().slice(0, 140);
+    if (text) out.push(text);
   }
-  return null;
+  return out;
+}
+
+export function deferFile(adapter, project) {
+  const key = (project || "default").replace(/[^a-zA-Z0-9]/g, "-").slice(-90);
+  return path.join(DEFER_DIR, adapter, `${key}.json`);
+}
+
+export function loadDeferred(adapter, project, now = Date.now()) {
+  const stored = readJson(deferFile(adapter, project), null);
+  const items = Array.isArray(stored?.items) ? stored.items : [];
+  return items.filter((item) => now - (item.at ?? 0) < DEFER_RETENTION_MS);
+}
+
+export function addDeferred(adapter, project, texts, sessionId, now = Date.now()) {
+  if (texts.length === 0) return [];
+  const current = loadDeferred(adapter, project, now);
+  const known = new Set(current.map((item) => item.text));
+  for (const text of texts) {
+    if (known.has(text)) continue;
+    known.add(text);
+    current.push({ at: now, text, session: sessionId, project });
+  }
+  const items = current.slice(-DEFER_LIMIT);
+  writeJson(deferFile(adapter, project), { schema: 1, project, items });
+  return items;
+}
+
+export function clearDeferred(adapter, project) {
+  writeJson(deferFile(adapter, project), { schema: 1, project, items: [] });
+}
+
+export function deferredProjects(adapter, now = Date.now()) {
+  const dir = path.join(DEFER_DIR, adapter);
+  const out = [];
+  for (const name of listJson(dir)) {
+    const stored = readJson(path.join(dir, name), null);
+    const items = Array.isArray(stored?.items) ? stored.items : [];
+    const live = items.filter((item) => now - (item.at ?? 0) < DEFER_RETENTION_MS);
+    if (live.length > 0) out.push({ project: stored.project ?? name.slice(0, -5), items: live });
+  }
+  return out.sort((a, b) => b.items.length - a.items.length);
 }
 
 export function usageInWindow(record, from, to) {
@@ -382,6 +464,7 @@ export function allocate(entries) {
   const targets = new Map();
   const eligible = [];
   let reserved = 0;
+  let released = 0;
 
   for (const entry of entries) {
     const state = entry.state;
@@ -391,6 +474,7 @@ export function allocate(entries) {
     }
     const keep = Math.max(0, Math.min(1, entry.consumed || 0));
     reserved += keep;
+    if (typeof entry.share === "number" && entry.share > keep) released += entry.share - keep;
     targets.set(entry.id, { claimantId: entry.id, target: keep, pinned: false, pool: 0, released: true });
   }
 
@@ -412,7 +496,8 @@ export function allocate(entries) {
     targets.set(entry.id, { claimantId: entry.id, target: even, pinned: false, pool: 0, released: false });
   }
 
-  let pool = free.length > 0 ? 0 : spare;
+  let pool = free.length > 0 ? 0 : Math.min(spare, released);
+  const idle = free.length > 0 ? 0 : spare - pool;
   for (const entry of eligible) {
     const allocation = targets.get(entry.id);
     const cap = typeof entry.cap === "number" ? entry.cap : 1;
@@ -453,7 +538,7 @@ export function allocate(entries) {
     }
   }
 
-  return { targets, unusedPool: Math.max(0, pool) };
+  return { targets, unusedPool: Math.max(0, pool + idle) };
 }
 
 export function schedule(adapter, now = Date.now(), key = "five_hour", quotaOverride = null) {
@@ -541,11 +626,58 @@ export function pressureFor(consumedShare, target, quotaUsedPercent) {
   return { value: consumedShare / target, basis: "share" };
 }
 
-export const STAGES = [90, 80, 50];
+export const POLICIES = {
+  finish: {
+    label: "finish and defer",
+    summary: "narrow the scope as the window fills, and push what is dropped to the next session",
+    stages: [
+      { at: 50, actions: ["focus"] },
+      { at: 80, actions: ["narrow", "defer"] },
+      { at: 90, actions: ["verify", "defer", "handoff"] },
+    ],
+  },
+  strict: {
+    label: "protect the window",
+    summary: "the same moves, much earlier, for when running out is expensive",
+    stages: [
+      { at: 35, actions: ["focus"] },
+      { at: 60, actions: ["narrow", "defer"] },
+      { at: 80, actions: ["verify", "defer", "handoff"] },
+    ],
+  },
+  relaxed: {
+    label: "warn late",
+    summary: "stay quiet until the target share is nearly gone",
+    stages: [
+      { at: 80, actions: ["focus"] },
+      { at: 95, actions: ["verify", "handoff"] },
+    ],
+  },
+  off: { label: "no advice", summary: "measure and allocate, but never inject anything", stages: [] },
+};
 
-export function stageFor(pressure) {
-  for (const stage of STAGES) if (pressure >= stage / 100) return stage;
-  return 0;
+export const DEFAULT_POLICY = "finish";
+export const STAGES = POLICIES.finish.stages.map((stage) => stage.at).reverse();
+
+export function policyNames() {
+  return Object.keys(POLICIES);
+}
+
+export function policyFor(config, project) {
+  const name = config?.policyFor?.[project] ?? config?.policy ?? DEFAULT_POLICY;
+  return POLICIES[name] ? { name, ...POLICIES[name] } : { name: DEFAULT_POLICY, ...POLICIES[DEFAULT_POLICY] };
+}
+
+export function stageFor(pressure, policy = POLICIES[DEFAULT_POLICY]) {
+  const stages = policy?.stages ?? [];
+  let hit = 0;
+  for (const stage of stages) if (pressure >= stage.at / 100) hit = Math.max(hit, stage.at);
+  return hit;
+}
+
+export function actionsFor(stage, policy = POLICIES[DEFAULT_POLICY]) {
+  const found = (policy?.stages ?? []).find((entry) => entry.at === stage);
+  return found ? found.actions : [];
 }
 
 export function preserveText(preserve) {
@@ -555,25 +687,43 @@ export function preserveText(preserve) {
   return `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`;
 }
 
+const ACTION_TEXT = {
+  focus: () =>
+    "Stay on completion of what was asked: no side quests, no wide reading, and batch your tool calls instead of one round trip per step.",
+  narrow: (view) =>
+    `Narrow the scope to the smallest version that is genuinely done. Cut optional work, stop comparing alternatives, start nothing new, and keep enough capacity for ${preserveText(view.preserve)}.`,
+  defer: () =>
+    "Whatever you drop, write on its own line as `SMT: DEFER <one line>`. It comes back at the start of the next session in this project, so dropping it now costs nothing.",
+  verify: () => "Verification and finalisation only: finish what is already open, run the tests, and leave the tree clean.",
+  handoff: () =>
+    "End with one line on where you stopped, then report SMT: DONE, SMT: NEEDS_MORE or SMT: BLOCKED on its own line.",
+};
+
 export function openingAdvice(view) {
   const target = Math.round(view.target * 100);
-  return `[savemytokens] This session's target share of the current Claude window is ${target}%. Aim to complete the work within it: prioritise completion, and preserve enough capacity for ${preserveText(view.preserve)}. When you stop, report one of SMT: DONE, SMT: NEEDS_MORE or SMT: BLOCKED on its own line.`;
+  const policy = view.policy ?? POLICIES[DEFAULT_POLICY];
+  const first = policy.stages?.[0];
+  const plan = first
+    ? ` Past ${first.at}% of it, tighten up rather than pushing on: ${policy.summary}.`
+    : "";
+  return `[savemytokens] This session's target share of the current Claude window is ${target}%. Work inside it: prioritise completion, and preserve enough capacity for ${preserveText(view.preserve)}.${plan} When you stop, report one of SMT: DONE, SMT: NEEDS_MORE or SMT: BLOCKED on its own line.`;
 }
 
 export function adviceFor(stage, view) {
+  const policy = view.policy ?? POLICIES[DEFAULT_POLICY];
   const target = Math.round(view.target * 100);
   const spent = Math.round(view.pressure * 100);
   const basis =
     view.basis === "budget"
-      ? `${spent}% of your ${target}% target share of this window is spent`
-      : `you are at ${Math.round(view.observed * 100)}% of observed usage against a ${target}% target`;
-  if (stage === 90) {
-    return `[savemytokens] ${basis}. Verification and finalisation only from here: no new exploration, finish what is open, run the tests, and report SMT: DONE, SMT: NEEDS_MORE or SMT: BLOCKED.`;
-  }
-  if (stage === 80) {
-    return `[savemytokens] ${basis}. Stop optional exploration. Finish the current change and test it, and keep enough capacity for ${preserveText(view.preserve)}.`;
-  }
-  return `[savemytokens] ${basis}. Stay on completion of what was asked; skip side quests and wide reading.`;
+      ? `${spent}% of your ${target}% target share of this Claude window is spent`
+      : `you are at ${Math.round(view.observed * 100)}% of measured usage against a ${target}% target`;
+  const body = actionsFor(stage, policy).map((action) => (ACTION_TEXT[action] ?? (() => ""))(view));
+  return `[savemytokens] ${basis}. ${body.join(" ")}`.trim();
+}
+
+export function deferredAdvice(items) {
+  const lines = items.slice(-5).map((item) => `  · ${item.text}`);
+  return `[savemytokens] Deferred earlier in this project:\n${lines.join("\n")}\nPick these up only if they fit inside your target share. Clear them with: npx savemytokens defer clear`;
 }
 
 const BUILTIN_THEMES = {

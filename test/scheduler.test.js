@@ -201,3 +201,180 @@ test("hooks exit 0 and print nothing on malformed input", () => {
     }
   }
 });
+
+test("what a session drops comes back at the start of the next one", () => {
+  const box = sandbox();
+  appendTurns(box, [turn(box, "m1", 1000, Date.now() - 120_000)]);
+  runHook(box, "prompt", { prompt: "implement the provider fallback chain end to end" });
+
+  appendTurns(box, [
+    turn(box, "m2", 1000, Date.now() - 60_000, "Shipped the happy path.\n\nSMT: DEFER wire the retry path into the CLI\nSMT: DONE"),
+  ]);
+  runHook(box, "stop", {});
+
+  const listed = execFileSync("node", [CLI, "defer"], { env: box.env, encoding: "utf8" });
+  assert.match(listed, /wire the retry path into the CLI/);
+
+  const next = runHook(box, "session-start", { source: "startup" });
+  assert.match(next, /Deferred earlier in this project/);
+  assert.match(next, /wire the retry path into the CLI/);
+
+  execFileSync("node", [CLI, "defer", "clear", "--project", box.project], { env: box.env, encoding: "utf8" });
+  const after = runHook(box, "session-start", { source: "startup" });
+  assert.doesNotMatch(after, /Deferred earlier/);
+});
+
+test("the policy decides how early and how hard the advice lands", () => {
+  const box = sandbox();
+  appendTurns(box, [turn(box, "m1", 5000, Date.now() - 60_000)]);
+  runStatusLine(box, rateLimits(65));
+
+  const relaxed = runHook(box, "prompt", { prompt: "add pagination to the invoice list endpoint" });
+  assert.match(relaxed, /Stay on completion/, "the default policy only asks for focus at 65%");
+
+  execFileSync("node", [CLI, "policy", "strict"], { env: box.env, encoding: "utf8" });
+  const strict = runHook(box, "prompt", { prompt: "and now the export endpoint as well" });
+  assert.match(strict, /Narrow the scope/, "strict narrows at 65% of the window, the default does not");
+
+  execFileSync("node", [CLI, "policy", "off"], { env: box.env, encoding: "utf8" });
+  const quiet = runHook(box, "session-start", { source: "startup" });
+  assert.doesNotMatch(quiet, /target share of the current Claude window/, "off injects nothing");
+});
+
+test("share, priority and release work without the TUI", () => {
+  const box = sandbox();
+  appendTurns(box, [turn(box, "m1", 1000, Date.now() - 60_000)]);
+  runHook(box, "prompt", { prompt: "implement the provider fallback chain end to end" });
+
+  const set = execFileSync("node", [CLI, "share", "webinvoke", "40"], { env: box.env, encoding: "utf8" });
+  assert.match(set, /Set webinvoke target to 40%/);
+  assert.equal(Math.round(plan(box).claimants[0].target * 100), 40);
+  assert.equal(plan(box).claimants[0].pinned, true);
+
+  execFileSync("node", [CLI, "priority", "webinvoke", "high"], { env: box.env, encoding: "utf8" });
+  assert.equal(plan(box).claimants[0].priority, "high");
+
+  execFileSync("node", [CLI, "share", "webinvoke", "auto"], { env: box.env, encoding: "utf8" });
+  assert.equal(plan(box).claimants[0].pinned, false);
+
+  execFileSync("node", [CLI, "release", "webinvoke"], { env: box.env, encoding: "utf8" });
+  assert.equal(plan(box).claimants[0].state, "done");
+
+  let missing = "";
+  let failed = false;
+  try {
+    execFileSync("node", [CLI, "share", "nothinglikethis", "40"], { env: box.env, encoding: "utf8" });
+  } catch (error) {
+    failed = true;
+    missing = String(error.stdout ?? "");
+  }
+  assert.ok(failed, "an unknown session is an error exit, so scripts can react");
+  assert.match(missing, /No session matching/);
+});
+
+test("a spend limit is rendered as its own resource when a gateway reports one", () => {
+  const box = sandbox();
+  appendTurns(box, [turn(box, "m1", 1000, Date.now() - 60_000)]);
+  const resets = Math.floor(Date.now() / 1000) + 3600;
+  runStatusLine(box, {
+    rate_limits: {
+      five_hour: { used_percentage: 12, resets_at: resets },
+      spend_limit: { used_percentage: 64, resets_at: resets + 86400 },
+    },
+  });
+  const resources = plan(box).resources;
+  const spend = resources.find((resource) => resource.id.endsWith("spend_limit"));
+  assert.ok(spend, "the spend limit becomes a resource");
+  assert.equal(spend.unit, "usd");
+  assert.equal(spend.capacity.confidence, "published");
+});
+
+test("Codex is metered from its own rollout files, with no hook anywhere", () => {
+  const box = sandbox();
+  const codex = path.join(box.dir, "codex");
+  const day = path.join(codex, "sessions", "2026", "09", "04");
+  fs.mkdirSync(day, { recursive: true });
+  const now = Date.now();
+  const rollout = path.join(day, "rollout-2026-09-04T10-00-00-abc.jsonl");
+  const resets = Math.floor(now / 1000) + 3600;
+  fs.writeFileSync(
+    rollout,
+    [
+      JSON.stringify({ timestamp: new Date(now - 300_000).toISOString(), type: "session_meta", payload: { cwd: "/tmp/codexproj" } }),
+      JSON.stringify({
+        timestamp: new Date(now - 200_000).toISOString(),
+        type: "event_msg",
+        payload: { type: "user_message", message: "refactor the retry helper" },
+      }),
+      JSON.stringify({
+        timestamp: new Date(now - 120_000).toISOString(),
+        type: "event_msg",
+        payload: {
+          type: "token_count",
+          info: { last_token_usage: { input_tokens: 5000, cached_input_tokens: 4000, output_tokens: 500 } },
+          rate_limits: {
+            primary: { used_percent: 9, window_minutes: 300, resets_at: resets },
+            secondary: { used_percent: 21, window_minutes: 10080, resets_at: resets + 86400 },
+          },
+        },
+      }),
+    ].join("\n") + "\n",
+  );
+
+  const env = { ...box.env, CODEX_HOME: codex };
+  const out = JSON.parse(execFileSync("node", [CLI, "status", "--codex", "--json"], { env, encoding: "utf8" }));
+  assert.equal(out.resources[0].capacity.confidence, "published", "the rollout publishes the window");
+  assert.equal(out.resources[0].usedPercent, 9);
+  assert.equal(out.resources[1].usedPercent, 21);
+  assert.equal(out.claimants.length, 1);
+  assert.equal(out.claimants[0].label, "codexproj");
+  assert.equal(out.claimants[0].tokens, 5500);
+  assert.deepEqual(out.enforcement, [], "Codex has no hook, so it declares no enforcement at all");
+});
+
+test("a user theme overrides a built-in without forking it", () => {
+  const box = sandbox();
+  execFileSync("node", [CLI, "theme", "new", "midnight", "nord"], { env: box.env, encoding: "utf8" });
+  const file = path.join(box.home, "themes", "midnight.json");
+  assert.ok(fs.existsSync(file));
+  const theme = JSON.parse(fs.readFileSync(file, "utf8"));
+  theme.glyphs.tag = "MINE";
+  fs.writeFileSync(file, JSON.stringify(theme));
+
+  execFileSync("node", [CLI, "theme", "hud", "midnight"], { env: box.env, encoding: "utf8" });
+  appendTurns(box, [turn(box, "m1", 1000, Date.now() - 60_000)]);
+  const line = runStatusLine(box, rateLimits(10));
+  assert.match(line, /^MINE/, "the status line uses the user theme");
+});
+
+test("the window can be switched to the weekly one", () => {
+  const box = sandbox();
+  appendTurns(box, [turn(box, "m1", 1000, Date.now() - 6 * 60 * 60 * 1000)]);
+  runStatusLine(box, rateLimits(30, 70));
+  const week = JSON.parse(execFileSync("node", [CLI, "status", "--7d", "--json"], { env: box.env, encoding: "utf8" }));
+  assert.equal(week.window.key, "seven_day");
+  assert.equal(week.claimants[0].tokens, 1000, "a six-hour-old turn is inside the weekly window");
+});
+
+test("window movement while nothing local ran is reported separately", () => {
+  const box = sandbox();
+  const now = Date.now();
+  appendTurns(box, [turn(box, "m1", 1000, now - 120_000)]);
+  runStatusLine(box, rateLimits(10));
+
+  const file = path.join(box.home, "quota", "claude-code.json");
+  const stored = JSON.parse(fs.readFileSync(file, "utf8"));
+  const metered = stored.meteredTokens ?? 0;
+  stored.history = [
+    { at: now - 90_000, metered, five_hour: 10, seven_day: 10 },
+    { at: now - 60_000, metered, five_hour: 18, seven_day: 12 },
+    { at: now - 30_000, metered: metered + 5000, five_hour: 24, seven_day: 13 },
+  ];
+  fs.writeFileSync(file, JSON.stringify(stored));
+
+  const out = plan(box);
+  assert.equal(Math.round(out.unattributedPercent), 8, "the 8 points that moved with no local usage are called out");
+
+  const text = execFileSync("node", [CLI, "status"], { env: box.env, encoding: "utf8" });
+  assert.match(text, /8% of the window moved while no local session was running/);
+});

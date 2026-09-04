@@ -1,12 +1,37 @@
-import { builtinThemes, loadConfig, saveConfig, userThemes } from "../runtime/kernel.mjs";
+import fs from "node:fs";
+import path from "node:path";
+import { THEME_DIR, builtinThemes, loadConfig, loadTheme, saveConfig, userThemes, writeJson } from "../runtime/kernel.mjs";
 import { bold, dim, green } from "../util/ansi.js";
 
 const LAYOUTS = ["compact", "allocation", "global"];
+
+function scaffold(name: string, from: string): void {
+  if (!name) {
+    process.stdout.write(`\nName it: ${bold("npx savemytokens theme new midnight")}\n\n`);
+    process.exitCode = 1;
+    return;
+  }
+  const file = path.join(THEME_DIR, `${name}.json`);
+  if (fs.existsSync(file)) {
+    process.stdout.write(`\n${file} already exists.\n\n`);
+    process.exitCode = 1;
+    return;
+  }
+  const base = loadTheme(from);
+  writeJson(file, { ...base, name });
+  fs.writeFileSync(file, JSON.stringify({ ...base, name }, null, 2) + "\n");
+  process.stdout.write(`\n${green("Wrote")} ${file}\n${dim(`  edit it, then: npx savemytokens theme tui ${name}`)}\n\n`);
+}
 
 export function runTheme(args: string[]): void {
   const config = loadConfig();
   const surface = args[0];
   const value = args[1];
+
+  if (surface === "new") {
+    scaffold(String(value ?? ""), String(args[2] ?? config.theme.tui));
+    return;
+  }
 
   if (!surface || (surface !== "tui" && surface !== "hud")) {
     const out = ["", bold("SaveMyTokens themes"), ""];

@@ -10,6 +10,8 @@ export interface Options {
   interval: number;
   dryRun: boolean;
   force: boolean;
+  window: "five_hour" | "seven_day";
+  adapter: string;
   rules: boolean;
   purge: boolean;
   help: boolean;
@@ -19,6 +21,11 @@ export interface Options {
 const COMMANDS = new Set([
   "control",
   "status",
+  "share",
+  "priority",
+  "release",
+  "policy",
+  "defer",
   "audit",
   "install",
   "uninstall",
@@ -42,6 +49,8 @@ export function parseArgs(argv: string[]): Options {
     interval: 60,
     dryRun: false,
     force: false,
+    window: "five_hour",
+    adapter: "claude-code",
     rules: false,
     purge: false,
     help: false,
@@ -99,6 +108,27 @@ export function parseArgs(argv: string[]): Options {
         break;
       case "--force":
         options.force = true;
+        break;
+      case "--window": {
+        const value = String(argv[++i] ?? "");
+        if (/^(7d|week|seven|seven_day)$/i.test(value)) options.window = "seven_day";
+        else options.window = "five_hour";
+        break;
+      }
+      case "--7d":
+        options.window = "seven_day";
+        break;
+      case "--adapter": {
+        const value = argv[++i];
+        if (value) options.adapter = value;
+        break;
+      }
+      case "--codex":
+        options.adapter = "codex";
+        break;
+      case "--claude":
+      case "--claude-code":
+        options.adapter = "claude-code";
         break;
       case "--rules":
         options.rules = true;

@@ -92,6 +92,9 @@ npx savemytokens              the control centre
 npx savemytokens install      hooks + status line
 npx savemytokens uninstall    removes them (--purge also deletes local state)
 npx savemytokens status       one plain-text snapshot
+npx savemytokens policy       what Claude does as the window fills
+npx savemytokens defer        work pushed to the next session
+npx savemytokens share|priority|release <project> …
 npx savemytokens theme        themes and HUD layouts
 npx savemytokens audit        the waste report, now an optional extra
 ```
@@ -147,13 +150,24 @@ touched in the window. Nothing re-parses a transcript it has already read.
 
 ### Guidance (enforcement level: advise)
 
-Injected as hook output as a session eats into its target share:
+Injected as hook output as a session eats into its target share. What it asks for is a **policy**,
+not a fixed script, because "tight" means different things on different work:
 
-- **at start** — the target share, and the request to report `SMT: DONE`, `SMT: NEEDS_MORE` or
-  `SMT: BLOCKED` at the end.
-- **50%** of its target spent — stay on completion.
-- **80%** — stop optional exploration, finish and test.
-- **90%** — verification and finalisation only.
+| policy | stages, by fraction of the target share spent |
+| --- | --- |
+| `finish` (default) | 50% focus · 80% narrow+defer · 90% verify+defer+handoff |
+| `strict` | 35% · 60% · 80% |
+| `relaxed` | 80% focus · 95% verify+handoff |
+| `off` | nothing is ever injected |
+
+The moves compose: `focus` (completion only, batch tool calls), `narrow` (smallest genuinely-done
+version, start nothing new), `defer` (write the dropped work down), `verify` (finish, test, clean
+tree), `handoff` (where it stopped, then the release signal). Set globally or per project with
+`savemytokens policy`.
+
+**Deferred work closes the loop.** `SMT: DEFER <one line>` is captured per project and injected at
+the start of the next session there, so narrowing scope costs nothing — the rest is written down,
+not lost. `savemytokens defer` lists it; `defer clear` drops it.
 
 Pressure is `used ÷ target` against the published window. With no published window it degrades to
 `share ÷ target`, which only means anything with two or more sessions running, so with one session
@@ -176,6 +190,12 @@ The `Stop` hook reads the signal out of the transcript. `SessionEnd` releases to
 no activity for 45 minutes is treated as done, because most sessions never report anything. Any of it
 can be overridden in the TUI with `d`, `b` and `a`.
 
+### Driving it without the TUI
+
+`share`, `priority` and `release` take a project name or a session id, so the whole allocation is
+scriptable; `status --json` emits the plan, `--7d` allocates against the weekly window, and an
+unknown session name exits non-zero.
+
 ### Status line
 
 ```
@@ -185,6 +205,13 @@ SMT · webinvoke target 50% · used 19% · HIGH · 5h 43% 12:27
 Layouts `compact`, `allocation` and `global`; themes `default`, `minimal`, `nord`, `dracula`,
 `matrix`, plus anything in `~/.savemytokens/themes/*.json`. The TUI and the status line are themed
 independently. Themes are data, not code, and the whole tool still has zero runtime dependencies.
+
+### Codex, in V0 rather than V2
+
+Codex writes `rate_limits` — `primary.used_percent`, `window_minutes`, `resets_at` — straight into
+its rollout files, so its published windows need no hook and no status line. `savemytokens --codex`
+meters it from the same incremental reader and renders the same view. Its `Enforcer.supports` is
+empty, because Codex has nowhere to inject advice, and the UI says so rather than pretending.
 
 ### What V0 cannot see
 
@@ -224,7 +251,7 @@ Add adapters, not concepts. Each new provider supplies a `{ Resource[], Meter, E
 | --- | --- | --- | --- | --- |
 | Claude Code | 5h / 7d allowance | `observed_usage` | **published** | advise, deny |
 | Claude gateway | spend limit | `usd` | **published** | advise, deny |
-| Codex | 5h / weekly allowance | `observed_usage` | published | advise |
+| Codex | 5h / weekly allowance | `observed_usage` | **published, shipped in V0** | none — no hook to inject through |
 | Anthropic / OpenAI API | spend | usd | published | deny, halt |
 | Tool and browser calls | calls | call | user-set | throttle, deny |
 | GPU / compute | runtime | second | user-set | throttle, halt |

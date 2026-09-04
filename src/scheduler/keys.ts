@@ -1,0 +1,97 @@
+import type { ClaimantState } from "../core/resource.js";
+
+export type Action =
+  | { kind: "none" }
+  | { kind: "quit" }
+  | { kind: "up" }
+  | { kind: "down" }
+  | { kind: "share"; delta: number }
+  | { kind: "unpin" }
+  | { kind: "priority" }
+  | { kind: "equalize" }
+  | { kind: "state"; state: ClaimantState }
+  | { kind: "refresh" }
+  | { kind: "toggle"; index: number }
+  | { kind: "save" }
+  | { kind: "skip" };
+
+const ESC = "\u001b";
+const FINAL = /[@-~]/;
+
+export function splitKeys(chunk: string): string[] {
+  const keys: string[] = [];
+  let index = 0;
+  while (index < chunk.length) {
+    const char = chunk[index] ?? "";
+    if (char !== ESC) {
+      keys.push(char);
+      index++;
+      continue;
+    }
+    const next = chunk[index + 1];
+    if (next !== "[" && next !== "O") {
+      keys.push(ESC);
+      index++;
+      continue;
+    }
+    let end = index + 2;
+    while (end < chunk.length && !FINAL.test(chunk[end] ?? "")) end++;
+    keys.push(chunk.slice(index, end + 1));
+    index = end + 1;
+  }
+  return keys;
+}
+
+export function actionFor(key: string, mode: "plan" | "prefs", step: number): Action {
+  if (key === "\u0003") return { kind: "quit" };
+
+  if (mode === "prefs") {
+    if (key === "\r" || key === "\n") return { kind: "save" };
+    if (key === ESC || key === "q") return { kind: "skip" };
+    const index = Number(key) - 1;
+    if (Number.isInteger(index) && index >= 0 && index <= 8) return { kind: "toggle", index };
+    return { kind: "none" };
+  }
+
+  switch (key) {
+    case "q":
+    case ESC:
+      return { kind: "quit" };
+    case `${ESC}[A`:
+    case "k":
+      return { kind: "up" };
+    case `${ESC}[B`:
+    case "j":
+      return { kind: "down" };
+    case `${ESC}[C`:
+    case "l":
+      return { kind: "share", delta: step };
+    case `${ESC}[D`:
+    case "h":
+      return { kind: "share", delta: -step };
+    case "p":
+      return { kind: "priority" };
+    case "e":
+      return { kind: "equalize" };
+    case "u":
+      return { kind: "unpin" };
+    case "d":
+      return { kind: "state", state: "done" };
+    case "b":
+      return { kind: "state", state: "blocked" };
+    case "a":
+      return { kind: "state", state: "active" };
+    case "n":
+      return { kind: "state", state: "needs-more" };
+    case "r":
+      return { kind: "refresh" };
+    default:
+      return { kind: "none" };
+  }
+}
+
+export function keyActions(chunk: string, mode: "plan" | "prefs", step: number): Action[] {
+  return splitKeys(chunk)
+    .map((key) => actionFor(key, mode, step))
+    .filter((action) => action.kind !== "none");
+}

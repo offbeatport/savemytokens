@@ -1,6 +1,6 @@
 import type { Options } from "../cli-options.js";
-import { ADAPTER_ID } from "../adapters/claude-code/provider.js";
 import { renderSchedule } from "../report/schedule.js";
+import { keyActions, type Action } from "../scheduler/keys.js";
 import {
   activeViews,
   buildPlan,
@@ -12,7 +12,7 @@ import {
   setState,
   type ControlPlan,
 } from "../scheduler/plan.js";
-import { CONFIG_FILE, loadConfig, loadTheme, paint, readJson } from "../runtime/kernel.mjs";
+import { loadConfig, loadTheme, paint } from "../runtime/kernel.mjs";
 import { colorEnabled } from "../util/ansi.js";
 
 const REFRESH_MS = 2500;
@@ -40,10 +40,12 @@ function toJson(control: ControlPlan): string {
   return JSON.stringify(
     {
       generatedAt: control.schedule.now,
-      window: control.schedule.bounds,
+      window: { key: control.schedule.key, ...control.schedule.bounds },
       resources: control.resources,
+      enforcement: control.enforcement,
       unusedPool: control.schedule.unusedPool,
       unattributedPercent: control.unattributed,
+      deferred: control.deferred,
       claimants: control.schedule.claimants.map((view) => ({
         id: view.claimant.id,
         label: view.claimant.label,
@@ -83,7 +85,7 @@ function preferencesScreen(selected: Set<number>): string {
 }
 
 export async function runControl(options: Options): Promise<void> {
-  const control = buildPlan();
+  const control = buildPlan(Date.now(), true, options.window, options.adapter);
 
   if (options.json) {
     process.stdout.write(`${toJson(control)}\n`);
@@ -94,12 +96,6 @@ export async function runControl(options: Options): Promise<void> {
     return;
   }
 
-  const firstRun = readJson<unknown>(CONFIG_FILE, null) === null;
-  let mode: "prefs" | "plan" = firstRun ? "prefs" : "plan";
-  const chosen = new Set(DEFAULT_PRESERVE);
-  let current = control;
-  let selected = 0;
-
   const stdin = process.stdin;
   try {
     stdin.setRawMode(true);
@@ -107,9 +103,17 @@ export async function runControl(options: Options): Promise<void> {
     process.stdout.write(`${snapshot(control, false, -1)}\n`);
     return;
   }
+
+  let mode: "prefs" | "plan" = control.config.preferencesSetAt > 0 ? "plan" : "prefs";
+  const chosen = new Set(DEFAULT_PRESERVE);
+  let current = control;
+  let selected = 0;
+
   stdin.resume();
   stdin.setEncoding("utf8");
   process.stdout.write(ALT_ON + HIDE);
+
+  const rows = () => activeViews(current.schedule);
 
   const draw = (): void => {
     const frame = mode === "prefs" ? preferencesScreen(chosen) : snapshot(current, true, selected);
@@ -117,9 +121,8 @@ export async function runControl(options: Options): Promise<void> {
   };
 
   const refresh = (): void => {
-    current = buildPlan();
-    const count = current.schedule.claimants.length;
-    if (selected >= count) selected = Math.max(0, count - 1);
+    current = buildPlan(Date.now(), true, options.window, options.adapter);
+    selected = Math.max(0, Math.min(selected, rows().length - 1));
     if (mode === "plan") draw();
   };
 
@@ -130,81 +133,92 @@ export async function runControl(options: Options): Promise<void> {
     process.stdout.write(SHOW + ALT_OFF);
   };
 
-  const rows = () => activeViews(current.schedule);
-
-  const adjust = (delta: number): void => {
-    const view = rows()[selected];
-    if (!view) return;
-    setShare(view.claimant.id, Math.max(0, Math.min(1, view.allocation.target + delta)));
-    refresh();
+  const savePreferences = (kinds: string[]): void => {
+    savePreference(process.cwd(), kinds);
+    savePreference("default", kinds);
   };
 
   const timer = setInterval(refresh, REFRESH_MS);
   draw();
 
   await new Promise<void>((resolve) => {
-    stdin.on("data", (chunk: string) => {
-      const key = String(chunk);
+    const finish = (): void => {
+      stop();
+      resolve();
+    };
+
+    const apply = (action: Action): boolean => {
+      if (action.kind === "quit") {
+        finish();
+        return false;
+      }
 
       if (mode === "prefs") {
-        if (key === "\r" || key === "\n") {
-          savePreference(process.cwd(), [...chosen].sort().map((index) => PRESERVE_KINDS[index] ?? ""));
-          savePreference("default", [...chosen].sort().map((index) => PRESERVE_KINDS[index] ?? ""));
+        if (action.kind === "toggle" && action.index < PRESERVE_KINDS.length) {
+          if (chosen.has(action.index)) chosen.delete(action.index);
+          else chosen.add(action.index);
+        } else if (action.kind === "save") {
+          savePreferences([...chosen].sort().map((index) => PRESERVE_KINDS[index] ?? ""));
           mode = "plan";
           refresh();
-          draw();
-          return;
-        }
-        if (key === "\u001b" || key === "q" || key === "\u0003") {
-          savePreference("default", DEFAULT_PRESERVE.map((index) => PRESERVE_KINDS[index] ?? ""));
+        } else if (action.kind === "skip") {
+          savePreferences(DEFAULT_PRESERVE.map((index) => PRESERVE_KINDS[index] ?? ""));
           mode = "plan";
-          draw();
-          if (key === "\u0003") {
-            stop();
-            resolve();
-          }
-          return;
+          refresh();
         }
-        const index = Number(key) - 1;
-        if (index >= 0 && index < PRESERVE_KINDS.length) {
-          if (chosen.has(index)) chosen.delete(index);
-          else chosen.add(index);
-          draw();
-        }
-        return;
+        return true;
       }
 
       const view = rows()[selected];
-      if (key === "q" || key === "\u0003") {
-        stop();
-        resolve();
-        return;
+      switch (action.kind) {
+        case "up":
+          selected = Math.max(0, selected - 1);
+          break;
+        case "down":
+          selected = Math.min(Math.max(0, rows().length - 1), selected + 1);
+          break;
+        case "share":
+          if (view) {
+            setShare(view.claimant.id, view.allocation.target + action.delta);
+            refresh();
+          }
+          break;
+        case "unpin":
+          if (view) {
+            setShare(view.claimant.id, null);
+            refresh();
+          }
+          break;
+        case "priority":
+          if (view) {
+            setPriority(view.claimant.id, cyclePriority(view.claimant.priority));
+            refresh();
+          }
+          break;
+        case "equalize":
+          equalize();
+          refresh();
+          break;
+        case "state":
+          if (view) {
+            setState(view.claimant.id, action.state);
+            refresh();
+          }
+          break;
+        case "refresh":
+          refresh();
+          break;
+        default:
+          break;
       }
-      if (key === "\u001b[A") selected = Math.max(0, selected - 1);
-      else if (key === "\u001b[B") selected = Math.min(Math.max(0, rows().length - 1), selected + 1);
-      else if (key === "\u001b[C") return adjust(STEP);
-      else if (key === "\u001b[D") return adjust(-STEP);
-      else if (key === "p" && view) {
-        setPriority(view.claimant.id, cyclePriority(view.claimant.priority));
-        return refresh();
-      } else if (key === "e") {
-        equalize();
-        return refresh();
-      } else if (key === "d" && view) {
-        setState(view.claimant.id, "done");
-        return refresh();
-      } else if (key === "b" && view) {
-        setState(view.claimant.id, "blocked");
-        return refresh();
-      } else if (key === "a" && view) {
-        setState(view.claimant.id, "active");
-        return refresh();
-      } else if (key === "r") {
-        return refresh();
+      return true;
+    };
+
+    stdin.on("data", (chunk: string) => {
+      for (const action of keyActions(String(chunk), mode, STEP)) {
+        if (!apply(action)) return;
       }
       draw();
     });
   });
 }
-
-export { ADAPTER_ID };

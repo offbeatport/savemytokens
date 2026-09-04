@@ -112,7 +112,9 @@ export const claudeCodeEnforcer = {
 export const claudeCodeProvider: Provider = {
   id: ADAPTER_ID,
   label: "Claude Code",
-  resources: () => resourcesFor(),
+  detect: () => claudeCodeAdapter.detect(),
+  resources: (now?: number) => resourcesFor(now),
+  sweep,
   meter: claudeCodeMeter,
   enforcer: claudeCodeEnforcer,
 };

@@ -76,27 +76,82 @@ buydiff    NORMAL  30%  →  38%   (the 18 points it never used)
 scratch    LOW     20%  →  20%   (unchanged; the tier above could still take more)
 ```
 
-## What Claude is told
+## What Claude is told when the window gets tight
 
 `install` adds four hooks. They inject text; they never block a prompt, never edit a file, never make
 a network call, and exit 0 on every path.
 
-- **at session start** — the target share, and the request to report `SMT: DONE`, `SMT: NEEDS_MORE`
-  or `SMT: BLOCKED` when it stops.
-- **50%** of that target spent — stay on completion.
-- **80%** — stop optional exploration, finish and test.
-- **90%** — verification and finalisation only.
+At session start Claude is told its target share, what you want capacity preserved for, and how to
+report back. After that, a **policy** decides how early and how hard the advice lands:
 
-Each stage fires once per window. The advice names what you said should be preserved on first run
-(implementation, tests, end-to-end checks, documentation, exploration).
+| policy | at what fraction of the target share is spent |
+| --- | --- |
+| **`finish`** (default) | 50% `focus` · 80% `narrow`+`defer` · 90% `verify`+`defer`+`handoff` |
+| **`strict`** | the same moves, much earlier: 35% · 60% · 80% |
+| **`relaxed`** | quiet until 80% `focus`, then 95% `verify`+`handoff` |
+| **`off`** | measure and allocate, but never inject anything |
+
+```
+npx savemytokens policy                    what is set now
+npx savemytokens policy strict             everywhere
+npx savemytokens policy strict --here      this project only
+npx savemytokens policy preserve tests documentation
+```
+
+What each move actually asks for:
+
+- **`focus`** — stay on completion of what was asked: no side quests, no wide reading, batch the tool
+  calls instead of one round trip per step.
+- **`narrow`** — cut the scope to the smallest version that is genuinely done: drop optional work,
+  stop comparing alternatives, start nothing new, keep enough capacity for what you said to preserve.
+- **`defer`** — write anything dropped as `SMT: DEFER <one line>`.
+- **`verify`** — finish what is already open, run the tests, leave the tree clean.
+- **`handoff`** — one line on where it stopped, then the release signal.
+
+Each stage fires once per window.
+
+### Doing the rest afterwards
+
+`SMT: DEFER wire the retry path into the CLI` is captured per project, and injected back at the start
+of the next session there:
+
+```
+[savemytokens] Deferred earlier in this project:
+  · wire the retry path into the CLI
+  · add an e2e for the reset boundary
+Pick these up only if they fit inside your target share.
+```
+
+So narrowing scope costs nothing — the dropped work is written down, not lost.
+
+```
+npx savemytokens defer              what is waiting, by project
+npx savemytokens defer clear        for this project   (clear all for every project)
+```
 
 `SMT: DONE` returns the unused share to the pool. So does `SessionEnd`, and so does 45 minutes of
 silence — most sessions never report anything, and a dead session must not hold a share forever. You
-can override any of it in the TUI with `d`, `b` and `a`.
+can override any of it in the TUI with `d`, `b` and `a`, or from a script with `release`.
 
 **It is advice, not enforcement.** A hook injects text; a model does not hold a budget reliably.
-`Enforcer.supports` is `["advise"]` for Claude Code and the UI reads that field rather than assuming.
-Real caps are V1, behind a shadow-mode period.
+`Enforcer.supports` is `["advise"]` for Claude Code, the control centre prints that, and Codex — which
+has no hook to inject through — declares no enforcement at all. Real caps are V1, behind a
+shadow-mode period.
+
+## Driving it from a script
+
+The TUI is not the only way in:
+
+```
+npx savemytokens share webinvoke 50      pin a target share
+npx savemytokens share webinvoke auto    unpin it, back to an even split
+npx savemytokens priority webinvoke high
+npx savemytokens release webinvoke       hand its unused share back
+npx savemytokens status --json           the whole plan, machine-readable
+npx savemytokens status --7d             allocate against the weekly window instead
+```
+
+A session is named by project or by session id, and an unknown name exits non-zero.
 
 ## Install
 
@@ -130,8 +185,9 @@ npx savemytokens theme tui nord
 npx savemytokens theme hud compact
 ```
 
-Built in: `default`, `minimal`, `nord`, `dracula`, `matrix`. Your own go in
-`~/.savemytokens/themes/<name>.json` and override any subset of colours, glyphs and borders. HUD
+Built in: `default`, `minimal`, `nord`, `dracula`, `matrix`. `npx savemytokens theme new midnight nord`
+writes a copy you can edit; user themes live in `~/.savemytokens/themes/<name>.json` and override any
+subset of colours, glyphs and borders. HUD
 layouts: `compact`, `allocation`, `global`. The TUI and the status line are themed independently.
 
 Every non-interactive path stays plain text, so output remains pipeable and greppable:
@@ -164,7 +220,7 @@ The original product is still here, one command away:
 npx savemytokens audit            what the last 7 days wasted, and the one thing to change
 npx savemytokens audit -v         every finding, per-file detail, spend by project
 npx savemytokens history          efficiency score over time
-npx savemytokens watch            observe continuously, report regressions
+npx savemytokens watch            observe continuously; reports allocation drift and new waste
 ```
 
 | Detector | What it finds |
@@ -195,11 +251,15 @@ The audit hook that warns you about dead carry at prompt time is part of the sam
 | Agent | Source | State |
 | --- | --- | --- |
 | Claude Code | `~/.claude/projects` incl. nested subagent transcripts | scheduler + audit |
-| Codex | `~/.codex/sessions/**/rollout-*.jsonl` | audit only |
+| Codex | `~/.codex/sessions/**/rollout-*.jsonl` | scheduler (visibility) + audit |
 | Gemini CLI | `~/.gemini` | detected, skipped — logs prompts but no token counts |
 | Grok | `~/.grok` | detected, skipped — no token counts on disk |
 
-Set `CLAUDE_CONFIG_DIR` if your Claude Code state does not live in `~/.claude`.
+Codex writes `rate_limits` (`primary.used_percent`, `window_minutes`, `resets_at`) straight into its
+rollout files, so `npx savemytokens --codex` reads its published 5h and 7d windows with no hook and
+no status line at all. It has nowhere to inject advice, so that view is visibility only.
+
+Set `CLAUDE_CONFIG_DIR` or `CODEX_HOME` if either agent's state does not live in its default place.
 
 ## Privacy
 

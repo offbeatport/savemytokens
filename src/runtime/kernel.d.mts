@@ -20,6 +20,8 @@ export const SEVEN_DAY_MS: number;
 export const WINDOW_MS: Record<string, number>;
 export const WINDOW_LABEL: Record<string, string>;
 export const STAGES: number[];
+export const DEFAULT_POLICY: string;
+export const DEFER_DIR: string;
 
 export type WindowKey = "five_hour" | "seven_day" | "spend_limit";
 
@@ -28,12 +30,20 @@ export interface QuotaWindow {
   resetsAt: number;
 }
 
+export interface QuotaHistoryPoint {
+  at: number;
+  metered: number;
+  five_hour: number | null;
+  seven_day: number | null;
+}
+
 export interface QuotaReading {
   at: number;
   source: string;
   sessionId?: string;
   meteredTokens?: number;
   windows: Partial<Record<WindowKey, QuotaWindow>>;
+  history?: QuotaHistoryPoint[];
 }
 
 export interface AdviceState {
@@ -60,6 +70,26 @@ export interface MeterRecord {
   project: string;
   prompt: string;
   signal: string | null;
+  defers: string[];
+}
+
+export interface DeferredItem {
+  at: number;
+  text: string;
+  session: string;
+  project: string;
+}
+
+export interface PolicyStage {
+  at: number;
+  actions: string[];
+}
+
+export interface Policy {
+  name?: string;
+  label: string;
+  summary: string;
+  stages: PolicyStage[];
 }
 
 export interface WindowUsage {
@@ -75,6 +105,9 @@ export interface WindowUsage {
 export interface Config {
   version: number;
   createdAt: number;
+  preferencesSetAt: number;
+  policy: string;
+  policyFor: Record<string, string>;
   theme: { tui: string; hud: string };
   layout: { hud: string };
   preserveFor: Record<string, string[]>;
@@ -112,10 +145,11 @@ export interface HudView {
 
 export interface AdviceView {
   target: number;
-  observed: number;
-  pressure: number;
-  basis: string;
+  observed?: number;
+  pressure?: number;
+  basis?: string;
   preserve: string[];
+  policy?: Policy;
 }
 
 export function readJson<T>(file: string, fallback: T): T;
@@ -148,7 +182,35 @@ export function loadMeter(adapter: string, id: string): MeterRecord;
 export function sampleFiles(adapter: string, id: string, files: string[], now?: number): MeterRecord;
 export function usageInWindow(record: MeterRecord, from: number, to: number): WindowUsage;
 export function signalIn(content: unknown): string | null;
-export function consumeSignal(adapter: string, id: string): string | null;
+export function defersIn(content: unknown): string[];
+export function consumeSignal(adapter: string, id: string): { signal: string | null; defers: string[] };
+export function openBuckets(record: MeterRecord): Map<number, number[]>;
+export function addSample(
+  buckets: Map<number, number[]>,
+  at: number,
+  usage: { input: number; output: number; cacheWrite: number; cacheRead: number },
+): void;
+export function scanNew(record: MeterRecord, files: string[], onLine: (line: string) => void): MeterRecord;
+export function commitMeter(
+  adapter: string,
+  id: string,
+  record: MeterRecord,
+  buckets: Map<number, number[]>,
+  fresh: string[],
+  now?: number,
+): MeterRecord;
+
+export function deferFile(adapter: string, project: string): string;
+export function loadDeferred(adapter: string, project: string, now?: number): DeferredItem[];
+export function addDeferred(
+  adapter: string,
+  project: string,
+  texts: string[],
+  sessionId: string,
+  now?: number,
+): DeferredItem[];
+export function clearDeferred(adapter: string, project: string): void;
+export function deferredProjects(adapter: string, now?: number): Array<{ project: string; items: DeferredItem[] }>;
 
 export interface ClaimantPlanView {
   claimant: ClaimantRecord;
@@ -184,7 +246,12 @@ export function schedule(
 export function viewFor(plan: SchedulePlanView, id: string): ClaimantPlanView | null;
 export function allocate(entries: AllocationEntry[]): AllocationResult;
 export function pressureFor(consumedShare: number, target: number, quotaUsedPercent?: number | null): Pressure;
-export function stageFor(pressure: number): number;
+export const POLICIES: Record<string, Policy>;
+export function policyNames(): string[];
+export function policyFor(config: Config | null, project: string): Policy & { name: string };
+export function stageFor(pressure: number, policy?: Policy): number;
+export function actionsFor(stage: number, policy?: Policy): string[];
+export function deferredAdvice(items: DeferredItem[]): string;
 export function preserveText(preserve: string[]): string;
 export function openingAdvice(view: AdviceView): string;
 export function adviceFor(stage: number, view: AdviceView): string;
