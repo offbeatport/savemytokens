@@ -10,6 +10,8 @@ import {
   loadClaimants,
   loadConfig,
   loadProjects,
+  presetMatching,
+  presetSegments,
   upsertProject,
   loadQuota,
   policyNames,
@@ -179,6 +181,19 @@ export function toggleColumn(id: string): void {
   const columns = withToggled(config.columns, id);
   config.columns = columns.length > 0 ? columns : [id];
   saveConfig(config);
+}
+
+export function cyclePreset(delta: number, names: string[]): void {
+  if (names.length === 0) return;
+  const config = loadConfig();
+  const current = presetMatching(config.hud.segments);
+  const at = current ? names.indexOf(current) : -1;
+  const next = names[(at + delta + names.length * 2) % names.length] ?? names[0];
+  const segments = next ? presetSegments(next) : null;
+  if (segments) {
+    config.hud.segments = [...segments];
+    saveConfig(config);
+  }
 }
 
 export function toggleSegment(id: string): void {

@@ -326,6 +326,9 @@ export function formatCountdown(resetsAt: number | undefined, now?: number): str
 export const HUD_LAYOUTS: string[];
 export const HUD_SEGMENTS: string[];
 export const HUD_PRESETS: Record<string, string[]>;
+export const HUD_PRESET_ABOUT: Record<string, string>;
+export function presetSegments(name: string): string[] | null;
+export function presetMatching(segments: string[]): string | null;
 export const DEFAULT_HUD_SEGMENTS: string[];
 export const COLUMNS: string[];
 export const DEFAULT_COLUMNS: string[];

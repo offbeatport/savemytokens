@@ -1,6 +1,9 @@
 import {
   COLUMNS,
+  HUD_PRESETS,
+  HUD_PRESET_ABOUT,
   POLICIES as ALL_POLICIES,
+  presetMatching,
   DEFAULT_COLUMNS,
   DEFAULT_HUD_SEGMENTS,
   HUD_SEGMENTS,
@@ -60,7 +63,8 @@ export type SettingRow =
   | { kind: "stage"; at: number }
   | { kind: "preserve"; index: number }
   | { kind: "advice" }
-  | { kind: "preview" };
+  | { kind: "preview" }
+  | { kind: "preset" };
 
 export function settingsRows(config: Config): SettingRow[] {
   const rows: SettingRow[] = [];
@@ -73,7 +77,8 @@ export function settingsRows(config: Config): SettingRow[] {
   rows.push({ kind: "theme", surface: "hud" });
 
   rows.push({ kind: "blank" });
-  rows.push({ kind: "header", label: "STATUS LINE", hint: "space adds or removes · ← → moves it" });
+  rows.push({ kind: "header", label: "STATUS LINE", hint: "← → picks a shape · space adds or removes a piece" });
+  rows.push({ kind: "preset" });
   rows.push({ kind: "preview" });
   const chosen = config.hud?.segments ?? DEFAULT_HUD_SEGMENTS;
   const rest = HUD_SEGMENTS.filter((id) => !chosen.includes(id));
@@ -212,8 +217,20 @@ export function renderSettings(
       out.push(`  ${paint(theme, "accent", row.label, color)}  ${paint(theme, "dim", row.hint ?? "", color)}`);
       continue;
     }
+    if (row.kind === "preset") {
+      const names = Object.keys(HUD_PRESETS);
+      const current = presetMatching(segments);
+      const at = current ? names.indexOf(current) : -1;
+      const label = current ?? "custom";
+      const about = current ? HUD_PRESET_ABOUT[current] ?? "" : "your own arrangement";
+      out.push(
+        `  ${mark} ${padEndVisible("shape", 15)} ${paint(theme, "dim", "‹", color)} ${paint(theme, "accent", padEndVisible(label, 11), color)} ${paint(theme, "dim", "›", color)} ${paint(theme, "dim", at >= 0 ? `${at + 1}/${names.length}` : "   ", color)}   ${paint(theme, "dim", about, color)}`,
+      );
+      continue;
+    }
     if (row.kind === "preview") {
-      out.push(`     ${renderSegments(segments, preview, loadTheme(config.theme.hud), color)}`);
+      out.push(`      ${renderSegments(segments, preview, loadTheme(config.theme.hud), color)}`);
+      out.push("");
       continue;
     }
     if (row.kind === "column") {

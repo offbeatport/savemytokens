@@ -8,6 +8,7 @@ import {
   selectionIndex,
   equalize,
   cyclePolicy,
+  cyclePreset,
   cycleTheme,
   moveSegment,
   saveCustomAdvice,
@@ -23,6 +24,7 @@ import {
   type ControlPlan,
 } from "../scheduler/plan.js";
 import {
+  HUD_PRESETS,
   builtinThemes,
   loadConfig,
   loadTheme,
@@ -449,10 +451,12 @@ export async function runControl(options: Options): Promise<void> {
             else if (current.kind === "preserve") togglePreserve(PRESERVE_KINDS[current.index] ?? "");
             else if (current.kind === "theme") cycleTheme(current.surface, 1, [...new Set([...builtinThemes(), ...userThemes()])]);
             else if (current.kind === "policy") cyclePolicy(1);
+            else if (current.kind === "preset") cyclePreset(1, Object.keys(HUD_PRESETS));
           } else if (action.kind === "share") {
             const delta = action.delta > 0 ? 1 : -1;
             if (current.kind === "theme") cycleTheme(current.surface, delta, names);
             else if (current.kind === "policy") cyclePolicy(delta);
+            else if (current.kind === "preset") cyclePreset(delta, Object.keys(HUD_PRESETS));
             else if (current.kind === "segment") moveSegment(current.id, delta);
           }
           control = buildPlan(Date.now(), false, options.window, options.adapter);

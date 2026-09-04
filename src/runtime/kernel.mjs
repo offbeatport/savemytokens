@@ -71,7 +71,7 @@ export const DEFAULT_CONFIG = {
   policy: "finish",
   policyFor: {},
   columns: ["allocation", "used", "priority", "last prompt"],
-  hud: { segments: ["project", "target", "used", "priority", "5h", "reset"] },
+  hud: { segments: ["project", "pair", "5h", "reset"] },
   preserveFor: {},
   customAdvice: {},
   wrappedStatusLine: null,
@@ -109,7 +109,7 @@ export function loadConfig() {
       segments:
         Array.isArray(stored.hud?.segments) && stored.hud.segments.length > 0
           ? stored.hud.segments
-          : HUD_PRESETS[stored.layout?.hud] ?? DEFAULT_CONFIG.hud.segments,
+          : presetSegments(stored.layout?.hud) ?? DEFAULT_CONFIG.hud.segments,
     },
     policyFor: { ...(stored.policyFor || {}) },
     preserveFor: { ...(stored.preserveFor || {}) },
@@ -1006,6 +1006,41 @@ const BUILTIN_THEMES = {
     glyphs: { full: "\u2589", empty: "\u2595", sep: "\u2502", arrow: "\u25b8", tag: "SMT" },
     border: { h: "\u2501", v: "\u2503", tl: "\u250f", tr: "\u2513", bl: "\u2517", br: "\u251b" },
   },
+  catppuccin: {
+    name: "catppuccin",
+    tui: { cursor: "\u276f", pin: "\u2605", active: "\u25cf", done: "\u2713", blocked: "!", idle: "\u00b7", open: "", close: "", fill: "\u2588", empty: "\u2591", over: "\u25b6", meter: "\u2588", track: "\u2591" },
+    colors: { fg: "#cdd6f4", dim: "#9399b2", accent: "#89b4fa", ok: "#a6e3a1", warn: "#f9e2af", danger: "#f38ba8", track: "#585b70", fill: "#89b4fa" },
+    glyphs: { full: "\u2588", empty: "\u2591", sep: "\u00b7", arrow: "\u2192", tag: "SMT" },
+    border: { h: "\u2500", v: "\u2502", tl: "\u256d", tr: "\u256e", bl: "\u2570", br: "\u256f" },
+  },
+  onedark: {
+    name: "onedark",
+    tui: { cursor: "\u276f", pin: "\u2605", active: "\u25cf", done: "\u2713", blocked: "!", idle: "\u00b7", open: "", close: "", fill: "\u2588", empty: "\u2591", over: "\u25b6", meter: "\u2588", track: "\u2591" },
+    colors: { fg: "#abb2bf", dim: "#8b93a1", accent: "#61afef", ok: "#98c379", warn: "#e5c07b", danger: "#e88b93", track: "#4b515d", fill: "#61afef" },
+    glyphs: { full: "\u2588", empty: "\u2591", sep: "\u00b7", arrow: "\u2192", tag: "SMT" },
+    border: { h: "\u2500", v: "\u2502", tl: "\u250c", tr: "\u2510", bl: "\u2514", br: "\u2518" },
+  },
+  monokai: {
+    name: "monokai",
+    tui: { cursor: "\u25b8", pin: "\u2605", active: "\u25cf", done: "\u2713", blocked: "!", idle: "\u00b7", open: "", close: "", fill: "\u2588", empty: "\u2591", over: "\u25b6", meter: "\u2588", track: "\u2591" },
+    colors: { fg: "#f8f8f2", dim: "#a6a48f", accent: "#66d9ef", ok: "#a6e22e", warn: "#e6db74", danger: "#ff6188", track: "#5a594e", fill: "#66d9ef" },
+    glyphs: { full: "\u2588", empty: "\u2591", sep: "\u00b7", arrow: "\u2192", tag: "SMT" },
+    border: { h: "\u2500", v: "\u2502", tl: "\u250c", tr: "\u2510", bl: "\u2514", br: "\u2518" },
+  },
+  everforest: {
+    name: "everforest",
+    tui: { cursor: "\u276f", pin: "\u2605", active: "\u25c6", done: "\u2713", blocked: "!", idle: "\u00b7", open: "", close: "", fill: "\u25ac", empty: "\u25ad", over: "\u25b6", meter: "\u25ac", track: "\u25ad" },
+    colors: { fg: "#d3c6aa", dim: "#9da9a0", accent: "#a7c080", ok: "#83c092", warn: "#dbbc7f", danger: "#e67e80", track: "#4f585e", fill: "#a7c080" },
+    glyphs: { full: "\u25ac", empty: "\u25ad", sep: "\u00b7", arrow: "\u2192", tag: "SMT" },
+    border: { h: "\u2500", v: "\u2502", tl: "\u256d", tr: "\u256e", bl: "\u2570", br: "\u256f" },
+  },
+  kanagawa: {
+    name: "kanagawa",
+    tui: { cursor: "\u276f", pin: "\u2605", active: "\u25cf", done: "\u2713", blocked: "!", idle: "\u00b7", open: "", close: "", fill: "\u2588", empty: "\u2591", over: "\u25b6", meter: "\u2588", track: "\u2591" },
+    colors: { fg: "#dcd7ba", dim: "#a09a84", accent: "#7e9cd8", ok: "#98bb6c", warn: "#e6c384", danger: "#e46876", track: "#54546d", fill: "#7e9cd8" },
+    glyphs: { full: "\u2588", empty: "\u2591", sep: "\u00b7", arrow: "\u2192", tag: "SMT" },
+    border: { h: "\u2500", v: "\u2502", tl: "\u256d", tr: "\u256e", bl: "\u2570", br: "\u256f" },
+  },
   terracotta: {
     name: "terracotta",
     tui: { cursor: "\u276f", pin: "\u2605", active: "\u25c6", done: "\u2713", blocked: "!", idle: "\u00b7", open: "", close: "", fill: "\u25ac", empty: "\u25ad", over: "\u25b6", meter: "\u25ac", track: "\u25ad" },
@@ -1029,7 +1064,7 @@ const BUILTIN_THEMES = {
   },
 };
 
-const THEME_RENAMES = { dracula: "violet" };
+const THEME_RENAMES = { dracula: "violet", tokyonight: "default", "tokyo-night": "default", "catppuccin-mocha": "catppuccin", "rose-pine": "rose", "one-dark": "onedark" };
 
 export function builtinThemes() {
   return Object.keys(BUILTIN_THEMES);
@@ -1133,20 +1168,47 @@ export const HUD_SEGMENTS = [
 ];
 
 export const HUD_PRESETS = {
-  allocation: ["project", "target", "used", "priority", "5h", "reset"],
-  compact: ["project", "pair", "5h"],
-  global: ["5h", "reset", "7d", "project", "pair", "priority"],
-  bar: ["project", "bar", "pair", "meter5h"],
-  blocks: ["meter5h", "5h", "project", "pair"],
-  dots: ["meter5h", "5h", "project", "pair", "priority"],
-  minimal: ["5h", "pair"],
-  pace: ["5h", "pace", "project", "pair"],
-  runway: ["5h", "empty", "project", "pair"],
-  spark: ["spark", "5h", "project", "pair"],
+  balanced: ["project", "pair", "5h", "reset"],
+  minimal: ["pair", "5h"],
+  window: ["5h", "reset", "7d"],
+  pacing: ["5h", "pace", "reset", "project", "pair"],
+  everything: ["project", "target", "used", "priority", "meter5h", "5h", "7d", "reset"],
+};
+
+export const HUD_PRESET_ABOUT = {
+  balanced: "the project, how it is doing, and the window",
+  minimal: "two numbers and nothing else",
+  window: "only Anthropic's numbers, no per-project detail",
+  pacing: "whether you are ahead of or behind the clock",
+  everything: "every number there is",
+};
+
+const HUD_PRESET_ALIASES = {
+  allocation: "balanced",
+  compact: "minimal",
+  global: "window",
+  bar: "balanced",
+  blocks: "balanced",
+  dots: "balanced",
+  pace: "pacing",
+  runway: "pacing",
+  spark: "balanced",
 };
 
 export const HUD_LAYOUTS = Object.keys(HUD_PRESETS);
-export const DEFAULT_HUD_SEGMENTS = HUD_PRESETS.allocation;
+export const DEFAULT_HUD_SEGMENTS = HUD_PRESETS.balanced;
+
+export function presetSegments(name) {
+  return HUD_PRESETS[name] ?? HUD_PRESETS[HUD_PRESET_ALIASES[name]] ?? null;
+}
+
+export function presetMatching(segments) {
+  const key = (list) => list.join(">");
+  for (const [name, list] of Object.entries(HUD_PRESETS)) {
+    if (key(list) === key(segments)) return name;
+  }
+  return null;
+}
 
 export const COLUMNS = ["allocation", "used", "share", "tokens", "priority", "last prompt"];
 export const DEFAULT_COLUMNS = ["allocation", "used", "priority", "last prompt"];
@@ -1235,6 +1297,6 @@ export function renderSegments(segments, view, theme, enabled = true) {
 }
 
 export function renderHud(layout, view, theme, enabled = true) {
-  const segments = Array.isArray(layout) ? layout : HUD_PRESETS[layout] ?? DEFAULT_HUD_SEGMENTS;
+  const segments = Array.isArray(layout) ? layout : presetSegments(layout) ?? DEFAULT_HUD_SEGMENTS;
   return renderSegments(segments, view, theme, enabled);
 }

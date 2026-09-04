@@ -704,3 +704,40 @@ test("every theme is readable, measured not asserted", async () => {
     assert.ok(track <= 4, `${name}'s empty bar is ${track.toFixed(2)}:1 — too loud for a background element`);
   }
 });
+
+test("the status line offers shapes before pieces", async () => {
+  const { HUD_PRESETS, HUD_PRESET_ABOUT, presetMatching, presetSegments, DEFAULT_HUD_SEGMENTS, renderHud, loadTheme } =
+    await import("../dist/runtime/kernel.mjs");
+
+  const names = Object.keys(HUD_PRESETS);
+  assert.ok(names.length >= 4 && names.length <= 6, `expected a handful of shapes, found ${names.length}`);
+  for (const name of names) {
+    assert.ok((HUD_PRESET_ABOUT[name] ?? "").length > 0, `${name} does not say what it is for`);
+    assert.equal(presetMatching(HUD_PRESETS[name]), name, `${name} is recognised from its own segments`);
+  }
+
+  assert.deepEqual(DEFAULT_HUD_SEGMENTS, ["project", "pair", "5h", "reset"], "the default is four things, not six");
+  assert.equal(presetMatching(DEFAULT_HUD_SEGMENTS), "balanced", "and it is one of the named shapes");
+  assert.equal(presetMatching(["project", "spark"]), null, "an arrangement of your own is not mislabelled");
+
+  for (const old of ["allocation", "compact", "global", "blocks", "runway", "spark"]) {
+    assert.ok(presetSegments(old), `${old} still resolves, so an old savemytokens hud <name> keeps working`);
+  }
+
+  const now = Date.now();
+  const view = {
+    label: "webinvoke",
+    target: 0.5,
+    observed: 0.44,
+    used: 21,
+    pressure: 0.42,
+    priority: "high",
+    quota: { five_hour: { usedPercent: 42, resetsAt: Math.floor(now / 1000) + 3600 } },
+    now,
+  };
+  const line = renderHud("balanced", view, loadTheme("default"), false);
+  assert.match(line, /webinvoke/);
+  assert.match(line, /21%\/50%/);
+  assert.match(line, /5h 42%/);
+  assert.doesNotMatch(line, /HIGH/, "priority is not in the default — it rarely changes");
+});
