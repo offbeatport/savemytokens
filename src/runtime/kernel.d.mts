@@ -61,6 +61,8 @@ export interface ClaimantRecord extends Claimant {
   heartbeat: number;
   pinned: boolean;
   parked: boolean;
+  inPlan: boolean | null;
+  joinedAt: number;
 }
 
 export interface MeterRecord {
@@ -261,6 +263,8 @@ export interface ProjectSettings {
   cap: number | null;
   pinned: boolean;
   parked: boolean;
+  inPlan: boolean | null;
+  joinedAt: number;
 }
 
 export interface ProjectView {

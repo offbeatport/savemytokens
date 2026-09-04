@@ -5,6 +5,7 @@ import { withMoved, withToggled } from "../report/settings.js";
 import { claudeCodeProvider } from "../adapters/claude-code/provider.js";
 import { codexProvider } from "../adapters/codex/provider.js";
 import {
+  DEFAULT_CONFIG,
   HOOKS_DIR,
   FIVE_HOUR_MS,
   WINDOW_MS,
@@ -94,40 +95,52 @@ export function buildPlan(now = Date.now(), withSweep = true, window: WindowKey 
   };
 }
 
-const RECENT_LIMIT = 6;
-const PARKED_LIMIT = 4;
+const CANDIDATE_LIMIT = 12;
 
 export interface WorkingSet {
-  active: ProjectView[];
-  recent: ProjectView[];
-  parked: ProjectView[];
+  members: ProjectView[];
+  candidates: ProjectView[];
   hidden: number;
 }
 
+export function inPlan(view: ProjectView): boolean {
+  if (view.bucket === "active") return true;
+  if (view.settings.inPlan === false) return false;
+  if (view.settings.inPlan === true) return true;
+  return view.settings.pinned || (view.settings.share ?? 0) > 0;
+}
+
 function byInterest(a: ProjectView, b: ProjectView): number {
-  return Number(b.settings.pinned) - Number(a.settings.pinned) || b.lastSeen - a.lastSeen || b.observed - a.observed;
+  const live = Number(b.bucket === "active") - Number(a.bucket === "active");
+  if (live !== 0) return live;
+  return (
+    Number(b.settings.pinned) - Number(a.settings.pinned) ||
+    (b.allocation.target || b.settings.share || 0) - (a.allocation.target || a.settings.share || 0) ||
+    b.lastSeen - a.lastSeen
+  );
 }
 
 export function workingSet(plan: SchedulePlanView, full = false): WorkingSet {
-  const active = plan.projects
-    .filter((view) => view.bucket === "active")
-    .sort((a, b) => byInterest(a, b) || b.observed - a.observed);
-  const idleAll = plan.projects
-    .filter((view) => view.bucket !== "active" && !view.settings.parked)
-    .sort(byInterest);
-  const parkedAll = plan.projects.filter((view) => view.bucket !== "active" && view.settings.parked).sort(byInterest);
-  const recent = full ? idleAll : idleAll.slice(0, RECENT_LIMIT);
-  const parked = full ? parkedAll : [];
-  return { active, recent, parked, hidden: idleAll.length - recent.length + (parkedAll.length - parked.length) };
+  const members = plan.projects.filter(inPlan).sort(byInterest);
+  const rest = plan.projects.filter((view) => !inPlan(view)).sort(byInterest);
+  const candidates = full ? rest : rest.slice(0, CANDIDATE_LIMIT);
+  return { members, candidates, hidden: rest.length - candidates.length };
 }
 
 export function visibleRows(plan: SchedulePlanView, full = false): ProjectView[] {
-  const set = workingSet(plan, full);
-  return [...set.active, ...set.recent, ...set.parked];
+  return workingSet(plan, full).members;
+}
+
+export function joinPlan(project: string, adapter = "claude-code"): void {
+  upsertProject(adapter, project, { inPlan: true, joinedAt: Date.now() });
+}
+
+export function leavePlan(project: string, adapter = "claude-code"): void {
+  upsertProject(adapter, project, { inPlan: false, pinned: false, share: null });
 }
 
 export function activeViews(plan: SchedulePlanView): ProjectView[] {
-  return workingSet(plan).active;
+  return workingSet(plan).members.filter((view) => view.bucket === "active");
 }
 
 export function selectionIndex(ids: string[], selectedId: string | null, previousIndex: number): number {
@@ -185,6 +198,19 @@ export function savePreference(project: string, kinds: string[]): void {
   config.preserveFor[project || "default"] = kinds;
   config.preferencesSetAt = Date.now();
   saveConfig(config);
+}
+
+export function resetPreferences(): void {
+  const config = loadConfig();
+  const fresh = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  saveConfig({
+    ...fresh,
+    version: config.version,
+    createdAt: config.createdAt,
+    preferencesSetAt: Date.now(),
+    offeredInstallAt: config.offeredInstallAt,
+    wrappedStatusLine: config.wrappedStatusLine,
+  });
 }
 
 export function toggleColumn(id: string): void {

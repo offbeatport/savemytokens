@@ -66,7 +66,7 @@ export const DEFAULT_CONFIG = {
   createdAt: 0,
   preferencesSetAt: 0,
   offeredInstallAt: 0,
-  theme: { tui: "catppuccin", hud: "catppuccin" },
+  theme: { tui: "default", hud: "default" },
   layout: { hud: "allocation" },
   policy: "finish",
   policyFor: {},
@@ -226,7 +226,7 @@ export function projectKey(project) {
 }
 
 function blankProject(project) {
-  return { schema: 1, project, label: project ? project.split("/").filter(Boolean).pop() : "unknown", share: null, priority: "normal", cap: null, pinned: false, parked: false };
+  return { schema: 1, project, label: project ? project.split("/").filter(Boolean).pop() : "unknown", share: null, priority: "normal", cap: null, pinned: false, parked: false, inPlan: null, joinedAt: 0 };
 }
 
 export function loadProject(adapter, project) {
@@ -712,6 +712,13 @@ export function schedule(adapter, now = Date.now(), key = "five_hour", quotaOver
     group.lastSeen = Math.max(group.lastSeen, claimant.lastSeen ?? 0);
   }
 
+  for (const group of groups.values()) {
+    const running = group.sessions.some((session) => session.bucket === "active");
+    if (running && group.settings.inPlan !== true) {
+      group.settings = upsertProject(adapter, group.project, { inPlan: true, joinedAt: group.settings.joinedAt || now });
+    }
+  }
+
   const entries = [...groups.values()].map((group) => {
     const running = group.sessions.some((session) => session.bucket === "active");
     return {
@@ -935,8 +942,8 @@ export function deferredAdvice(items) {
 }
 
 const BUILTIN_THEMES = {
-  catppuccin: {
-    name: "catppuccin",
+  default: {
+    name: "default",
     tui: { cursor: "\u276f", pin: "\u2605", active: "\u25cf", done: "\u2713", blocked: "!", idle: "\u00b7", open: "", close: "", fill: "\u2588", empty: "\u2591", over: "\u25b6", meter: "\u2588", track: "\u2591" },
     colors: { fg: "#cdd6f4", dim: "#9399b2", accent: "#89b4fa", ok: "#a6e3a1", warn: "#f9e2af", danger: "#f38ba8", track: "#585b70", fill: "#89b4fa" },
     glyphs: { full: "\u2588", empty: "\u2591", sep: "\u00b7", arrow: "\u2192", tag: "SMT" },
@@ -1065,11 +1072,11 @@ const BUILTIN_THEMES = {
 };
 
 const THEME_RENAMES = {
-  default: "catppuccin",
+  catppuccin: "default",
   dracula: "violet",
   "tokyo-night": "tokyonight",
-  "catppuccin-mocha": "catppuccin",
-  "catppuccin-macchiato": "catppuccin",
+  "catppuccin-mocha": "default",
+  "catppuccin-macchiato": "default",
   "rose-pine": "rose",
   "one-dark": "onedark",
 };
@@ -1085,8 +1092,8 @@ export function userThemes() {
 export function loadTheme(name) {
   const wanted = THEME_RENAMES[name] ?? name ?? "default";
   const user = readJson(path.join(THEME_DIR, `${wanted}.json`), null);
-  const base = BUILTIN_THEMES[wanted] || BUILTIN_THEMES.catppuccin;
-  const fallback = BUILTIN_THEMES.catppuccin;
+  const base = BUILTIN_THEMES[wanted] || BUILTIN_THEMES.default;
+  const fallback = BUILTIN_THEMES.default;
   if (!user || typeof user !== "object") return { ...base, tui: { ...fallback.tui, ...base.tui } };
   return {
     ...base,
@@ -1209,16 +1216,16 @@ export const HUD_SEGMENTS = [
 ];
 
 export const HUD_PRESETS = {
-  default: ["project", "pair", "5h", "reset"],
-  minimal: ["pair", "5h"],
+  default: ["pair", "5h", "reset"],
+  minimal: ["pair"],
   window: ["5h", "reset", "7d"],
-  pacing: ["5h", "pace", "reset", "project", "pair"],
+  pacing: ["pair", "pace", "5h", "reset"],
   everything: ["project", "target", "used", "priority", "meter5h", "5h", "7d", "reset"],
 };
 
 export const HUD_PRESET_ABOUT = {
-  default: "the project, how it is doing, and the window",
-  minimal: "two numbers and nothing else",
+  default: "your share, the window, and when it resets",
+  minimal: "your share and nothing else",
   window: "only Anthropic's numbers, no per-project detail",
   pacing: "whether you are ahead of or behind the clock",
   everything: "every number there is",

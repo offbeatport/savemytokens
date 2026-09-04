@@ -147,7 +147,7 @@ function columnWidths(context: ViewContext, wanted: string[]): Widths {
 
 function headerRow(context: ViewContext, widths: Widths, columns: string[]): string {
   const { theme, color } = context;
-  const cells = [`   ${padEndVisible(clip("PROJECT", widths.label), widths.label)}`];
+  const cells = [`     ${padEndVisible(clip("PROJECT", widths.label - 2), widths.label - 2)}`];
   if (columns.includes("allocation")) cells.push(padStartVisible("ALLOCATION", 10));
   if (columns.includes("used")) cells.push(padEndVisible("USED OF IT", widths.used));
   if (columns.includes("share")) cells.push(padStartVisible("SHARE", 6));
@@ -169,13 +169,21 @@ function row(
   const cursor =
     context.interactive && context.selected === index ? paint(theme, "accent", theme.tui?.cursor ?? "❯", color) : " ";
   const pin = view.settings.pinned ? paint(theme, "accent", theme.tui?.pin ?? "★", color) : " ";
-  const sessions = view.liveSessions > 1 ? paint(theme, "dim", ` ${view.liveSessions}`, color) : "  ";
+  const open = view.bucket === "active";
+  const dot = open ? paint(theme, "ok", "●", color) : paint(theme, "dim", "○", color);
+  const sessions = view.liveSessions > 1 ? paint(theme, "dim", `${view.liveSessions}`, color) : " ";
   const label = padEndVisible(clip(view.label, widths.label - 2), widths.label - 2);
-  const allocation = padStartVisible(percentLabel(view.allocation.target * 100, 5), 10);
+  const held = view.allocation.target > 0 ? view.allocation.target : (view.settings.share ?? 0);
+  const allocationCell = padStartVisible(
+    held > 0
+      ? paint(theme, open ? "fg" : "dim", percentLabel(held * 100, 5), color)
+      : paint(theme, "dim", view.settings.share === 0 ? "none" : "-", color),
+    10,
+  );
   const starved = view.allocation.target <= 0;
   const used = padEndVisible(
     starved
-      ? `${emptyBar(widths.bar, theme, color)}    ${paint(theme, "dim", "-", color)}`
+      ? `${emptyBar(widths.bar, theme, color)}    ${paint(theme, "dim", open ? "-" : "idle", color)}`
       : `${smallBar(view.pressure.value, widths.bar, theme, color, role)} ${padStartVisible(paint(theme, role, percentLabel(view.pressure.value * 100, 4), color), 4)}`,
     widths.used,
   );
@@ -185,8 +193,8 @@ function row(
     paint(theme, view.settings.priority === "high" ? "accent" : "dim", view.settings.priority.toUpperCase(), color),
     8,
   );
-  const cells = [`${cursor}${pin} ${label}${sessions}`];
-  if (columns.includes("allocation")) cells.push(allocation);
+  const cells = [`${cursor}${pin}${dot}${sessions} ${label}`];
+  if (columns.includes("allocation")) cells.push(allocationCell);
   if (columns.includes("used")) cells.push(used);
   if (columns.includes("share")) cells.push(share);
   if (columns.includes("tokens")) cells.push(tokens);
@@ -222,19 +230,16 @@ function idleRow(
   return `${cursor}${pin} ${paint(theme, "dim", `${label} ${when}  ${prompt}${tag ? `  ${tag}` : ""}`, color)}`;
 }
 
-function sectionTitle(name: string, count: number, context: ViewContext): string {
-  const { theme, color } = context;
-  return `  ${paint(theme, "accent", name, color)} ${paint(theme, "dim", String(count), color)}`;
-}
-
 function footerNote(control: ControlPlan, context: ViewContext): string[] {
   const { theme, color } = context;
   const set = workingSet(control.schedule, context.expanded);
-  const sessions = set.active.reduce((sum, view) => sum + view.liveSessions, 0);
+  const open = set.members.filter((view) => view.bucket === "active");
+  const sessions = open.reduce((sum, view) => sum + view.liveSessions, 0);
   const spare = Math.round(control.schedule.unusedPool * 100);
   const room = Math.max(10, context.columns - 2);
-  const long = `${set.active.length} ${set.active.length === 1 ? "project" : "projects"} sharing this window across ${sessions} ${sessions === 1 ? "session" : "sessions"}${spare > 0 ? `, ${spare}% unclaimed` : ""}.`;
-  const short = `${set.active.length}p · ${sessions}s${spare > 0 ? ` · ${spare}% unclaimed` : ""}`;
+  const waiting = set.members.length - open.length;
+  const long = `${open.length} of ${set.members.length} open, across ${sessions} ${sessions === 1 ? "session" : "sessions"}${waiting > 0 ? `, ${waiting} waiting` : ""}${spare > 0 ? `, ${spare}% unclaimed` : ""}.`;
+  const short = `${open.length}/${set.members.length} open · ${sessions}s${spare > 0 ? ` · ${spare}% spare` : ""}`;
   const out = [`  ${paint(theme, "dim", long.length <= room ? long : short, color)}`];
   const drift = control.unattributed ?? 0;
   if (drift >= UNATTRIBUTED_FLOOR) {
@@ -251,39 +256,50 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
   const columns = control.config.columns ?? [];
   const widths = columnWidths(context, columns);
   const shown = widths.columns;
-  const now = control.schedule.now;
   const out = [...capacityRow(control, context)];
-  let index = 0;
+  const budget = context.expanded ? Number.MAX_SAFE_INTEGER : Math.max(6, context.rows - 11);
+
+  out.push("");
+  if (set.members.length === 0) {
+    out.push(`  ${paint(context.theme, "dim", "Nothing in the plan yet. Open Claude Code in a project, or press a to add one.", context.color)}`);
+    out.push("");
+    return out;
+  }
+
+  out.push(headerRow(context, widths, shown));
   let printed = 0;
-  const budget = context.expanded ? Number.MAX_SAFE_INTEGER : Math.max(6, context.rows - 13);
+  for (const [index, view] of set.members.entries()) {
+    if (printed >= budget) break;
+    out.push(row(view, index, context, widths, shown));
+    printed += 1;
+  }
 
-  const section = (name: string, views: ProjectView[], idle: boolean): void => {
-    if (views.length === 0) return;
-    out.push("");
-    out.push(sectionTitle(name, views.length, context));
-    out.push(idle ? idleHeaderRow(context, widths) : headerRow(context, widths, shown));
-    for (const view of views) {
-      if (printed >= budget) {
-        index += 1;
-        continue;
-      }
-      out.push(idle ? idleRow(view, index, context, widths, now) : row(view, index, context, widths, shown));
-      index += 1;
-      printed += 1;
-    }
-  };
-
-  section("ACTIVE", set.active, false);
-  section("RECENT", [...set.recent, ...set.parked], true);
-
-  const total = set.active.length + set.recent.length + set.parked.length + set.hidden;
-  if (total > printed) {
-    out.push("");
-    out.push(`  ${paint(context.theme, "dim", `+${total - printed} more`, context.color)}`);
+  if (set.members.length > printed) {
+    out.push(`  ${paint(context.theme, "dim", `+${set.members.length - printed} more, m shows them`, context.color)}`);
   }
 
   out.push("");
   out.push(...footerNote(control, context));
+  return out;
+}
+
+export function pickerRows(control: ControlPlan, context: ViewContext, selected: number): string[] {
+  const { theme, color } = context;
+  const set = workingSet(control.schedule, true);
+  const out = [`  ${paintHead(theme, "ADD A PROJECT", color)}`, ""];
+  if (set.candidates.length === 0) {
+    out.push(`  ${paint(theme, "dim", "Every project SaveMyTokens has seen is already in the plan.", color)}`);
+    return out;
+  }
+  const width = Math.min(30, Math.max(12, context.columns - 34));
+  for (const [index, view] of set.candidates.entries()) {
+    const here = index === selected;
+    const mark = here ? paint(theme, "accent", theme.tui?.cursor ?? "❯", color) : " ";
+    const label = padEndVisible(clip(view.label, width), width);
+    const when = padStartVisible(view.lastSeen > 0 ? ago(view.lastSeen, control.schedule.now) : "never", 10);
+    const room = Math.max(8, context.columns - width - 18);
+    out.push(`  ${mark} ${paint(theme, here ? "fg" : "dim", `${label} ${when}  ${clip(view.prompt || "-", room)}`, color)}`);
+  }
   return out;
 }
 
@@ -362,9 +378,10 @@ const HELP_KEYS: Array<[string, string]> = [
   ["u", "drop the target and go back to an even split"],
   ["e", "equalize: drop every pinned target at once"],
   ["p", "priority: high → normal → low, who gets spare capacity first"],
+  ["a", "add a project to the plan"],
+  ["x", "take one out of the plan"],
   ["f", "pin the row so it keeps its place"],
-  ["x", "park it: out of the plan, holding nothing"],
-  ["d b a n", "mark it done, blocked, active or needs-more by hand"],
+  ["d b n", "mark it done, blocked or needs-more by hand"],
   ["m", "show every project, not just the first screenful"],
   ["P", "settings: columns, theme, status line, what to protect"],
   ["r", "read everything again now"],
@@ -418,10 +435,10 @@ export function helpOverlay(control: ControlPlan, context: ViewContext): string[
     }
   }
 
-  out.push(...helpSection("the three tables", context));
-  out.push(...helpProse("ACTIVE is a Claude session open there right now. Only these spend the window, so only these hold an allocation.", context));
+  out.push(...helpSection("the plan", context));
+  out.push(...helpProse("One list: the projects sharing your window. A project joins on its own the moment you open Claude Code in it, and stays after you close it. Press a to add one yourself, x to take one out.", context));
   out.push("");
-  out.push(...helpProse("RECENT and PARKED hold nothing. A project turns ACTIVE by itself when you open Claude Code in it, and you cannot promote one by hand. What you can do is set its target now with the arrows: it waits there, and applies the moment a session starts.", context));
+  out.push(...helpProse("A filled dot means a session is open there right now. Only those spend the window, so a project with nothing running lends its share to the rest and takes it back when you return. Its target is yours to set either way.", context));
 
   out.push(...helpSection("the status line", context));
   out.push(

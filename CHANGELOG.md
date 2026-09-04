@@ -27,7 +27,11 @@ First published release.
 
 ### The control centre
 
-- Active, Recent and Parked tables, with a per-project drill-down into its sessions.
+- One list: the projects sharing your window. A project joins the moment you open Claude Code in it
+  and stays after you close it, so a target outlives the session that earned it. `a` adds one from
+  everything SaveMyTokens has seen, `x` takes one out. A filled dot means a session is open there.
+- A per-project drill-down into its sessions.
+- Reset every preference back to the defaults from the settings screen; allocations are kept.
 - Settings for columns, themes, status-line shape and what to protect when it gets tight.
 - Eighteen built-in themes for both the TUI and the status line, every one contrast-tested; write
   your own with `theme new`.

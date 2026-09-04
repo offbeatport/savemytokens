@@ -22,6 +22,7 @@ export type Action =
   | { kind: "back" }
   | { kind: "pin" }
   | { kind: "park" }
+  | { kind: "add" }
   | { kind: "resume" };
 
 const ESC = "\u001b";
@@ -97,7 +98,7 @@ export function actionFor(key: string, mode: "plan" | "prefs", step: number): Ac
     case "b":
       return { kind: "state", state: "blocked" };
     case "a":
-      return { kind: "state", state: "active" };
+      return { kind: "add" };
     case "n":
       return { kind: "state", state: "needs-more" };
     case "r":
@@ -110,6 +111,8 @@ export function actionFor(key: string, mode: "plan" | "prefs", step: number): Ac
       return { kind: "pin" };
     case "x":
       return { kind: "park" };
+    case "A":
+      return { kind: "state", state: "active" };
     case "m":
       return { kind: "expand" };
     case "\r":

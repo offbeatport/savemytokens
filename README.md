@@ -36,10 +36,10 @@ is what proves a session is still open, so nothing is live without it. Changed y
 |  |  |
 | :-- | :-- |
 | **The real numbers** | Your 5-hour and weekly usage exactly as Anthropic publishes it. Never an invented *"% remaining"*. |
-| **A split you control** | Give each **project** an allocation and a priority. Spare capacity goes to the highest priority first, and a project's allocation is divided among its live sessions by what they burn. |
+| **One list you control** | The projects sharing your window, in one table. A project joins when you open Claude Code in it and stays after you close it, so a target you set survives the session. `a` adds one by hand, `x` takes one out. |
 | **Claude working to it** | As a session eats into its slice it is told to narrow scope and finish, and to write down whatever it drops. That comes back the next time you work on the project. |
-| **Unused capacity returned** | Mark a project done and whatever it did not spend goes to the others, immediately. |
-| **In your status line** | `webinvoke · 21%/50% · 5h 42% · in 3h52`. Pick a shape, or arrange the pieces yourself. |
+| **Unused capacity returned** | A project with nothing running lends its share to the rest and takes it back when you return. Mark one done and what it did not spend goes to the others immediately. |
+| **In your status line** | `21%/50% · 5h 42% · in 3h52`. How much of your share you have spent, where the window is, when it comes back. Pick a shape, or arrange the pieces yourself. |
 
 <br>
 
@@ -60,7 +60,8 @@ is what proves a session is still open, so nothing is live without it. Changed y
 | `npx savemytokens uninstall` | remove every trace · `--purge` drops the data too |
 
 Inside the control centre, `?` lists every key. The ones worth knowing: `←→` moves an allocation,
-`p` cycles priority, `⏎` opens a project's sessions, `P` opens settings.
+`p` cycles priority, `a` adds a project and `x` takes one out, `⏎` opens a project's sessions,
+`P` opens settings.
 
 ## Where the numbers come from
 

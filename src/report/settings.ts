@@ -62,6 +62,7 @@ export type SettingRow =
   | { kind: "stage"; at: number }
   | { kind: "preserve"; index: number }
   | { kind: "advice" }
+  | { kind: "reset" }
   | { kind: "preview" }
   | { kind: "preset" };
 
@@ -92,6 +93,8 @@ export function settingsRows(config: Config): SettingRow[] {
   rows.push({ kind: "blank" });
   for (let index = 0; index < PRESERVE_KINDS.length; index++) rows.push({ kind: "preserve", index });
   rows.push({ kind: "advice" });
+  rows.push({ kind: "blank" });
+  rows.push({ kind: "reset" });
   return rows;
 }
 
@@ -274,6 +277,10 @@ export function renderSettings(
         });
         for (const line of wrap(text, Math.max(30, width - INDENT - 8))) out.push(`${" ".repeat(INDENT + 6)}${paint(theme, "dim", line, color)}`);
       }
+      continue;
+    }
+    if (row.kind === "reset") {
+      out.push(`  ${mark} ${paint(theme, "warn", "reset everything to defaults", color)}  ${paint(theme, "dim", "columns, themes, status line, policy. Your allocations stay.", color)}`);
       continue;
     }
     if (row.kind === "policy") {

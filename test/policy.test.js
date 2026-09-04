@@ -327,13 +327,13 @@ test("the cursor follows the session, not the row it happened to be on", async (
   assert.equal(selectionIndex([], "gone", 3), 0, "an empty list selects nothing");
 });
 
-test("m lifts the caps, not just the screen budget", async () => {
-  const { workingSet } = await import("../dist/scheduler/plan.js");
+test("the plan is one list: what is in it, and what you can add", async () => {
+  const { workingSet, inPlan } = await import("../dist/scheduler/plan.js");
   const now = Date.now();
-  const make = (id, bucket, minsAgo, parked = false) => ({
+  const make = (id, bucket, minsAgo, settings = {}) => ({
     project: `/tmp/${id}`,
     label: id,
-    settings: { project: `/tmp/${id}`, label: id, share: null, priority: "normal", cap: null, pinned: false, parked },
+    settings: { project: `/tmp/${id}`, label: id, share: null, priority: "normal", cap: null, pinned: false, parked: false, inPlan: null, joinedAt: 0, ...settings },
     sessions: [],
     allocation: { claimantId: id, target: 0, pinned: false, pool: 0, released: true },
     observed: 0,
@@ -343,24 +343,35 @@ test("m lifts the caps, not just the screen budget", async () => {
     attributedPercent: 0,
     pressure: { value: 0, basis: "share" },
     prompt: "",
-    liveSessions: 0,
+    liveSessions: bucket === "active" ? 1 : 0,
   });
 
-  const plan = {
-    projects: [
-      ...Array.from({ length: 9 }, (_, i) => make(`recent${i}`, "recent", i + 1)),
-      ...Array.from({ length: 7 }, (_, i) => make(`parked${i}`, "parked", 60 * 24 * (i + 2), true)),
-    ],
-  };
+  const live = make("live", "active", 0);
+  const joined = make("joined", "recent", 30, { inPlan: true });
+  const held = make("held", "recent", 90, { share: 0.2 });
+  const pinned = make("pinned", "recent", 120, { pinned: true });
+  const removed = make("removed", "recent", 5, { inPlan: false, share: 0.5 });
+  const seen = Array.from({ length: 20 }, (_, i) => make(`seen${i}`, "recent", 60 * 24 * (i + 1)));
 
-  const collapsed = workingSet(plan, false);
-  assert.equal(collapsed.recent.length, 6, "idle projects are trimmed to six");
-  assert.equal(collapsed.parked.length, 0, "parked ones are out of the way entirely");
-  assert.equal(collapsed.hidden, 10, "three idle and seven parked are waiting behind m");
+  assert.equal(inPlan(live), true, "an open session is always in the plan");
+  assert.equal(inPlan(joined), true, "so is one you added");
+  assert.equal(inPlan(held), true, "or one holding a share");
+  assert.equal(inPlan(pinned), true, "or a pinned one");
+  assert.equal(inPlan(removed), false, "taking one out wins over anything it still holds");
+  assert.equal(inPlan(seen[0]), false, "merely having been seen is not membership");
 
-  const full = workingSet(plan, true);
-  assert.equal(full.recent.length, 9);
-  assert.equal(full.parked.length, 7, "expanding brings the parked ones back");
+  const set = workingSet({ projects: [...seen, removed, pinned, held, joined, live] }, false);
+  assert.deepEqual(
+    set.members.map((view) => view.label),
+    ["live", "pinned", "held", "joined"],
+    "one list: open first, then pinned, then by the share each holds",
+  );
+  assert.equal(set.candidates.length, 12, "the picker offers a screenful");
+  assert.equal(set.hidden, 9, "the rest wait behind m");
+  assert.ok(set.candidates.some((view) => view.label === "removed"), "a project you removed can be added back");
+
+  const full = workingSet({ projects: [...seen, removed, pinned, held, joined, live] }, true);
+  assert.equal(full.candidates.length, 21);
   assert.equal(full.hidden, 0);
 });
 
@@ -723,7 +734,11 @@ test("the status line offers shapes before pieces", async () => {
     assert.equal(presetMatching(HUD_PRESETS[name]), name, `${name} is recognised from its own segments`);
   }
 
-  assert.deepEqual(DEFAULT_HUD_SEGMENTS, ["project", "pair", "5h", "reset"], "the default is four things, not six");
+  assert.deepEqual(
+    DEFAULT_HUD_SEGMENTS,
+    ["pair", "5h", "reset"],
+    "the default is three things, and the project name is not one: you are already in it",
+  );
   assert.equal(presetMatching(DEFAULT_HUD_SEGMENTS), "default", "and it is one of the named shapes");
   assert.equal(presetMatching(["project", "spark"]), null, "an arrangement of your own is not mislabelled");
 
@@ -743,10 +758,12 @@ test("the status line offers shapes before pieces", async () => {
     now,
   };
   const line = renderHud("default", view, loadTheme("default"), false);
-  assert.match(line, /webinvoke/);
-  assert.match(line, /21%\/50%/);
-  assert.match(line, /5h 42%/);
+  assert.match(line, /21%\/50%/, "what this session has spent of what it was given");
+  assert.match(line, /5h 42%/, "and where the window is");
+  assert.match(line, /in 1h/, "and when it comes back");
+  assert.doesNotMatch(line, /webinvoke/, "not the project name: the line is drawn inside that project");
   assert.doesNotMatch(line, /HIGH/, "priority is not in the default, it rarely changes");
+  assert.match(renderHud("everything", view, loadTheme("default"), false), /webinvoke/, "but it is one keystroke away");
 });
 
 test("a theme you write yourself is checked, not just accepted", async () => {
@@ -791,7 +808,7 @@ test("the help page fits, and every key it lists is a key that works", async () 
 
   for (const columns of [60, 80, 100, 140]) {
     const lines = helpOverlay(control, {
-      theme: loadTheme("catppuccin"),
+      theme: loadTheme("default"),
       color: false,
       columns,
       rows: 40,
@@ -806,7 +823,7 @@ test("the help page fits, and every key it lists is a key that works", async () 
   }
 
   const listed = helpOverlay(control, {
-    theme: loadTheme("catppuccin"),
+    theme: loadTheme("default"),
     color: false,
     columns: 140,
     rows: 40,

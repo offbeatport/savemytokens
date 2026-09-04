@@ -22,11 +22,13 @@ function project(label, options) {
     settings: {
       project: `/Users/you/${label}`,
       label,
-      share: options.pinned ? options.target : null,
+      share: options.pinned || !options.live ? options.target : null,
       priority: options.priority,
       cap: null,
       pinned: Boolean(options.pinned),
       parked: false,
+      inPlan: true,
+      joinedAt: START,
     },
     sessions: [],
     allocation: { claimantId: label, target: options.target, pinned: options.pinned ? options.target : null, pool: 0, released: !options.live },
@@ -72,7 +74,7 @@ const PROJECTS = [
     prompt: "Try the alternate parser and compare the output",
   }),
   project("reposhine", {
-    target: 0,
+    target: 0.15,
     used: 0,
     observed: 0,
     tokens: 0,
@@ -117,7 +119,7 @@ const CONTROL = {
     policyFor: {},
     preserveFor: {},
     customAdvice: {},
-    theme: { tui: "catppuccin", hud: "catppuccin" },
+    theme: { tui: "default", hud: "default" },
     layout: { hud: "default" },
     hud: { segments: [] },
   },
@@ -225,7 +227,7 @@ function write(name, lines, theme, title) {
   process.stdout.write(`${path.relative(ROOT, file)}  ${lines.length} lines\n`);
 }
 
-const theme = loadTheme("catppuccin");
+const theme = loadTheme("default");
 const HEAD_LEFT = " SaveMyTokens · Claude Code · 5h";
 const HEAD_RIGHT = "read just now  plan ";
 const frame = (body, footer) => [
@@ -240,7 +242,7 @@ write(
   "screenshot.svg",
   frame(
     planRows(CONTROL, context(theme, COLUMNS)),
-    `[38;2;147;153;178m  ↑↓ select   ⏎ open   ←→ target   p priority   f pin   x park   P settings   ? help   q quit[0m`,
+    `[38;2;147;153;178m  ↑↓ select   ⏎ open   ←→ target   p priority   a add   x remove   f pin   P settings   ? help   q quit[0m`,
   ),
   theme,
   "savemytokens",
