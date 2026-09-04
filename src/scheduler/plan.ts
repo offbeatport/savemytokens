@@ -1,4 +1,5 @@
 import type { ClaimantState, EnforcementLevel, Priority, Provider, Resource } from "../core/resource.js";
+import { withMoved, withToggled } from "../report/settings.js";
 import { claudeCodeProvider } from "../adapters/claude-code/provider.js";
 import { codexProvider } from "../adapters/codex/provider.js";
 import {
@@ -165,6 +166,52 @@ export function cyclePriority(current: Priority): Priority {
 export function savePreference(project: string, kinds: string[]): void {
   const config = loadConfig();
   config.preserveFor[project || "default"] = kinds;
+  config.preferencesSetAt = Date.now();
+  saveConfig(config);
+}
+
+export function toggleColumn(id: string): void {
+  const config = loadConfig();
+  const columns = withToggled(config.columns, id);
+  config.columns = columns.length > 0 ? columns : [id];
+  saveConfig(config);
+}
+
+export function toggleSegment(id: string): void {
+  const config = loadConfig();
+  config.hud.segments = withToggled(config.hud.segments, id);
+  saveConfig(config);
+}
+
+export function moveSegment(id: string, delta: number): void {
+  const config = loadConfig();
+  config.hud.segments = withMoved(config.hud.segments, id, delta);
+  saveConfig(config);
+}
+
+export function cycleTheme(surface: "tui" | "hud", delta: number, names: string[]): void {
+  if (names.length === 0) return;
+  const config = loadConfig();
+  const at = names.indexOf(config.theme[surface]);
+  const next = names[(at + delta + names.length) % names.length] ?? names[0];
+  if (next) config.theme[surface] = next;
+  saveConfig(config);
+}
+
+export function cyclePolicy(delta: number): void {
+  const names = policyNames();
+  const config = loadConfig();
+  const at = names.indexOf(config.policy);
+  const next = names[(at + delta + names.length) % names.length] ?? names[0];
+  if (next) config.policy = next;
+  saveConfig(config);
+}
+
+export function togglePreserve(kind: string): void {
+  const config = loadConfig();
+  const current = config.preserveFor.default ?? [];
+  const next = current.includes(kind) ? current.filter((value) => value !== kind) : [...current, kind];
+  config.preserveFor.default = next;
   config.preferencesSetAt = Date.now();
   saveConfig(config);
 }

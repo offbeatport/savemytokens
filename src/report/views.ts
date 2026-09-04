@@ -1,6 +1,7 @@
 import type { ControlPlan } from "../scheduler/plan.js";
 import { visibleRows, workingSet } from "../scheduler/plan.js";
 import {
+  formatCountdown,
   formatReset,
   loadMeter,
   meterBar,
@@ -65,7 +66,9 @@ function capacityRow(control: ControlPlan, context: ViewContext): string[] {
     const used = resource.usedPercent ?? 0;
     const key = resource.id.split(":")[1] ?? "";
     const name = key === "five_hour" ? "5h" : key === "seven_day" ? "7d" : "spend";
-    const reset = resource.window.resetsAt ? paint(theme, "dim", `resets ${formatReset(resource.window.resetsAt, now)}`, color) : "";
+    const reset = resource.window.resetsAt
+      ? paint(theme, "dim", `resets in ${formatCountdown(resource.window.resetsAt, now)} (${formatReset(resource.window.resetsAt, now)})`, color)
+      : "";
     return `${paint(theme, "dim", name, color)} ${meterBar(theme, used / 100, 12, pressureRole(used / 100), color)} ${paint(theme, pressureRole(used / 100), percentLabel(used), color)} ${reset}`;
   });
   return [`  ${parts.join("    ")}`];
@@ -77,14 +80,16 @@ function columnWidths(context: ViewContext): { label: number; prompt: number } {
   return { label, prompt };
 }
 
-function headerRow(context: ViewContext, widths: { label: number; prompt: number }): string {
+function headerRow(context: ViewContext, widths: { label: number; prompt: number }, columns: string[]): string {
   const { theme, color } = context;
-  return paint(
-    theme,
-    "dim",
-    `    ${padEndVisible("session", widths.label)} ${padStartVisible("target", 6)} ${padStartVisible("used", 5)} ${padStartVisible("share", 5)} ${padEndVisible("priority", 8)} ${padEndVisible("of target", TARGET_COL)} last prompt`,
-    color,
-  );
+  const cells = [`    ${padEndVisible("session", widths.label)}`];
+  if (columns.includes("target")) cells.push(padStartVisible("target", 6));
+  if (columns.includes("used")) cells.push(padStartVisible("used", 5));
+  if (columns.includes("share")) cells.push(padStartVisible("share", 5));
+  if (columns.includes("priority")) cells.push(padEndVisible("priority", 8));
+  if (columns.includes("of target")) cells.push(padEndVisible("of target", TARGET_COL));
+  if (columns.includes("last prompt")) cells.push("last prompt");
+  return paint(theme, "dim", cells.join(" "), color);
 }
 
 function idleHeaderRow(context: ViewContext, widths: { label: number; prompt: number }): string {
@@ -120,6 +125,7 @@ function row(
   context: ViewContext,
   widths: { label: number; prompt: number },
   now: number,
+  columns: string[],
 ): string {
   const { theme, color } = context;
   const live = view.bucket === "active";
@@ -148,8 +154,14 @@ function row(
   const spent = live
     ? `${padStartVisible(paint(theme, role, percentLabel(view.pressure.value * 100, 4), color), 4)} ${smallBar(view.pressure.value, BAR_CELLS, theme, color, role)}`
     : padEndVisible(paint(theme, "dim", "—", color), TARGET_COL);
-  const bar = padEndVisible(spent, TARGET_COL);
-  return `${cursor}${pin}${mark} ${label} ${target} ${used} ${share} ${priority} ${bar} ${paint(theme, "dim", clip(view.claimant.prompt || "—", widths.prompt), color)}`;
+  const cells = [`${cursor}${pin}${mark} ${label}`];
+  if (columns.includes("target")) cells.push(target);
+  if (columns.includes("used")) cells.push(used);
+  if (columns.includes("share")) cells.push(share);
+  if (columns.includes("priority")) cells.push(priority);
+  if (columns.includes("of target")) cells.push(padEndVisible(spent, TARGET_COL));
+  if (columns.includes("last prompt")) cells.push(paint(theme, "dim", clip(view.claimant.prompt || "—", widths.prompt), color));
+  return cells.join(" ");
 }
 
 function sectionTitle(name: string, count: number, context: ViewContext): string {
@@ -177,7 +189,8 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
   const set = workingSet(control.schedule, context.expanded);
   const widths = columnWidths(context);
   const now = control.schedule.now;
-  const out = [...capacityRow(control, context), "", headerRow(context, widths)];
+  const columns = control.config.columns ?? [];
+  const out = [...capacityRow(control, context), "", headerRow(context, widths, columns)];
   let index = 0;
   let printed = 0;
   const budget = context.expanded ? Number.MAX_SAFE_INTEGER : Math.max(6, context.rows - 13);
@@ -191,7 +204,7 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
         index += 1;
         continue;
       }
-      out.push(idle ? idleRow(view, index, context, widths, now) : row(view, index, context, widths, now));
+      out.push(idle ? idleRow(view, index, context, widths, now) : row(view, index, context, widths, now, columns));
       index += 1;
       printed += 1;
     }
@@ -302,7 +315,7 @@ export function helpOverlay(control: ControlPlan, context: ViewContext): string[
     "    d b a n   mark done · blocked · active · needs-more",
     "    f x       pin a row · park it",
     "    m         show every session, not just the first screenful",
-    "    P         what to preserve when the window gets tight",
+    "    P         settings: columns, palette, status line, what to preserve",
     "    r ? q     refresh · this help · quit",
     "",
     `  ${paint(theme, "accent", "the working set", color)}`,

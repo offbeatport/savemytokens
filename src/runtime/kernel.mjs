@@ -69,6 +69,8 @@ export const DEFAULT_CONFIG = {
   layout: { hud: "allocation" },
   policy: "finish",
   policyFor: {},
+  columns: ["target", "used", "share", "priority", "of target", "last prompt"],
+  hud: { segments: ["project", "target", "used", "priority", "5h", "reset"] },
   preserveFor: {},
   customAdvice: {},
   wrappedStatusLine: null,
@@ -83,6 +85,13 @@ export function loadConfig() {
     ...stored,
     theme: { ...DEFAULT_CONFIG.theme, ...(stored.theme || {}) },
     layout: { ...DEFAULT_CONFIG.layout, ...(stored.layout || {}) },
+    columns: Array.isArray(stored.columns) && stored.columns.length > 0 ? stored.columns : DEFAULT_CONFIG.columns,
+    hud: {
+      segments:
+        Array.isArray(stored.hud?.segments) && stored.hud.segments.length > 0
+          ? stored.hud.segments
+          : HUD_PRESETS[stored.layout?.hud] ?? DEFAULT_CONFIG.hud.segments,
+    },
     policyFor: { ...(stored.policyFor || {}) },
     preserveFor: { ...(stored.preserveFor || {}) },
     customAdvice: { ...(stored.customAdvice || {}) },
@@ -866,6 +875,19 @@ export function pressureRole(pressure) {
   return "ok";
 }
 
+export function formatCountdown(resetsAt, now = Date.now()) {
+  if (typeof resetsAt !== "number") return "";
+  const diff = resetsAt * 1000 - now;
+  if (diff <= 0) return "due";
+  const minutes = Math.round(diff / 60000);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours < 24) return rest === 0 ? `${hours}h` : `${hours}h${String(rest).padStart(2, "0")}`;
+  const days = Math.floor(hours / 24);
+  return `${days}d${hours % 24 > 0 ? `${hours % 24}h` : ""}`;
+}
+
 export function formatReset(resetsAt, now = Date.now()) {
   if (typeof resetsAt !== "number") return "";
   const at = new Date(resetsAt * 1000);
@@ -881,142 +903,128 @@ function percentText(value) {
   return `${Math.round(value)}%`;
 }
 
-export const HUD_LAYOUTS = [
-  "allocation",
-  "compact",
-  "global",
+export const HUD_SEGMENTS = [
+  "tag",
+  "project",
+  "target",
+  "used",
+  "share",
+  "pair",
   "bar",
-  "blocks",
-  "dots",
-  "minimal",
-  "pace",
-  "runway",
+  "priority",
+  "5h",
+  "7d",
+  "spend",
+  "reset",
+  "meter5h",
   "spark",
+  "pace",
+  "empty",
 ];
 
-function hudBar(theme, ratio, width, role, enabled, filled = "\u2588", empty = "\u2591") {
+export const HUD_PRESETS = {
+  allocation: ["project", "target", "used", "priority", "5h", "reset"],
+  compact: ["project", "pair", "5h"],
+  global: ["5h", "reset", "7d", "project", "pair", "priority"],
+  bar: ["project", "bar", "pair", "meter5h"],
+  blocks: ["meter5h", "5h", "project", "pair"],
+  dots: ["meter5h", "5h", "project", "pair", "priority"],
+  minimal: ["5h", "pair"],
+  pace: ["5h", "pace", "project", "pair"],
+  runway: ["5h", "empty", "project", "pair"],
+  spark: ["spark", "5h", "project", "pair"],
+};
+
+export const HUD_LAYOUTS = Object.keys(HUD_PRESETS);
+export const DEFAULT_HUD_SEGMENTS = HUD_PRESETS.allocation;
+
+export const COLUMNS = ["target", "used", "share", "priority", "of target", "last prompt"];
+export const DEFAULT_COLUMNS = COLUMNS;
+
+function hudMeter(theme, ratio, width, role, enabled, filled = "\u2588", empty = "\u2591") {
   const cells = Math.max(4, width);
   const on = Math.max(0, Math.min(cells, Math.round(Math.max(0, Math.min(1, ratio)) * cells)));
   return paint(theme, role, filled.repeat(on), enabled) + paint(theme, "track", empty.repeat(cells - on), enabled);
 }
 
-function hudSpark(theme, view, width, enabled) {
-  const points = Array.isArray(view.history) ? view.history : [];
-  if (points.length === 0) return "";
-  const glyphs = "\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588".split("");
-  const tail = points.slice(-width);
-  return tail
-    .map((value) => paint(theme, pressureRole(value / 100), glyphs[Math.max(0, Math.min(7, Math.round((value / 100) * 7)))] ?? "\u2581", enabled))
-    .join("");
+function windowOf(view, key) {
+  const window = view.quota?.[key];
+  return window && typeof window.usedPercent === "number" ? window : null;
 }
 
-function windowParts(theme, view, enabled) {
-  const out = [];
-  for (const key of ["five_hour", "seven_day", "spend_limit"]) {
-    const window = view.quota?.[key];
-    if (!window) continue;
-    const reset = formatReset(window.resetsAt, view.now);
-    out.push(
-      `${WINDOW_LABEL[key]} ${paint(theme, pressureRole(window.usedPercent / 100), percentText(window.usedPercent), enabled)}${reset ? paint(theme, "dim", ` ${reset}`, enabled) : ""}`,
-    );
+const SEGMENTS = {
+  tag: (view, theme, on) => paint(theme, "accent", theme.glyphs?.tag ?? "SMT", on),
+  project: (view) => view.label || "session",
+  target: (view, theme, on) => `${paint(theme, "dim", "target", on)} ${percentText((view.target ?? 0) * 100)}`,
+  used: (view, theme, on) => {
+    const value = typeof view.used === "number" ? view.used : (view.observed ?? 0) * 100;
+    return `${paint(theme, "dim", typeof view.used === "number" ? "used" : "share", on)} ${paint(theme, pressureRole(view.pressure ?? 0), percentText(value), on)}`;
+  },
+  share: (view, theme, on) => `${paint(theme, "dim", "share", on)} ${percentText((view.observed ?? 0) * 100)}`,
+  pair: (view, theme, on) => {
+    const value = typeof view.used === "number" ? view.used : (view.observed ?? 0) * 100;
+    return `${paint(theme, pressureRole(view.pressure ?? 0), percentText(value), on)}${paint(theme, "dim", `/${percentText((view.target ?? 0) * 100)}`, on)}`;
+  },
+  bar: (view, theme, on) => hudMeter(theme, view.pressure ?? 0, 8, pressureRole(view.pressure ?? 0), on, "|", "."),
+  priority: (view, theme, on) => paint(theme, "dim", String(view.priority ?? "normal").toUpperCase(), on),
+  "5h": (view, theme, on) => {
+    const window = windowOf(view, "five_hour");
+    return window ? `5h ${paint(theme, pressureRole(window.usedPercent / 100), percentText(window.usedPercent), on)}` : "";
+  },
+  "7d": (view, theme, on) => {
+    const window = windowOf(view, "seven_day");
+    return window ? `7d ${paint(theme, pressureRole(window.usedPercent / 100), percentText(window.usedPercent), on)}` : "";
+  },
+  spend: (view, theme, on) => {
+    const window = windowOf(view, "spend_limit");
+    return window ? `spend ${paint(theme, pressureRole(window.usedPercent / 100), percentText(window.usedPercent), on)}` : "";
+  },
+  reset: (view, theme, on) => {
+    const window = windowOf(view, "five_hour");
+    return window ? paint(theme, "dim", `in ${formatCountdown(window.resetsAt, view.now)}`, on) : "";
+  },
+  meter5h: (view, theme, on) => {
+    const window = windowOf(view, "five_hour");
+    return window ? hudMeter(theme, window.usedPercent / 100, 8, pressureRole(window.usedPercent / 100), on) : "";
+  },
+  spark: (view, theme, on) => {
+    const points = Array.isArray(view.history) ? view.history.slice(-12) : [];
+    if (points.length === 0) return "";
+    const glyphs = "\u2581\u2582\u2583\u2584\u2585\u2586\u2587\u2588".split("");
+    return points
+      .map((value) => paint(theme, pressureRole(value / 100), glyphs[Math.max(0, Math.min(7, Math.round((value / 100) * 7)))] ?? "\u2581", on))
+      .join("");
+  },
+  pace: (view, theme, on) => {
+    const window = windowOf(view, "five_hour");
+    if (!window || typeof view.from !== "number" || typeof view.to !== "number") return "";
+    const elapsed = Math.max(0, Math.min(1, (view.now - view.from) / Math.max(1, view.to - view.from))) * 100;
+    const ahead = window.usedPercent - elapsed;
+    return paint(theme, ahead > 5 ? "warn" : "ok", `${ahead >= 0 ? "+" : ""}${Math.round(ahead)} vs pace`, on);
+  },
+  empty: (view, theme, on) => {
+    const window = windowOf(view, "five_hour");
+    if (!window || !(typeof view.rate === "number" && view.rate > 0)) return "";
+    const at = view.now + ((100 - window.usedPercent) / view.rate) * 3600000;
+    const resetsAt = typeof window.resetsAt === "number" ? window.resetsAt * 1000 : null;
+    if (resetsAt !== null && at >= resetsAt) return paint(theme, "ok", "lasts the window", on);
+    return paint(theme, "danger", `empty ${formatReset(Math.floor(at / 1000), view.now)}`, on);
+  },
+};
+
+export function renderSegments(segments, view, theme, enabled = true) {
+  const sep = ` ${theme.glyphs?.sep ?? "\u00b7"} `;
+  const parts = [];
+  for (const name of segments) {
+    const render = SEGMENTS[name];
+    if (!render) continue;
+    const text = render(view, theme, enabled);
+    if (text) parts.push(text);
   }
-  return out;
+  return parts.join(sep) + (view.stale ? paint(theme, "dim", " stale", enabled) : "");
 }
 
 export function renderHud(layout, view, theme, enabled = true) {
-  const tag = theme.glyphs?.tag ?? "SMT";
-  const sep = ` ${theme.glyphs?.sep ?? "\u00b7"} `;
-  const label = view.label || "session";
-  const target = percentText((view.target ?? 0) * 100);
-  const hasUsed = typeof view.used === "number";
-  const usedValue = hasUsed ? view.used : (view.observed ?? 0) * 100;
-  const used = percentText(usedValue);
-  const usedRole = pressureRole(view.pressure ?? 0);
-  const priority = String(view.priority ?? "normal").toUpperCase();
-  const five = view.quota?.five_hour;
-  const windows = windowParts(theme, view, enabled);
-  const stale = view.stale ? paint(theme, "dim", " stale", enabled) : "";
-  const badge = paint(theme, "accent", tag, enabled);
-  const pair = `${paint(theme, usedRole, used, enabled)}${paint(theme, "dim", `/${target}`, enabled)}`;
-
-  if (layout === "compact") {
-    return [badge, `${label} ${pair}`, ...windows.slice(0, 1)].join(sep) + stale;
-  }
-
-  if (layout === "global") {
-    return [badge, ...windows, `${label} ${pair} ${paint(theme, "dim", priority, enabled)}`].join(sep) + stale;
-  }
-
-  if (layout === "bar") {
-    const parts = [`${label} ${hudBar(theme, view.target > 0 ? usedValue / 100 / view.target : 0, 10, usedRole, enabled, "|", ".")} ${pair}`];
-    if (five) parts.push(`5h ${hudBar(theme, five.usedPercent / 100, 8, pressureRole(five.usedPercent / 100), enabled)} ${percentText(five.usedPercent)}`);
-    return [badge, ...parts].join(sep) + stale;
-  }
-
-  if (layout === "blocks") {
-    const parts = [];
-    if (five) parts.push(`${hudBar(theme, five.usedPercent / 100, 10, pressureRole(five.usedPercent / 100), enabled, "\u25b0", "\u25b1")} ${percentText(five.usedPercent)}`);
-    parts.push(`${label} ${pair}`);
-    return [badge, ...parts].join(sep) + stale;
-  }
-
-  if (layout === "dots") {
-    const parts = [];
-    if (five) {
-      const on = Math.round((five.usedPercent / 100) * 10);
-      const dots =
-        paint(theme, pressureRole(five.usedPercent / 100), "\u25cf".repeat(on), enabled) +
-        paint(theme, "track", "\u25cb".repeat(Math.max(0, 10 - on)), enabled);
-      parts.push(`${dots} ${percentText(five.usedPercent)}`);
-    }
-    parts.push(`${label} ${pair} ${paint(theme, "dim", priority, enabled)}`);
-    return [badge, ...parts].join(sep) + stale;
-  }
-
-  if (layout === "minimal") {
-    return `${five ? paint(theme, pressureRole(five.usedPercent / 100), percentText(five.usedPercent), enabled) : paint(theme, "dim", "--", enabled)}${sep}${pair}`;
-  }
-
-  if (layout === "pace") {
-    const parts = [];
-    if (five && typeof view.from === "number" && typeof view.to === "number") {
-      const elapsed = Math.max(0, Math.min(1, (view.now - view.from) / Math.max(1, view.to - view.from))) * 100;
-      const ahead = five.usedPercent - elapsed;
-      parts.push(
-        `5h ${paint(theme, pressureRole(five.usedPercent / 100), percentText(five.usedPercent), enabled)} ${paint(theme, "dim", `of ${percentText(elapsed)} elapsed`, enabled)} ${paint(theme, ahead > 5 ? "warn" : "ok", `${ahead >= 0 ? "+" : ""}${Math.round(ahead)}`, enabled)}`,
-      );
-    } else if (five) {
-      parts.push(`5h ${percentText(five.usedPercent)}`);
-    }
-    parts.push(`${label} ${pair}`);
-    return [badge, ...parts].join(sep) + stale;
-  }
-
-  if (layout === "runway") {
-    const parts = [];
-    if (five) {
-      const rate = typeof view.rate === "number" && view.rate > 0 ? view.rate : null;
-      const empty = rate ? view.now + ((100 - five.usedPercent) / rate) * 3600000 : null;
-      const resetsAt = typeof five.resetsAt === "number" ? five.resetsAt * 1000 : null;
-      const safe = !empty || (resetsAt !== null && empty >= resetsAt);
-      parts.push(
-        `5h ${paint(theme, pressureRole(five.usedPercent / 100), percentText(five.usedPercent), enabled)} ${paint(theme, safe ? "dim" : "danger", empty && !safe ? `empty ${formatReset(Math.floor(empty / 1000), view.now)}` : `resets ${formatReset(five.resetsAt, view.now)}`, enabled)}`,
-      );
-    }
-    parts.push(`${label} ${pair}`);
-    return [badge, ...parts].join(sep) + stale;
-  }
-
-  if (layout === "spark") {
-    const spark = hudSpark(theme, view, 12, enabled);
-    const parts = [];
-    if (spark) parts.push(`${spark}${five ? ` ${paint(theme, pressureRole(five.usedPercent / 100), percentText(five.usedPercent), enabled)}` : ""}`);
-    else if (five) parts.push(`5h ${percentText(five.usedPercent)}`);
-    parts.push(`${label} ${pair}`);
-    return [badge, ...parts].join(sep) + stale;
-  }
-
-  const parts = [badge, `${label} target ${target}`, `${hasUsed ? "used" : "share"} ${paint(theme, usedRole, used, enabled)}`, paint(theme, "dim", priority, enabled)];
-  if (windows.length > 0) parts.push(windows[0]);
-  return parts.join(sep) + stale;
+  const segments = Array.isArray(layout) ? layout : HUD_PRESETS[layout] ?? DEFAULT_HUD_SEGMENTS;
+  return renderSegments(segments, view, theme, enabled);
 }

@@ -200,7 +200,7 @@ function run() {
   })();
 
   const line = renderHud(
-    config.layout.hud,
+    config.hud?.segments ?? config.layout.hud,
     {
       label: view?.claimant.label || (payload.cwd ? path.basename(payload.cwd) : "session"),
       target: view?.allocation.target ?? 1,

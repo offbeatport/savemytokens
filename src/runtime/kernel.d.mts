@@ -118,6 +118,8 @@ export interface Config {
   policyFor: Record<string, string>;
   theme: { tui: string; hud: string };
   layout: { hud: string };
+  columns: string[];
+  hud: { segments: string[] };
   preserveFor: Record<string, string[]>;
   customAdvice: Record<string, string>;
   wrappedStatusLine: string | null;
@@ -281,7 +283,14 @@ export function paint(theme: Theme, role: string, text: string, enabled?: boolea
 export function meterBar(theme: Theme, ratio: number, width: number, role?: string, enabled?: boolean): string;
 export function pressureRole(pressure: number): string;
 export function formatReset(resetsAt: number | undefined, now?: number): string;
+export function formatCountdown(resetsAt: number | undefined, now?: number): string;
 export const HUD_LAYOUTS: string[];
-export function renderHud(layout: string, view: HudView, theme: Theme, enabled?: boolean): string;
+export const HUD_SEGMENTS: string[];
+export const HUD_PRESETS: Record<string, string[]>;
+export const DEFAULT_HUD_SEGMENTS: string[];
+export const COLUMNS: string[];
+export const DEFAULT_COLUMNS: string[];
+export function renderSegments(segments: string[], view: HudView, theme: Theme, enabled?: boolean): string;
+export function renderHud(layout: string | string[], view: HudView, theme: Theme, enabled?: boolean): string;
 
 export type { Allocation, AllocationResult };

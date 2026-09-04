@@ -1,13 +1,19 @@
 import type { Options } from "../cli-options.js";
 import { detailRows, helpOverlay, labelsFor, planRows, type ViewContext } from "../report/views.js";
+import { PRESERVE_KINDS, renderSettings, selectableRows, settingsRows } from "../report/settings.js";
 import { keyActions, splitKeys, type Action } from "../scheduler/keys.js";
 import {
   buildPlan,
   cyclePriority,
   selectionIndex,
   equalize,
+  cyclePolicy,
+  cycleTheme,
+  moveSegment,
   saveCustomAdvice,
-  savePreference,
+  toggleColumn,
+  togglePreserve,
+  toggleSegment,
   setPriority,
   setShare,
   setPinned,
@@ -16,16 +22,23 @@ import {
   visibleRows,
   type ControlPlan,
 } from "../scheduler/plan.js";
-import { loadConfig, loadTheme, paint, saveConfig, type Theme } from "../runtime/kernel.mjs";
+import {
+  builtinThemes,
+  loadConfig,
+  loadTheme,
+  paint,
+  saveConfig,
+  userThemes,
+  windowBounds,
+  type HudView,
+  type Theme,
+} from "../runtime/kernel.mjs";
 import { hookInstalled, runInstall } from "./install.js";
 import { colorEnabled, padEndVisible, visibleWidth } from "../util/ansi.js";
 import { ago } from "../util/fmt.js";
 
 const REFRESH_MS = 2500;
 const STEP = 0.05;
-const PRESERVE_KINDS = ["implementation", "tests", "end-to-end checks", "documentation", "exploration"];
-const DEFAULT_PRESERVE = [0, 1];
-const CUSTOM_ROW = PRESERVE_KINDS.length;
 const MAX_CUSTOM = 200;
 
 const ALT_ON = "\u001b[?1049h";
@@ -106,7 +119,7 @@ function footerFor(control: ControlPlan, context: ViewContext, showHelp: boolean
     paint(
       theme,
       "dim",
-      "  ↑↓ select   ⏎ open   ←→ target   p priority   f pin   x park   m all   ? help   q quit",
+      "  ↑↓ select   ⏎ open   ←→ target   p priority   f pin   x park   P settings   ? help   q quit",
       color,
     ),
   ];
@@ -190,31 +203,31 @@ export function setupScreen(choice: boolean, theme: Theme, color: boolean, colum
   return lines.map((line) => centre(line, inner));
 }
 
-function preferencesScreen(
-  selected: Set<number>,
-  cursor: number,
-  custom: string,
-  editing: boolean,
-  theme: Theme,
-  color: boolean,
-): string[] {
-  const out = ["", "  When your Claude window gets tight, what should be preserved?"];
-  out.push(`  ${paint(theme, "dim", "Optional. Without it the advice preserves testing and finalisation.", color)}`);
-  out.push("");
-  for (const [index, kind] of PRESERVE_KINDS.entries()) {
-    const here = cursor === index && !editing;
-    const arrow = here ? paint(theme, "accent", "❯", color) : " ";
-    const mark = selected.has(index) ? paint(theme, "ok", "x", color) : " ";
-    out.push(`   ${arrow} ${index + 1} [${mark}] ${kind}`);
+function previewView(control: ControlPlan): HudView {
+  const now = control.schedule.now;
+  const bounds = windowBounds(control.schedule.quota, "five_hour", now);
+  const view = control.schedule.claimants.find((row) => row.bucket === "active") ?? control.schedule.claimants[0];
+  const quota: HudView["quota"] = {};
+  for (const key of ["five_hour", "seven_day", "spend_limit"] as const) {
+    const window = control.schedule.quota?.windows?.[key];
+    if (window && (typeof window.resetsAt !== "number" || window.resetsAt * 1000 > now)) quota[key] = window;
   }
-  out.push("");
-  const arrow = cursor === CUSTOM_ROW && !editing ? paint(theme, "accent", "❯", color) : " ";
-  const body = editing
-    ? `${custom}${paint(theme, "accent", "▏", color)}`
-    : custom || paint(theme, "dim", "nothing — press enter to write one", color);
-  out.push(`   ${arrow} ${paint(theme, "dim", "your own line, injected with the advice:", color)}`);
-  out.push(`      ${body}`);
-  return out;
+  return {
+    label: view?.claimant.label || "session",
+    target: view?.allocation.target ?? 1,
+    observed: view?.observed ?? 0,
+    used: view?.attributedPercent ?? null,
+    pressure: view?.pressure.value ?? 0,
+    priority: view?.claimant.priority ?? "normal",
+    quota,
+    history: (control.schedule.quota?.history ?? [])
+      .filter((point) => typeof point.five_hour === "number")
+      .map((point) => point.five_hour as number),
+    rate: null,
+    from: bounds.from,
+    to: bounds.to,
+    now,
+  };
 }
 
 export async function runControl(options: Options): Promise<void> {
@@ -241,16 +254,15 @@ export async function runControl(options: Options): Promise<void> {
 
   const config = loadConfig();
   const offerInstall = !hookInstalled() && !config.offeredInstallAt;
-  let mode: "plan" | "prefs" | "setup" | "detail" = offerInstall ? "setup" : "plan";
+  let mode: "plan" | "settings" | "setup" | "detail" = offerInstall ? "setup" : "plan";
+  let settingsCursor = 0;
   let setupChoice = true;
   let expanded = false;
   let showHelp = false;
   let editing = false;
-  let cursor = 0;
   let custom = "";
   let selected = 0;
   let selectedId: string | null = null;
-  const chosen = new Set(DEFAULT_PRESERVE);
 
   stdin.resume();
   stdin.setEncoding("utf8");
@@ -274,8 +286,17 @@ export async function runControl(options: Options): Promise<void> {
       ? helpOverlay(control, context)
       : mode === "setup"
         ? setupScreen(setupChoice, context.theme, context.color, context.columns)
-        : mode === "prefs"
-          ? preferencesScreen(chosen, cursor, custom, editing, context.theme, context.color)
+        : mode === "settings"
+          ? renderSettings(
+              control.config,
+              settingsRows(control.config),
+              settingsCursor,
+              editing,
+              custom,
+              previewView(control),
+              context.theme,
+              context.color,
+            )
           : mode === "detail"
             ? detailRows(control, context)
             : planRows(control, context);
@@ -284,19 +305,17 @@ export async function runControl(options: Options): Promise<void> {
         ? [paint(context.theme, "dim", "  ← → choose   enter confirm   q quit", context.color)]
         : mode === "detail" && !showHelp
           ? [paint(context.theme, "dim", "  ←→ target   p priority   f pin   x park   d done   esc back   q quit", context.color)]
-        : mode === "prefs" && !showHelp
+        : mode === "settings" && !showHelp
         ? [
             paint(
               context.theme,
               "dim",
-              editing
-                ? "  type it   enter keep   esc cancel"
-                : "  ↑↓ move   space toggle   1-5 jump   enter edit   s save   esc back",
+              editing ? "  type it   enter keep   esc cancel" : "  ↑↓ move   space toggle   ←→ change or reorder   esc back",
               context.color,
             ),
           ]
         : footerFor(control, context, showHelp);
-    const title = mode === "setup" ? "setup" : mode === "prefs" ? "preserve" : mode === "detail" ? "session" : "plan";
+    const title = mode === "setup" ? "setup" : mode === "settings" ? "settings" : mode === "detail" ? "session" : "plan";
     process.stdout.write(CLEAR + fullScreen(control, body, footer, title, context, mode === "setup" && !showHelp));
   };
 
@@ -312,13 +331,6 @@ export async function runControl(options: Options): Promise<void> {
     stdin.setRawMode(false);
     stdin.pause();
     process.stdout.write(SHOW + ALT_OFF);
-  };
-
-  const savePreferences = (kinds: string[]): void => {
-    savePreference(process.cwd(), kinds);
-    savePreference("default", kinds);
-    saveCustomAdvice(process.cwd(), custom);
-    saveCustomAdvice("default", custom);
   };
 
   settle();
@@ -362,30 +374,34 @@ export async function runControl(options: Options): Promise<void> {
         return true;
       }
 
-      if (mode === "prefs") {
-        const toggle = (index: number): void => {
-          if (chosen.has(index)) chosen.delete(index);
-          else chosen.add(index);
-        };
-        if (action.kind === "toggle" && action.index < PRESERVE_KINDS.length) {
-          cursor = action.index;
-          toggle(action.index);
-        } else if (action.kind === "toggleCurrent" && cursor < PRESERVE_KINDS.length) {
-          toggle(cursor);
-        } else if (action.kind === "up") {
-          cursor = Math.max(0, cursor - 1);
-        } else if (action.kind === "down") {
-          cursor = Math.min(CUSTOM_ROW, cursor + 1);
-        } else if (action.kind === "edit" || (action.kind === "save" && cursor === CUSTOM_ROW && !editing)) {
-          cursor = CUSTOM_ROW;
-          editing = true;
-        } else if (action.kind === "save") {
-          savePreferences([...chosen].sort().map((index) => PRESERVE_KINDS[index] ?? ""));
+      if (mode === "settings") {
+        const rows = settingsRows(control.config);
+        const selectable = selectableRows(rows);
+        if (!selectable.includes(settingsCursor)) settingsCursor = selectable[0] ?? 0;
+        const at = selectable.indexOf(settingsCursor);
+        const current = rows[settingsCursor];
+
+        if (action.kind === "up") settingsCursor = selectable[Math.max(0, at - 1)] ?? settingsCursor;
+        else if (action.kind === "down") settingsCursor = selectable[Math.min(selectable.length - 1, at + 1)] ?? settingsCursor;
+        else if (action.kind === "back" || action.kind === "skip") {
           mode = "plan";
           refresh();
-        } else if (action.kind === "skip") {
-          mode = "plan";
-          refresh();
+        } else if (current) {
+          const names = [...new Set([...builtinThemes(), ...userThemes()])];
+          if (action.kind === "toggleCurrent") {
+            if (current.kind === "column") toggleColumn(current.id);
+            else if (current.kind === "segment") toggleSegment(current.id);
+            else if (current.kind === "preserve") togglePreserve(PRESERVE_KINDS[current.index] ?? "");
+          } else if (action.kind === "share") {
+            const delta = action.delta > 0 ? 1 : -1;
+            if (current.kind === "theme") cycleTheme(current.surface, delta, names);
+            else if (current.kind === "policy") cyclePolicy(delta);
+            else if (current.kind === "segment") moveSegment(current.id, delta);
+          } else if (action.kind === "resume" && current.kind === "advice") {
+            custom = control.config.customAdvice.default ?? "";
+            editing = true;
+          }
+          control = buildPlan(Date.now(), false, options.window, options.adapter);
         }
         return true;
       }
@@ -406,19 +422,12 @@ export async function runControl(options: Options): Promise<void> {
           if (mode === "detail") mode = "plan";
           else if (showHelp) showHelp = false;
           break;
-        case "preferences": {
-          const stored = control.config.preserveFor[process.cwd()] ?? control.config.preserveFor.default;
-          chosen.clear();
-          for (const [index, kind] of PRESERVE_KINDS.entries()) {
-            if (stored ? stored.includes(kind) : DEFAULT_PRESERVE.includes(index)) chosen.add(index);
-          }
-          custom = control.config.customAdvice[process.cwd()] ?? control.config.customAdvice.default ?? "";
-          cursor = 0;
+        case "preferences":
+          settingsCursor = 0;
           editing = false;
           showHelp = false;
-          mode = "prefs";
+          mode = "settings";
           break;
-        }
         case "up":
           selected = Math.max(0, selected - 1);
           selectedId = rows()[selected]?.claimant.id ?? null;
@@ -480,8 +489,11 @@ export async function runControl(options: Options): Promise<void> {
       if (editing) {
         for (const key of splitKeys(String(chunk))) {
           if (key === "\r" || key === "\n" || key === "\u001b") {
+            if (key !== "\u001b") {
+              saveCustomAdvice("default", custom);
+              control = buildPlan(Date.now(), false, options.window, options.adapter);
+            }
             editing = false;
-            cursor = 0;
           } else if (key === "\u007f" || key === "\b") {
             custom = custom.slice(0, -1);
           } else if (key === "\u0003") {
@@ -494,7 +506,7 @@ export async function runControl(options: Options): Promise<void> {
         draw();
         return;
       }
-      for (const action of keyActions(String(chunk), mode === "prefs" ? "prefs" : "plan", STEP)) {
+      for (const action of keyActions(String(chunk), mode === "settings" ? "prefs" : "plan", STEP)) {
         if (!apply(action)) return;
       }
       draw();

@@ -91,7 +91,7 @@ test("the status line is the only place the published window is captured from", 
   appendTurns(box, [turn(box, "m1", 1000, Date.now() - 60_000)]);
 
   const withoutLimits = runStatusLine(box, {});
-  assert.match(withoutLimits, /SMT/);
+  assert.match(withoutLimits, /webinvoke/, "the session is named even with no window to report");
   assert.equal(fs.existsSync(path.join(box.home, "quota", "claude-code.json")), false, "nothing to capture yet");
 
   const line = runStatusLine(box, rateLimits(42.5));
@@ -111,7 +111,7 @@ test("a status line already in place is wrapped, not replaced", () => {
   );
   appendTurns(box, [turn(box, "m1", 1000, Date.now() - 60_000)]);
   const line = runStatusLine(box, rateLimits(10));
-  assert.match(line, /^mine {2}SMT/, "their output comes first, ours is appended");
+  assert.match(line, /^mine {2}webinvoke/, "their output comes first, ours is appended");
 });
 
 test("session start states the target share and the release protocol", () => {
@@ -338,13 +338,13 @@ test("a user theme overrides a built-in without forking it", () => {
   const file = path.join(box.home, "themes", "midnight.json");
   assert.ok(fs.existsSync(file));
   const theme = JSON.parse(fs.readFileSync(file, "utf8"));
-  theme.glyphs.tag = "MINE";
+  theme.glyphs.sep = "//";
   fs.writeFileSync(file, JSON.stringify(theme));
 
   execFileSync("node", [CLI, "theme", "hud", "midnight"], { env: box.env, encoding: "utf8" });
   appendTurns(box, [turn(box, "m1", 1000, Date.now() - 60_000)]);
   const line = runStatusLine(box, rateLimits(10));
-  assert.match(line, /^MINE/, "the status line uses the user theme");
+  assert.match(line, /\/\//, "the status line uses the user theme's separator");
 });
 
 test("the window can be switched to the weekly one", () => {

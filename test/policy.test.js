@@ -365,3 +365,56 @@ test("a session is never marked seen later than its newest turn", async () => {
   const claimant = { state: "active", endedAt: null, pinned: false, parked: false, heartbeat: 0, lastSeen: sixDaysAgo };
   assert.equal(bucketFor(claimant, now, false), "parked", "an old session cannot look active");
 });
+
+test("the settings screen models columns, segments and their order", async () => {
+  const { settingsRows, selectableRows, withToggled, withMoved, renderSettings } = await import("../dist/report/settings.js");
+  const { loadTheme } = await import("../dist/runtime/kernel.mjs");
+
+  const config = {
+    version: 1,
+    createdAt: 1,
+    preferencesSetAt: 0,
+    offeredInstallAt: 0,
+    theme: { tui: "default", hud: "nord" },
+    layout: { hud: "allocation" },
+    columns: ["target", "used", "last prompt"],
+    hud: { segments: ["project", "target", "5h"] },
+    policy: "finish",
+    policyFor: {},
+    preserveFor: { default: ["tests"] },
+    customAdvice: {},
+    wrappedStatusLine: null,
+    contribute: false,
+  };
+
+  const rows = settingsRows(config);
+  const headers = rows.filter((row) => row.kind === "header").map((row) => row.label);
+  assert.deepEqual(headers, ["COLUMNS", "PALETTE", "STATUS LINE", "WHEN IT GETS TIGHT"]);
+
+  const selectable = selectableRows(rows);
+  for (const index of selectable) {
+    assert.ok(!["header", "blank", "preview"].includes(rows[index].kind), "headers are never selectable");
+  }
+
+  assert.deepEqual(withToggled(["a", "b"], "b"), ["a"], "toggling off removes it");
+  assert.deepEqual(withToggled(["a"], "b"), ["a", "b"], "toggling on appends it");
+  assert.deepEqual(withMoved(["a", "b", "c"], "c", -1), ["a", "c", "b"], "moving left swaps with its neighbour");
+  assert.deepEqual(withMoved(["a", "b", "c"], "a", -1), ["a", "b", "c"], "the first cannot move further left");
+  assert.deepEqual(withMoved(["a", "b", "c"], "c", 1), ["a", "b", "c"], "nor the last further right");
+  assert.deepEqual(withMoved(["a", "b"], "zz", 1), ["a", "b"], "an absent segment is left alone");
+
+  const preview = {
+    label: "webinvoke",
+    target: 0.5,
+    observed: 0.4,
+    used: 20,
+    pressure: 0.4,
+    priority: "high",
+    quota: { five_hour: { usedPercent: 42, resetsAt: Math.floor(Date.now() / 1000) + 3600 } },
+    now: Date.now(),
+  };
+  const painted = renderSettings(config, rows, selectable[0], false, "", preview, loadTheme("default"), false);
+  assert.ok(painted.some((line) => line.includes("❯")), "the cursor is drawn");
+  assert.ok(painted.some((line) => line.includes("webinvoke")), "the status line is previewed on real data");
+  assert.ok(painted.some((line) => line.includes("[nord]")), "the chosen palette is marked");
+});
