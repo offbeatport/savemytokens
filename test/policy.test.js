@@ -741,3 +741,36 @@ test("the status line offers shapes before pieces", async () => {
   assert.match(line, /5h 42%/);
   assert.doesNotMatch(line, /HIGH/, "priority is not in the default — it rarely changes");
 });
+
+test("a theme you write yourself is checked, not just accepted", async () => {
+  const { execFileSync } = await import("node:child_process");
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "smt-theme-"));
+  const env = { ...process.env, SAVEMYTOKENS_HOME: home, NO_COLOR: "1" };
+  const cli = new URL("../dist/cli.js", import.meta.url).pathname;
+
+  execFileSync("node", [cli, "theme", "new", "mine", "nord"], { env, encoding: "utf8" });
+  const file = path.join(home, "themes", "mine.json");
+  assert.ok(fs.existsSync(file), "it scaffolds a file to edit");
+
+  const clean = execFileSync("node", [cli, "theme", "check", "mine"], { env, encoding: "utf8" });
+  assert.match(clean, /Readable everywhere/);
+
+  const theme = JSON.parse(fs.readFileSync(file, "utf8"));
+  theme.colors.danger = "#6b2020";
+  theme.colors.accent = "not-a-colour";
+  fs.writeFileSync(file, JSON.stringify(theme));
+
+  let output = "";
+  try {
+    output = execFileSync("node", [cli, "theme", "check", "mine"], { env, encoding: "utf8" });
+  } catch (error) {
+    output = String(error.stdout ?? "");
+  }
+  assert.match(output, /not a #rrggbb colour/, "it names a colour it cannot parse");
+  assert.match(output, /wants at least 4.5:1/, "and one too dark to read");
+  assert.match(output, /2 problems to fix/);
+});

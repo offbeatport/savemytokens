@@ -49,7 +49,36 @@
 | `npx savemytokens policy strict` | wind down earlier when it gets tight |
 | `npx savemytokens hud` | pick a status line, previewed on your numbers |
 | `npx savemytokens audit` | what your last 7 days wasted |
+| `npx savemytokens theme` | eighteen themes, or write your own |
 | `npx savemytokens uninstall` | remove every trace |
+
+<details>
+<summary>Writing your own theme</summary>
+
+<br>
+
+```
+npx savemytokens theme new mine nord   copy one to start from
+npx savemytokens theme check mine      is it readable?
+npx savemytokens theme tui mine        use it
+```
+
+`~/.savemytokens/themes/mine.json` — everything you leave out is inherited:
+
+```json
+{
+  "colors": { "fg": "#eceff4", "dim": "#7b88a1", "accent": "#88c0d0",
+              "ok": "#a3be8c", "warn": "#ebcb8b", "danger": "#e0707c", "track": "#434c5e" },
+  "tui":    { "cursor": "❯", "pin": "★", "active": "●", "done": "✓",
+              "fill": "▰", "empty": "▱", "over": "▶", "meter": "▰", "track": "▱" },
+  "glyphs": { "sep": "·" }
+}
+```
+
+`theme check` measures every colour against the terminal and fails anything unreadable — the same
+bar the built-in themes have to clear.
+
+</details>
 
 <div align="center">
 <br>
