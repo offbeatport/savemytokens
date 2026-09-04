@@ -359,7 +359,9 @@ export async function runControl(options: Options): Promise<void> {
             paint(
               context.theme,
               "dim",
-              editing ? "  type it   enter keep   esc cancel" : "  ↑↓ move   space toggle   ←→ change or reorder   esc back",
+              editing
+                ? "  type it   enter keep   esc cancel"
+                : "  ↑↓ move   space or enter toggles   ←→ change or reorder   esc back",
               context.color,
             ),
           ]
@@ -437,18 +439,21 @@ export async function runControl(options: Options): Promise<void> {
           refresh();
         } else if (current) {
           const names = [...new Set([...builtinThemes(), ...userThemes()])];
-          if (action.kind === "toggleCurrent") {
+          const activate = action.kind === "toggleCurrent" || action.kind === "save" || action.kind === "resume";
+          if (activate && current.kind === "advice") {
+            custom = control.config.customAdvice.default ?? "";
+            editing = true;
+          } else if (activate) {
             if (current.kind === "column") toggleColumn(current.id);
             else if (current.kind === "segment") toggleSegment(current.id);
             else if (current.kind === "preserve") togglePreserve(PRESERVE_KINDS[current.index] ?? "");
+            else if (current.kind === "theme") cycleTheme(current.surface, 1, [...new Set([...builtinThemes(), ...userThemes()])]);
+            else if (current.kind === "policy") cyclePolicy(1);
           } else if (action.kind === "share") {
             const delta = action.delta > 0 ? 1 : -1;
             if (current.kind === "theme") cycleTheme(current.surface, delta, names);
             else if (current.kind === "policy") cyclePolicy(delta);
             else if (current.kind === "segment") moveSegment(current.id, delta);
-          } else if (action.kind === "resume" && current.kind === "advice") {
-            custom = control.config.customAdvice.default ?? "";
-            editing = true;
           }
           control = buildPlan(Date.now(), false, options.window, options.adapter);
         }
