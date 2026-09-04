@@ -1,4 +1,4 @@
-# SaveMyTokens — Plan
+# SaveMyTokens: the plan
 
 ## Positioning
 
@@ -11,7 +11,7 @@ scheduler for scarce AI capacity, and then into an economic control plane for au
 - No permanent daemon. Hooks, the status line, and shared local state do the work.
 - Individual developers and HN/GitHub are the distribution wedge, not the final market.
 
-The scheduler is the product. The waste-audit engine is now `savemytokens audit` — kept because its
+The scheduler is the product. The waste-audit engine is now `savemytokens audit`, kept because its
 measurements are the scheduler's meter and its findings are reallocation signals, not because
 reporting waste is the pitch.
 
@@ -78,7 +78,7 @@ attributed across a reset boundary.
 
 ---
 
-## V0 — shipped: Claude allowance across your active sessions
+## V0, shipped: Claude allowance across your active sessions
 
 > **See where your Claude usage goes, give each session a target share, and keep Claude aware of the
 > budget you want it to work within.**
@@ -102,7 +102,7 @@ npx savemytokens audit        the waste report, now an optional extra
 `install` writes `~/.savemytokens/hooks/{kernel,hook,statusline}.mjs`, registers `SessionStart`,
 `UserPromptSubmit`, `Stop` and `SessionEnd`, and sets the status line. A status line already
 configured is left alone; `--force` wraps it, running the existing command first and appending the
-SMT segment. The token-discipline block in `~/.claude/CLAUDE.md` is opt-in behind `--rules` — by
+SMT segment. The token-discipline block in `~/.claude/CLAUDE.md` is opt-in behind `--rules`, and by
 default nothing outside `~/.savemytokens` and Claude Code's own `settings.json` is touched.
 
 The three scripts are copies, not references, so they keep working after the npx cache is cleared.
@@ -171,14 +171,14 @@ tree), `handoff` (where it stopped, then the release signal). Set globally or pe
 `savemytokens policy`.
 
 **Deferred work closes the loop.** `SMT: DEFER <one line>` is captured per project and injected at
-the start of the next session there, so narrowing scope costs nothing — the rest is written down,
+the start of the next session there, so narrowing scope costs nothing. The rest is written down,
 not lost. `savemytokens defer` lists it; `defer clear` drops it.
 
 Pressure is `used ÷ target` against the published window. With no published window it degrades to
 `share ÷ target`, which only means anything with two or more sessions running, so with one session
 and no reading SMT says nothing at all. Each stage fires once per window. The advice names what you
-want preserved — implementation and tests by default, changed with `P` in the control centre or
-`savemytokens policy preserve` — and can carry a line of your own, injected verbatim with it.
+want preserved (implementation and tests by default, changed with `P` in the control centre or
+`savemytokens policy preserve`) and can carry a line of your own, injected verbatim with it.
 There is no first-run questionnaire: the control centre opens on working defaults.
 
 **This is advice, not enforcement.** A hook injects text; a model does not hold a budget reliably.
@@ -214,14 +214,14 @@ independently. Themes are data, not code, and the whole tool still has zero runt
 
 ### Codex, in V0 rather than V2
 
-Codex writes `rate_limits` — `primary.used_percent`, `window_minutes`, `resets_at` — straight into
+Codex writes `rate_limits` (`primary.used_percent`, `window_minutes`, `resets_at`) straight into
 its rollout files, so its published windows need no hook and no status line. `savemytokens --codex`
 meters it from the same incremental reader and renders the same view. Its `Enforcer.supports` is
 empty, because Codex has nowhere to inject advice, and the UI says so rather than pretending.
 
 ### What V0 cannot see
 
-- No status line, no published capacity — everything else still works, on measured shares alone.
+- No status line, no published capacity, and everything else still works, on measured shares alone.
 - `rate_limits` is absent for API-key and Console users, and before the first API response of a
   session.
 - Usage from another machine, or from claude.ai, lands in the local sessions' slices. SMT reports the
@@ -235,21 +235,21 @@ production agents, model routing, enterprise policy, a hosted theme gallery.
 
 ---
 
-## V1 — Real enforcement, still local, still Claude
+## V1: real enforcement, still local, still Claude
 
 Raise `Enforcer.supports` from `["advise"]` to `["advise", "warn", "throttle", "deny"]` and prove each
 level before shipping it.
 
 - Hard and soft caps per claimant.
 - Reserved allowance for tests, end-to-end runs and final verification.
-- Block low-value tool activity near a hard limit — shipped only after a shadow-mode period that logs
+- Block low-value tool activity near a hard limit, shipped only after a shadow-mode period that logs
   what *would* have been blocked and shows nothing broke.
 - Better attribution between concurrent sessions, using the published window's movement as the
   calibration signal.
 - User-defined borrowing rules for the shared pool.
 - Historical allocated-versus-actual per claimant.
 
-## V2 — Cross-platform capacity scheduler
+## V2: cross-platform capacity scheduler
 
 Add adapters, not concepts. Each new provider supplies a `{ Resource[], Meter, Enforcer }`.
 
@@ -257,12 +257,12 @@ Add adapters, not concepts. Each new provider supplies a `{ Resource[], Meter, E
 | --- | --- | --- | --- | --- |
 | Claude Code | 5h / 7d allowance | `observed_usage` | **published** | advise, deny |
 | Claude gateway | spend limit | `usd` | **published** | advise, deny |
-| Codex | 5h / weekly allowance | `observed_usage` | **published, shipped in V0** | none — no hook to inject through |
+| Codex | 5h / weekly allowance | `observed_usage` | **published, shipped in V0** | none, no hook to inject through |
 | Anthropic / OpenAI API | spend | usd | published | deny, halt |
 | Tool and browser calls | calls | call | user-set | throttle, deny |
 | GPU / compute | runtime | second | user-set | throttle, halt |
 
-## V3 — Production agent economics
+## V3: production agent economics
 
 Same loop, different claimants: deployed agents, tasks, customers. Budgets per agent, task and
 customer; limits on time, model calls, tool calls, external API spend and compute; kill switches,
@@ -278,19 +278,19 @@ approvals.
 
 | Choice | Why it traps | State |
 | --- | --- | --- |
-| Percentage as the stored unit | Does not survive dollars, calls or GPU seconds | **Fixed** — `share` is stored with `Resource.unit`, rendered as % |
-| 5-hour window hardcoded | Other resources use calendar, per-task or unbounded windows | **Fixed** — `Window` type, and the bounds come from `resets_at` |
-| "Session" as the allocation unit | Later units are tasks, customers, deployed agents | **Fixed** — allocation is to a `Claimant`; a Claude session is one kind |
-| Consumption by transcript polling | APIs and GPUs push or are queried; no transcript exists | **Fixed** — `Meter` interface; the transcript reader is one implementation |
-| Enforcement assumed to be hook text | V1 needs deny, V3 needs halt; Codex supports neither | **Fixed** — `Enforcer.supports`, declared per adapter |
-| Capacity assumed knowable | It was, all along, and published | **Fixed** — `Capacity.confidence`, `published` for Claude |
-| Claude's resource typed as `token` | Its quota is published as a percentage, not tokens | **Fixed** — `observed_usage`, tokens as one metric under the meter |
-| Share described as guaranteed | `advise` cannot hold a session to a number | **Fixed** — target share everywhere until `deny` ships |
-| Storage keyed by Claude session id and `~/.claude` paths | Collides once a second provider appears | **Fixed** — keyed by `(adapter, claimantId)` |
-| One shared state file | Concurrent sessions fire hooks at the same instant and lose writes | **Fixed** — one file per claimant, allocation derived, never stored |
-| `AdapterId` as a closed union in `src/core/types.ts` | Third-party adapters cannot be added | Later — widen to `string` when the first external adapter appears |
-| `SessionEvidence` shaped around Claude transcript artefacts | Meaningless for an API or GPU resource | Later — the audit still uses it; the scheduler does not |
-| Pricing keyed by model name | A call-metered or GPU-metered resource has no model | Later — key rates by resource, with model as one dimension |
+| Percentage as the stored unit | Does not survive dollars, calls or GPU seconds | **Fixed**: `share` is stored with `Resource.unit`, rendered as % |
+| 5-hour window hardcoded | Other resources use calendar, per-task or unbounded windows | **Fixed**: `Window` type, and the bounds come from `resets_at` |
+| "Session" as the allocation unit | Later units are tasks, customers, deployed agents | **Fixed**: allocation is to a `Claimant`; a Claude session is one kind |
+| Consumption by transcript polling | APIs and GPUs push or are queried; no transcript exists | **Fixed**: `Meter` interface; the transcript reader is one implementation |
+| Enforcement assumed to be hook text | V1 needs deny, V3 needs halt; Codex supports neither | **Fixed**: `Enforcer.supports`, declared per adapter |
+| Capacity assumed knowable | It was, all along, and published | **Fixed**: `Capacity.confidence`, `published` for Claude |
+| Claude's resource typed as `token` | Its quota is published as a percentage, not tokens | **Fixed**: `observed_usage`, tokens as one metric under the meter |
+| Share described as guaranteed | `advise` cannot hold a session to a number | **Fixed**: target share everywhere until `deny` ships |
+| Storage keyed by Claude session id and `~/.claude` paths | Collides once a second provider appears | **Fixed**: keyed by `(adapter, claimantId)` |
+| One shared state file | Concurrent sessions fire hooks at the same instant and lose writes | **Fixed**: one file per claimant, allocation derived, never stored |
+| `AdapterId` as a closed union in `src/core/types.ts` | Third-party adapters cannot be added | Later: widen to `string` when the first external adapter appears |
+| `SessionEvidence` shaped around Claude transcript artefacts | Meaningless for an API or GPU resource | Later: the audit still uses it; the scheduler does not |
+| Pricing keyed by model name | A call-metered or GPU-metered resource has no model | Later: key rates by resource, with model as one dimension |
 
 ---
 

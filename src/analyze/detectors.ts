@@ -70,12 +70,12 @@ const hookNoise: Detector = (agg) => {
     wastedWeighted: wasted,
     measured: [
       `${events} hook ${plural(events, "event")} printed ${bytes(agg.hooks.reduce((s, h) => s + h.chars, 0))} into context`,
-      `worst: ${top.key} — the same bytes repeated ${top.extra.events}×`,
+      `worst: ${top.key}, the same bytes repeated ${top.extra.events}×`,
     ],
     receipts: [
       top.extra.command ? `hook command: ${top.extra.command}` : "",
       top.extra.sample ? `every call pastes: ${top.extra.sample}…` : "",
-      "read that payload — if the model has no use for it, it is pure cost",
+      "read that payload. If the model has no use for it, it is pure cost",
     ].filter(Boolean),
     fix: top.extra.command.includes("CLAUDE_PLUGIN_ROOT")
       ? `That hook belongs to a plugin, not to your settings.json, so you cannot pipe it away there. Turn the plugin off in the enabledPlugins block of ~/.claude/settings.json, or raise it with the plugin author. Its plain-text stdout lands in the transcript and is re-read on every later turn.`
@@ -100,10 +100,10 @@ const repeatedReads: Detector = (agg) => {
     wastedWeighted: wasted,
     measured: [
       `${redundantReads} identical ${plural(redundantReads, "re-read")} across ${agg.reads.length} ${plural(agg.reads.length, "file")} (${bytes(redundantChars)})`,
-      `worst: ${shortPath(top.key)} — ${top.extra.redundantReads}× after the first read`,
+      `worst: ${shortPath(top.key)}, ${top.extra.redundantReads}× after the first read`,
     ],
     fix:
-      `${shortPath(top.key)} was byte-identical every time it was re-sent. If subagents each read it, put it in CLAUDE.md instead — ` +
+      `${shortPath(top.key)} was byte-identical every time it was re-sent. If subagents each read it, put it in CLAUDE.md instead. ` +
       `that costs one cache write per session rather than one full copy per agent.`,
     detail: agg.reads.slice(0, 5).map((r) => `${shortPath(r.key)} · ${r.extra.redundantReads}× · ${bytes(r.extra.redundantChars)}`),
   });
@@ -121,9 +121,9 @@ const largeOutput: Detector = (agg) => {
     if (tool === "Grep" || tool === "Glob") return `Match on file names only, or scope it to one directory.`;
     if (tool === "Bash") return `Pipe it down: \`${label} 2>&1 | tail -40\`, or write the log to a file and grep it.`;
     if (tool === "TaskOutput" || tool === "Agent" || tool === "Workflow")
-      return `Ask the subagent for its conclusion, not its transcript — delegating only pays off if the bulk stays out of your context.`;
+      return `Ask the subagent for its conclusion, not its transcript. Delegating only pays off if the bulk stays out of your context.`;
     if (tool === "WebFetch" || tool === "WebSearch") return `Name the fact you need in the fetch prompt so the page comes back summarised.`;
-    return `Ask for a narrower result — the whole payload rides along for the rest of the session.`;
+    return `Ask for a narrower result. The whole payload rides along for the rest of the session.`;
   };
   return finding(agg, {
     id: "large-output",
@@ -134,7 +134,7 @@ const largeOutput: Detector = (agg) => {
     wastedWeighted: wasted,
     measured: [
       `${calls} tool ${plural(calls, "result")} over 10 KB returned ${bytes(chars)}`,
-      `worst: ${shortPath(top.key)} — ${top.extra.calls}×, largest ${bytes(top.extra.maxChars)}`,
+      `worst: ${shortPath(top.key)}, ${top.extra.calls}×, largest ${bytes(top.extra.maxChars)}`,
     ],
     fix: `${shortPath(top.key)} put ${bytes(top.chars)} into context across ${top.extra.calls} ${plural(top.extra.calls, "run")}. ${fixFor(top.extra.tool, shortPath(top.key))}`,
     detail: agg.outputs.slice(0, 5).map((o) => `${shortPath(o.key)} · ${o.extra.calls}× · ${bytes(o.chars)}`),
@@ -156,7 +156,7 @@ const failedTools: Detector = (agg) => {
     wastedWeighted: wasted,
     measured: [
       `${total} failed tool ${plural(total, "call")} returned ${bytes(agg.failures.reduce((s, f) => s + f.chars, 0))} of error output`,
-      `worst: ${shortPath(top.key)} — failed ${top.extra.failures}×`,
+      `worst: ${shortPath(top.key)}, failed ${top.extra.failures}×`,
     ],
     fix: `${shortPath(top.key)} failed ${top.extra.failures}×. Each failure paid for its error dump and then for the retry that read it. Get it green in a terminal once, or wrap it so the agent sees one line instead of a stack trace.`,
     detail: agg.failures.slice(0, 5).map((f) => `${shortPath(f.key)} · ${f.extra.failures} ${plural(f.extra.failures, "failure")} · ${bytes(f.chars)}`),
@@ -177,9 +177,9 @@ const writeChurn: Detector = (agg) => {
     wastedWeighted: wasted,
     measured: [
       `${agg.writes.length} ${plural(agg.writes.length, "file")} written end-to-end more than once (${bytes(agg.writes.reduce((s, w) => s + w.extra.rewrittenChars, 0))})`,
-      `worst: ${shortPath(top.key)} — ${top.extra.writes} full writes${top.extra.edits > 0 ? ` and ${top.extra.edits} edits` : ""}`,
+      `worst: ${shortPath(top.key)}, ${top.extra.writes} full writes${top.extra.edits > 0 ? ` and ${top.extra.edits} edits` : ""}`,
     ],
-    fix: `${shortPath(top.key)} was rewritten in full ${top.extra.writes}×. A full rewrite is billed as output tokens — the most expensive kind, 5× input. Ask for targeted edits once a file exists.`,
+    fix: `${shortPath(top.key)} was rewritten in full ${top.extra.writes}×. A full rewrite is billed as output tokens, the most expensive kind, 5× input. Ask for targeted edits once a file exists.`,
     detail: agg.writes.slice(0, 5).map((w) => `${shortPath(w.key)} · ${w.extra.writes} writes · ${bytes(w.extra.rewrittenChars)}`),
   });
 };
@@ -216,10 +216,10 @@ const highContextRoundTrips: Detector = (agg) => {
     wastedWeighted: trivialWeighted * RECOVERABLE_ROUNDTRIPS,
     measured: [
       `${trivialTurns} ${plural(trivialTurns, "turn")} did nothing but run one command or read one file`,
-      `each still re-read the whole conversation — roughly ${compactNumber(avgContext)} tokens per turn`,
+      `each still re-read the whole conversation, roughly ${compactNumber(avgContext)} tokens per turn`,
     ],
     fix:
-      `This is not about the model being too good for the job — a cheap turn costs the same as a hard one because both re-read everything. ` +
+      `This is not about the model being too good for the job. A cheap turn costs the same as a hard one because both re-read everything. ` +
       `Cut the number of round trips: chain shell commands into one call, and hand multi-step digging to a subagent, which starts near-empty and returns only its answer.`,
   });
 };

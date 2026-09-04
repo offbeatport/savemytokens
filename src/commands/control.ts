@@ -248,7 +248,7 @@ export function setupScreen(choice: boolean, theme: Theme, color: boolean, colum
 
   middle(paint(theme, "accent", "Install SaveMyTokens?", color));
   out.push("");
-  flush("It needs four hooks and a status line in Claude Code to see which sessions are open and how much of your window is left — the status line is the only place Anthropic publishes that number.", "fg");
+  flush("It needs four hooks and a status line in Claude Code to see which sessions are open and how much of your window is left. The status line is the only place Anthropic publishes that number.", "fg");
   out.push("");
   flush("Without them it reads transcripts already on disk and nothing more: no live sessions, no window, nothing said to Claude.", "dim");
   out.push("");

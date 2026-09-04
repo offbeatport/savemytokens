@@ -215,7 +215,7 @@ export function renderSettings(
       const on = columns.includes(row.id);
       const about = clip(COLUMN_ABOUT[row.id] ?? "", Math.max(0, width - 24));
       out.push(
-        `  ${mark} ${on ? paint(theme, "ok", "◉", color) : paint(theme, "dim", "○", color)} ${padEndVisible(row.id, 12)} ${paint(theme, "dim", `— ${about}`, color)}`,
+        `  ${mark} ${on ? paint(theme, "ok", "◉", color) : paint(theme, "dim", "○", color)} ${padEndVisible(row.id, 12)} ${paint(theme, "dim", about, color)}`,
       );
       continue;
     }
@@ -226,7 +226,7 @@ export function renderSettings(
       const name = padEndVisible(row.id, 9);
       const about = clip(SEGMENT_ABOUT[row.id] ?? "", Math.max(0, width - 24));
       out.push(
-        `  ${mark} ${on ? paint(theme, "ok", "◉", color) : paint(theme, "dim", "○", color)} ${order} ${on ? name : paint(theme, "dim", name, color)} ${paint(theme, "dim", `— ${about}`, color)}`,
+        `  ${mark} ${on ? paint(theme, "ok", "◉", color) : paint(theme, "dim", "○", color)} ${order} ${on ? name : paint(theme, "dim", name, color)} ${paint(theme, "dim", about, color)}`,
       );
       continue;
     }
@@ -289,7 +289,7 @@ export function renderSettings(
       out.push(`  ${mark} ${on ? paint(theme, "ok", "◉", color) : paint(theme, "dim", "○", color)} ${paint(theme, on ? "fg" : "dim", `preserve ${kind}`, color)}`);
       continue;
     }
-    const text = editing && here ? `${draft}${paint(theme, "accent", "▏", color)}` : config.customAdvice.default || paint(theme, "dim", "nothing — enter writes one", color);
+    const text = editing && here ? `${draft}${paint(theme, "accent", "▏", color)}` : config.customAdvice.default || paint(theme, "dim", "nothing yet, enter writes one", color);
     out.push(`  ${mark} ${padEndVisible("your own line", 15)} ${text}`);
   }
 

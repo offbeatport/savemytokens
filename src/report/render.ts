@@ -120,7 +120,7 @@ export function renderAudit(input: RenderInput): string {
   const claudes = audit.findings.filter((f) => f.actor === "claude");
   const shown = verbose ? yours.slice(0, 3) : yours.slice(0, 1);
   for (const finding of shown) {
-    out.push(...wrap(`${bold(finding.title)} — ${bold(money(finding.wastedUsd))}`, ""));
+    out.push(...wrap(`${bold(finding.title)}  ${bold(money(finding.wastedUsd))}`, ""));
     for (const line of finding.measured.slice(0, verbose ? 3 : 2)) {
       out.push(...hanging(line, INDENT, dim("· "), columns));
     }
@@ -151,7 +151,7 @@ export function renderAudit(input: RenderInput): string {
     out.push(
       ...wrap(
         dim(
-          `${money(claudeUsd)} more is how Claude works, not how you work — ${claudes.map((f) => f.title.toLowerCase()).join(", ")}. Nothing for you to do by hand; install writes the rules that fix them.`,
+          `${money(claudeUsd)} more is how Claude works, not how you work: ${claudes.map((f) => f.title.toLowerCase()).join(", ")}. Nothing for you to do by hand; install writes the rules that fix them.`,
         ),
         "",
       ),

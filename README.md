@@ -34,7 +34,7 @@ them out again.
 | **A split you control** | Give each **project** an allocation and a priority. Spare capacity goes to the highest priority first, and a project's allocation is divided among its live sessions by what they burn. |
 | **Claude working to it** | As a session eats into its slice it is told to narrow scope and finish, and to write down whatever it drops. That comes back the next time you work on the project. |
 | **Unused capacity returned** | Mark a project done and whatever it did not spend goes to the others, immediately. |
-| **In your status line** | `webinvoke · 21%/50% · 5h 42% · in 3h52` — pick a shape, or arrange the pieces yourself. |
+| **In your status line** | `webinvoke · 21%/50% · 5h 42% · in 3h52`. Pick a shape, or arrange the pieces yourself. |
 
 <br>
 
@@ -99,7 +99,7 @@ npx savemytokens theme check mine      # is it readable?
 npx savemytokens theme tui mine        # use it
 ```
 
-`~/.savemytokens/themes/mine.json` — everything you leave out is inherited:
+`~/.savemytokens/themes/mine.json`. Everything you leave out is inherited:
 
 ```json
 {
@@ -111,7 +111,7 @@ npx savemytokens theme tui mine        # use it
 }
 ```
 
-`theme check` measures every colour against the terminal and fails anything unreadable — the same
+`theme check` measures every colour against the terminal and fails anything unreadable, against the same
 bar the built-in themes have to clear.
 
 </details>
@@ -123,7 +123,7 @@ bar the built-in themes have to clear.
 
 | | |
 | :-- | :-- |
-| **reads** | `~/.claude/projects/**/*.jsonl` — the transcripts Claude Code already writes, from a stored byte offset, and the status line payload Claude Code hands it on stdin. |
+| **reads** | `~/.claude/projects/**/*.jsonl`, the transcripts Claude Code already writes, from a stored byte offset, and the status line payload Claude Code hands it on stdin. |
 | **writes** | `~/.savemytokens` only: meter offsets, per-project settings, quota readings, deferred notes. |
 | **injects** | A line of context on `SessionStart` and `UserPromptSubmit` when a project is over its share. Nothing else. |
 | **never** | Makes a network call, blocks a prompt, or exits non-zero. |

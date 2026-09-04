@@ -246,4 +246,4 @@ write(
   "savemytokens",
 );
 
-write("help.svg", helpOverlay(CONTROL, context(theme, COLUMNS)), theme, "savemytokens — ?");
+write("help.svg", helpOverlay(CONTROL, context(theme, COLUMNS)), theme, "savemytokens · help");

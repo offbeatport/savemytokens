@@ -25,7 +25,7 @@ function version(): string {
 
 function help(): string {
   return `
-${bold("savemytokens")} — give every Claude Code session a target share of your Claude window.
+${bold("savemytokens")}: give every Claude Code session a target share of your Claude window.
 
   npx savemytokens             the control centre
   npx savemytokens install     hooks + status line, so it works while the TUI is closed

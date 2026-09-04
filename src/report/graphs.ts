@@ -5,7 +5,7 @@ const BLOCKS = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"];
 const HEAT = [" ", "░", "▒", "▓", "█"];
 
 export function percentLabel(value: number, width = 4): string {
-  if (!Number.isFinite(value)) return padStartVisible("—", width);
+  if (!Number.isFinite(value)) return padStartVisible("-", width);
   const rounded = Math.round(value);
   return padStartVisible(rounded > 999 ? ">999%" : `${rounded}%`, width);
 }

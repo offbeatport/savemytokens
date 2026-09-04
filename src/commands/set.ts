@@ -46,7 +46,7 @@ export function runSet(options: Options): void {
     }
     if (value === "auto" || value === "even") {
       setShare(view.project, null, control.provider.id);
-      process.stdout.write(`\n${green("Unpinned")} ${bold(view.label)} — it takes an even split again${note}\n\n`);
+      process.stdout.write(`\n${green("Unpinned")} ${bold(view.label)}, it takes an even split again${note}\n\n`);
       return;
     }
     const percent = Number(String(value).replace("%", ""));

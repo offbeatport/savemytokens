@@ -69,7 +69,7 @@ function readSettings(): Record<string, any> | null {
 
 function unreadableSettings(): void {
   process.stdout.write(
-    `\n${bold("SaveMyTokens")}\n\n${SETTINGS} is not valid JSON, so it could not be read.\nRefusing to touch it — fix the file and try again. Nothing was changed.\n\n`,
+    `\n${bold("SaveMyTokens")}\n\n${SETTINGS} is not valid JSON, so it could not be read.\nRefusing to touch it. Fix the file and try again. Nothing was changed.\n\n`,
   );
   process.exitCode = 1;
 }
@@ -147,7 +147,7 @@ export function runInstall(options: InstallOptions): void {
   }
   if (sandboxMismatch()) {
     process.stdout.write(
-      `\n${bold("SaveMyTokens")}\n\nHalf of this run is sandboxed and half is not: state is ${HOME}\nand settings are ${SETTINGS}. Refusing to touch either — override\nSAVEMYTOKENS_HOME and SAVEMYTOKENS_SETTINGS together, or neither.\n\n`,
+      `\n${bold("SaveMyTokens")}\n\nHalf of this run is sandboxed and half is not: state is ${HOME}\nand settings are ${SETTINGS}. Refusing to touch either. Override\nSAVEMYTOKENS_HOME and SAVEMYTOKENS_SETTINGS together, or neither.\n\n`,
     );
     process.exitCode = 1;
     return;
@@ -182,7 +182,7 @@ export function runInstall(options: InstallOptions): void {
   if (conflict && !options.force) {
     out.push(yellow("  Your status line is already set to something else:"));
     out.push(dim(`    ${existingStatusLine}`));
-    out.push("  Without it SMT cannot read your published 5h/7d usage — every other part still works.");
+    out.push("  Without it SMT cannot read your published 5h/7d usage. Every other part still works.");
     out.push(`  Run ${bold("npx savemytokens install --force")} to keep yours and append the SMT segment.`);
     out.push("");
   }
@@ -256,7 +256,7 @@ export function runUninstall(purge: boolean): void {
   }
   if (sandboxMismatch()) {
     process.stdout.write(
-      `\n${bold("SaveMyTokens")}\n\nHalf of this run is sandboxed and half is not: state is ${HOME}\nand settings are ${SETTINGS}. Refusing to touch either — override\nSAVEMYTOKENS_HOME and SAVEMYTOKENS_SETTINGS together, or neither.\n\n`,
+      `\n${bold("SaveMyTokens")}\n\nHalf of this run is sandboxed and half is not: state is ${HOME}\nand settings are ${SETTINGS}. Refusing to touch either. Override\nSAVEMYTOKENS_HOME and SAVEMYTOKENS_SETTINGS together, or neither.\n\n`,
     );
     process.exitCode = 1;
     return;

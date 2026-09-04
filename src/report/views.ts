@@ -175,7 +175,7 @@ function row(
   const starved = view.allocation.target <= 0;
   const used = padEndVisible(
     starved
-      ? `${emptyBar(widths.bar, theme, color)}    ${paint(theme, "dim", "—", color)}`
+      ? `${emptyBar(widths.bar, theme, color)}    ${paint(theme, "dim", "-", color)}`
       : `${smallBar(view.pressure.value, widths.bar, theme, color, role)} ${padStartVisible(paint(theme, role, percentLabel(view.pressure.value * 100, 4), color), 4)}`,
     widths.used,
   );
@@ -192,7 +192,7 @@ function row(
   if (columns.includes("tokens")) cells.push(tokens);
   if (columns.includes("priority")) cells.push(priority);
   if (columns.includes("last prompt") && widths.prompt > 0) {
-    cells.push(paint(theme, "dim", clip(view.prompt || "—", widths.prompt), color));
+    cells.push(paint(theme, "dim", clip(view.prompt || "-", widths.prompt), color));
   }
   return cells.join(" ");
 }
@@ -218,7 +218,7 @@ function idleRow(
   const reserved = view.settings.share != null && view.settings.share > 0 ? `${percentLabel(view.settings.share * 100, 4)} held` : "";
   const tag = view.settings.parked ? "parked" : reserved;
   const room = Math.max(10, context.columns - widths.label - 18 - (tag ? tag.length + 2 : 0));
-  const prompt = padEndVisible(clip(view.prompt || "—", room), tag ? room : 0);
+  const prompt = padEndVisible(clip(view.prompt || "-", room), tag ? room : 0);
   return `${cursor}${pin} ${paint(theme, "dim", `${label} ${when}  ${prompt}${tag ? `  ${tag}` : ""}`, color)}`;
 }
 
@@ -239,7 +239,7 @@ function footerNote(control: ControlPlan, context: ViewContext): string[] {
   const drift = control.unattributed ?? 0;
   if (drift >= UNATTRIBUTED_FLOOR) {
     const head = `${Math.round(drift)}% of the window was spent outside these projects`;
-    const tail = "— claude.ai, another machine, or usage SaveMyTokens was not running for";
+    const tail = "from claude.ai, another machine, or usage SaveMyTokens was not running for";
     const fits = head.length + 1 + tail.length <= room;
     out.push(`  ${paint(theme, "warn", clip(head, room), color)}${fits ? ` ${paint(theme, "dim", tail, color)}` : ""}`);
   }
@@ -314,7 +314,7 @@ export function detailRows(control: ControlPlan, context: ViewContext): string[]
       `  ${paint(theme, "dim", "used of it", color)} ${smallBar(view.pressure.value, width, theme, color, pressureRole(view.pressure.value))} ${percentLabel(view.pressure.value * 100)}`,
     );
   } else {
-    out.push(`  ${paint(theme, "dim", `nothing running — last turn ${ago(view.lastSeen, control.schedule.now)}, holding no allocation`, color)}`);
+    out.push(`  ${paint(theme, "dim", `nothing running. Last turn ${ago(view.lastSeen, control.schedule.now)}, holding no allocation`, color)}`);
   }
 
   out.push("");
@@ -338,7 +338,7 @@ export function detailRows(control: ControlPlan, context: ViewContext): string[]
       ? paint(theme, "dim", `${percentLabel(session.allocation.target * 100)} of the window`, color)
       : paint(theme, "dim", ago(session.claimant.lastSeen, control.schedule.now), color);
     out.push(
-      `    ${mark} ${padEndVisible(session.claimant.id.slice(0, 8), 9)} ${padEndVisible(when, 18)} ${paint(theme, "dim", clip(session.claimant.prompt || "—", context.columns - 36), color)}`,
+      `    ${mark} ${padEndVisible(session.claimant.id.slice(0, 8), 9)} ${padEndVisible(when, 18)} ${paint(theme, "dim", clip(session.claimant.prompt || "-", context.columns - 36), color)}`,
     );
     if (!alive) {
       out.push(`      ${paint(theme, "dim", clip(`claude --resume ${session.claimant.id}`, context.columns - 8), color)}`);
@@ -357,13 +357,13 @@ export function detailRows(control: ControlPlan, context: ViewContext): string[]
 
 const HELP_KEYS: Array<[string, string]> = [
   ["↑ ↓", "select a project"],
-  ["⏎", "open it and see its sessions — esc comes back"],
+  ["⏎", "open it and see its sessions, esc comes back"],
   ["← →", "move its allocation by 5 points"],
   ["u", "drop the target and go back to an even split"],
-  ["e", "equalize — drop every pinned target at once"],
+  ["e", "equalize: drop every pinned target at once"],
   ["p", "priority: high → normal → low, who gets spare capacity first"],
   ["f", "pin the row so it keeps its place"],
-  ["x", "park it — out of the plan, holding nothing"],
+  ["x", "park it: out of the plan, holding nothing"],
   ["d b a n", "mark it done, blocked, active or needs-more by hand"],
   ["m", "show every project, not just the first screenful"],
   ["P", "settings: columns, theme, status line, what to protect"],
@@ -421,14 +421,14 @@ export function helpOverlay(control: ControlPlan, context: ViewContext): string[
   }
 
   out.push(...helpSection("the three tables", context));
-  out.push(...helpProse("ACTIVE — a Claude session is open there right now. Only these spend the window, so only these hold an allocation.", context));
-  out.push(...helpProse("RECENT — worked on in the last day with nothing running. Set a target here and it waits for you.", context));
-  out.push(...helpProse("PARKED — older, or parked by hand with x.", context));
+  out.push(...helpProse("ACTIVE is a Claude session open there right now. Only these spend the window, so only these hold an allocation.", context));
+  out.push(...helpProse("RECENT was worked on in the last day, with nothing running now. Set a target here and it waits for you.", context));
+  out.push(...helpProse("PARKED is older than that, or parked by hand with x.", context));
   out.pop();
 
   out.push(...helpSection("where the numbers come from", context));
   out.push(...helpProse("5h and 7d are Anthropic's own numbers, read from the status line. Share is measured from the tokens in your transcripts.", context));
-  out.push(...helpProse("Allocation is what you asked for. Used of it is Anthropic's number split by measured share — the split between rows is ours, not theirs.", context));
+  out.push(...helpProse("Allocation is what you asked for. Used of it is Anthropic's number split by measured share, so the split between rows is ours, not theirs.", context));
   out.push(...helpProse("A project's allocation is divided across its live sessions by what each one burns.", context));
 
   const drift = control.unattributed ?? 0;
@@ -442,7 +442,7 @@ export function helpOverlay(control: ControlPlan, context: ViewContext): string[
     ...helpProse(
       stages
         ? `Claude is told to wind down at ${stages}% of a project's target. Change it with P, or npx savemytokens policy.`
-        : "Nothing is ever said to Claude — the policy is off. Change it with P, or npx savemytokens policy.",
+        : "Nothing is ever said to Claude, because the policy is off. Change it with P, or npx savemytokens policy.",
       context,
     ),
   );

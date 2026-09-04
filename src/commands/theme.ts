@@ -78,7 +78,7 @@ function check(name: string, background: string): void {
     const ok = ratio >= floor && ratio <= ceiling;
     if (!ok) problems++;
     out.push(
-      `  ${ok ? green("✓") : red("✗")} ${role.padEnd(8)} ${String(value).padEnd(9)} ${ratio.toFixed(1)}:1 ${dim(ok ? "" : ratio < floor ? `— wants at least ${floor}:1` : `— wants at most ${ceiling}:1`)}`,
+      `  ${ok ? green("✓") : red("✗")} ${role.padEnd(8)} ${String(value).padEnd(9)} ${ratio.toFixed(1)}:1 ${dim(ok ? "" : ratio < floor ? `wants at least ${floor}:1` : `wants at most ${ceiling}:1`)}`,
     );
   }
 

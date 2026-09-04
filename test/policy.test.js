@@ -623,8 +623,8 @@ test("the tight section shows the real text, when it fires, and where you are", 
   assert.match(idle.join("\n"), /not burning/, "with nothing burning it says so rather than inventing a time");
 
   const columns = renderSettings(config, rows, selectable[0], false, "", preview, loadTheme("default"), false, tight, 100);
-  assert.match(columns.join("\n"), /allocation.*— the share of the window/, "columns explain themselves");
-  assert.match(columns.join("\n"), /5h.*— the 5-hour window Anthropic publishes/, "so do status line segments");
+  assert.match(columns.join("\n"), /allocation.*the share of the window/, "columns explain themselves");
+  assert.match(columns.join("\n"), /5h.*the 5-hour window Anthropic publishes/, "so do status line segments");
 });
 
 test("every theme dresses the control centre as well as the status line", async () => {
@@ -702,13 +702,13 @@ test("every theme is readable, measured not asserted", async () => {
     const background = name === "paper" ? "#ffffff" : "#1e1e1e";
     for (const role of ["fg", "accent", "ok", "warn", "danger"]) {
       const ratio = contrast(theme.colors[role], background);
-      assert.ok(ratio >= 4.5, `${name}'s ${role} is ${ratio.toFixed(1)}:1 against the terminal — WCAG AA wants 4.5`);
+      assert.ok(ratio >= 4.5, `${name}'s ${role} is ${ratio.toFixed(1)}:1 against the terminal, WCAG AA wants 4.5`);
     }
     const dim = contrast(theme.colors.dim, background);
-    assert.ok(dim >= 2.5, `${name}'s dim text is ${dim.toFixed(1)}:1 — too faint to read`);
+    assert.ok(dim >= 2.5, `${name}'s dim text is ${dim.toFixed(1)}:1, too faint to read`);
     const track = contrast(theme.colors.track, background);
-    assert.ok(track >= 1.15, `${name}'s empty bar is ${track.toFixed(2)}:1 — invisible`);
-    assert.ok(track <= 4, `${name}'s empty bar is ${track.toFixed(2)}:1 — too loud for a background element`);
+    assert.ok(track >= 1.15, `${name}'s empty bar is ${track.toFixed(2)}:1, invisible`);
+    assert.ok(track <= 4, `${name}'s empty bar is ${track.toFixed(2)}:1, too loud for a background element`);
   }
 });
 
@@ -746,7 +746,7 @@ test("the status line offers shapes before pieces", async () => {
   assert.match(line, /webinvoke/);
   assert.match(line, /21%\/50%/);
   assert.match(line, /5h 42%/);
-  assert.doesNotMatch(line, /HIGH/, "priority is not in the default — it rarely changes");
+  assert.doesNotMatch(line, /HIGH/, "priority is not in the default, it rarely changes");
 });
 
 test("a theme you write yourself is checked, not just accepted", async () => {
@@ -819,4 +819,28 @@ test("the help page fits, and every key it lists is a key that works", async () 
     assert.ok(listed.includes(key), `${key} is documented`);
     assert.ok(keyActions(key).length > 0, `${key} actually does something`);
   }
+});
+
+test("no em dash anywhere in the source or the docs", async () => {
+  const EM_DASH = String.fromCharCode(0x2014);
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const root = new URL("..", import.meta.url).pathname;
+  const skip = new Set(["node_modules", "dist", ".git", "assets"]);
+  const wanted = /\.(ts|mjs|js|md|html|json)$/;
+  const offenders = [];
+
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (skip.has(entry.name)) continue;
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (wanted.test(entry.name)) {
+        const text = fs.readFileSync(full, "utf8");
+        if (text.includes(EM_DASH)) offenders.push(path.relative(root, full));
+      }
+    }
+  };
+  walk(root);
+  assert.deepEqual(offenders, [], "use a comma, a colon or a full stop instead");
 });
