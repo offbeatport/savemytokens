@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SaveMyTokens marks</title>
+    <meta name="description" content="Twenty candidate marks for SaveMyTokens, each one drawn in SVG and again in ASCII." />
+    <meta name="robots" content="noindex" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --paper: #fbfbfd;
+        --panel: #fff;
+        --ink: #16161d;
+        --muted: #5b5b6b;
+        --rule: #e4e4ec;
+        --accent: #2f5fd0;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #101018;
+          --panel: #17171f;
+          --ink: #e9e9f0;
+          --muted: #9a9aac;
+          --rule: #26262f;
+          --accent: #89b4fa;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+      }
+      .wrap { max-width: 76rem; margin: 0 auto; padding: 4rem 1.5rem 6rem; }
+      h1 { margin: 0 0 0.5rem; font-size: 2rem; letter-spacing: -0.03em; }
+      .lede { margin: 0 0 3rem; max-width: 40rem; color: var(--muted); }
+      .grid {
+        display: grid;
+        gap: 1.25rem;
+        grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+      }
+      .card {
+        display: flex;
+        flex-direction: column;
+        gap: 0.9rem;
+        padding: 1.4rem;
+        border: 1px solid var(--rule);
+        border-radius: 0.85rem;
+        background: var(--panel);
+      }
+      .card:hover { border-color: var(--accent); }
+      .top { display: flex; align-items: center; gap: 0.9rem; }
+      .top svg { flex: none; }
+      .name { font-weight: 600; font-size: 0.95rem; }
+      .idea { margin: 0; color: var(--muted); font-size: 0.8rem; line-height: 1.45; }
+      pre {
+        margin: 0;
+        padding: 0.7rem 0.85rem;
+        border-radius: 0.45rem;
+        background: color-mix(in srgb, var(--ink) 6%, transparent);
+        color: var(--ink);
+        font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        overflow-x: auto;
+      }
+      .num {
+        margin-left: auto;
+        color: var(--muted);
+        font: 0.75rem ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      footer { margin-top: 4rem; color: var(--muted); font-size: 0.9rem; }
+      a { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Twenty marks</h1>
+      <p class="lede">
+        Candidates for SaveMyTokens. Every one is drawn twice: as SVG for the site and the favicon,
+        and again in monospace characters for the terminal, the status line and a plain-text README.
+        A mark that cannot survive being typed is the wrong mark for a CLI.
+      </p>
+      <div class="grid" id="grid"></div>
+      <footer><a href="index.html">Back to the site</a> · <a href="https://github.com/offbeatport/savemytokens">GitHub</a> · <a href="mailto:hello@offbeatport.com">hello@offbeatport.com</a></footer>
+    </div>
+
+    <script>
+      const A = "var(--accent)";
+      const M = "var(--muted)";
+      const I = "var(--ink)";
+      const svg = (body) =>
+        `<svg width="52" height="52" viewBox="0 0 48 48" fill="none" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+
+      const MARKS = [
+        {
+          name: "Allocation",
+          idea: "Three bars, three projects, unequal on purpose. The product in one glance.",
+          svg: svg(`<rect x="8" y="11" width="32" height="6" rx="3" fill="${A}"/><rect x="8" y="21" width="20" height="6" rx="3" fill="${M}"/><rect x="8" y="31" width="11" height="6" rx="3" fill="${M}"/>`),
+          ascii: ["████████", "█████", "██"],
+        },
+        {
+          name: "Split window",
+          idea: "One window divided. The square is the whole allowance; the fill is your share.",
+          svg: svg(`<rect x="8" y="8" width="32" height="32" rx="5" stroke="${M}" stroke-width="2.5"/><path d="M8 24h32" stroke="${M}" stroke-width="2.5"/><rect x="8" y="8" width="32" height="16" rx="5" fill="${A}"/>`),
+          ascii: ["┌──────┐", "│██████│", "├──────┤", "└──────┘"],
+        },
+        {
+          name: "Meter",
+          idea: "A progress bar in brackets. Exactly what the status line already prints.",
+          svg: svg(`<rect x="5" y="18" width="38" height="12" rx="6" stroke="${M}" stroke-width="2.5"/><rect x="9" y="22" width="16" height="4" rx="2" fill="${A}"/>`),
+          ascii: ["[███░░░░]"],
+        },
+        {
+          name: "Slice",
+          idea: "A pie with one wedge lifted out. The wedge is the project you are in.",
+          svg: svg(`<circle cx="24" cy="24" r="15" stroke="${M}" stroke-width="2.5"/><path d="M24 9a15 15 0 0 1 13 7.5L24 24z" fill="${A}"/>`),
+          ascii: [" ,-'-. ", "( /\\  )", " `---' "],
+        },
+        {
+          name: "Caret",
+          idea: "The prompt caret, filled to the level you have spent. It lives in a terminal.",
+          svg: svg(`<path d="M14 14l10 10-10 10" stroke="${A}" stroke-width="4"/><path d="M28 34h8" stroke="${M}" stroke-width="4"/>`),
+          ascii: ["❯ ___"],
+        },
+        {
+          name: "Hourglass",
+          idea: "A five-hour window, running out. Honest about what the tool is watching.",
+          svg: svg(`<path d="M14 9h20L24 24l10 15H14l10-15z" stroke="${M}" stroke-width="2.5"/><path d="M18 34h12l-6-9z" fill="${A}"/>`),
+          ascii: ["\\____/", " \\  / ", " /██\\ ", "/████\\"],
+        },
+        {
+          name: "Ledger",
+          idea: "Rows with a running total. It is a budget, not a speedometer.",
+          svg: svg(`<path d="M10 14h28M10 22h20M10 30h24" stroke="${M}" stroke-width="3"/><path d="M10 38h14" stroke="${A}" stroke-width="3"/>`),
+          ascii: ["────────", "─────", "──────", "███"],
+        },
+        {
+          name: "Two panes",
+          idea: "Active and Recent, side by side, one of them lit.",
+          svg: svg(`<rect x="7" y="12" width="15" height="24" rx="3" fill="${A}"/><rect x="26" y="12" width="15" height="24" rx="3" stroke="${M}" stroke-width="2.5"/>`),
+          ascii: ["▐███▌ ▕   ▏"],
+        },
+        {
+          name: "Token",
+          idea: "A coin with a bar cut through it. What you are spending, and how much is left.",
+          svg: svg(`<circle cx="24" cy="24" r="15" stroke="${M}" stroke-width="2.5"/><rect x="13" y="21" width="12" height="6" rx="3" fill="${A}"/>`),
+          ascii: [" (███··) "],
+        },
+        {
+          name: "Dial",
+          idea: "A gauge that stops at the published number and never guesses past it.",
+          svg: svg(`<path d="M11 32a15 15 0 1 1 26 0" stroke="${M}" stroke-width="3"/><path d="M11 32a15 15 0 0 1 6-12" stroke="${A}" stroke-width="3"/><circle cx="24" cy="32" r="2.5" fill="${I}"/>`),
+          ascii: [" .-''-. ", "(  /   )", " `-o--' "],
+        },
+        {
+          name: "Shield",
+          idea: "The name says save. A guard around the window.",
+          svg: svg(`<path d="M24 8l14 5v11c0 9-6 14-14 16-8-2-14-7-14-16V13z" stroke="${M}" stroke-width="2.5"/><path d="M18 24l4 4 8-8" stroke="${A}" stroke-width="3"/>`),
+          ascii: [" /----\\ ", "| \\  / |", " \\ \\/ / ", "  \\__/  "],
+        },
+        {
+          name: "Stack",
+          idea: "Sessions stacked into one window, the top one yours.",
+          svg: svg(`<rect x="9" y="10" width="30" height="7" rx="3.5" fill="${A}"/><rect x="9" y="21" width="30" height="7" rx="3.5" fill="${M}" opacity="0.6"/><rect x="9" y="32" width="30" height="7" rx="3.5" fill="${M}" opacity="0.3"/>`),
+          ascii: ["████████", "▓▓▓▓▓▓▓▓", "░░░░░░░░"],
+        },
+        {
+          name: "Fraction",
+          idea: "21 over 50. The one number the status line exists to show.",
+          svg: svg(`<path d="M32 12L16 36" stroke="${M}" stroke-width="3"/><circle cx="16" cy="16" r="5" fill="${A}"/><circle cx="32" cy="32" r="5" stroke="${M}" stroke-width="2.5"/>`),
+          ascii: ["◍ ", " ╱", "  ○"],
+        },
+        {
+          name: "Braces",
+          idea: "A scope you are working inside. Reads as code without being a bracket cliché.",
+          svg: svg(`<path d="M18 10c-5 0-5 10-8 14 3 4 3 14 8 14" stroke="${M}" stroke-width="3"/><path d="M30 10c5 0 5 10 8 14-3 4-3 14-8 14" stroke="${M}" stroke-width="3"/><circle cx="24" cy="24" r="4" fill="${A}"/>`),
+          ascii: ["{ ● }"],
+        },
+        {
+          name: "Return",
+          idea: "Unused capacity going back to the pool. The arrow points home.",
+          svg: svg(`<path d="M38 18H16a7 7 0 0 0 0 14h6" stroke="${M}" stroke-width="3"/><path d="M26 26l-5 6 5 6" stroke="${A}" stroke-width="3"/>`),
+          ascii: [" ___", "|  ↩"],
+        },
+        {
+          name: "Tally",
+          idea: "Four strokes and a cut. Counting, in the oldest notation there is.",
+          svg: svg(`<path d="M14 12v24M21 12v24M28 12v24M35 12v24" stroke="${M}" stroke-width="3"/><path d="M10 34l29-20" stroke="${A}" stroke-width="3"/>`),
+          ascii: ["||||", " ╱╱ "],
+        },
+        {
+          name: "Window frame",
+          idea: "A terminal window with a filled title bar. It is a TUI first.",
+          svg: svg(`<rect x="7" y="11" width="34" height="26" rx="4" stroke="${M}" stroke-width="2.5"/><path d="M7 19h34" stroke="${M}" stroke-width="2.5"/><circle cx="13" cy="15" r="1.8" fill="${A}"/><path d="M13 27h12" stroke="${A}" stroke-width="3"/>`),
+          ascii: ["┌─●───────┐", "│ ███     │", "└─────────┘"],
+        },
+        {
+          name: "Wordmark SMT",
+          idea: "Three letters, one of them a bar. Survives at 16 pixels and in a tab title.",
+          svg: svg(`<text x="24" y="31" text-anchor="middle" font-family="ui-monospace, Menlo, monospace" font-size="17" font-weight="700" fill="${I}">SM</text><rect x="9" y="36" width="30" height="4" rx="2" fill="${A}"/>`),
+          ascii: ["SMT", "▔▔▔"],
+        },
+        {
+          name: "Divider",
+          idea: "One line, split unevenly. The whole idea with nothing else in the frame.",
+          svg: svg(`<rect x="6" y="21" width="22" height="6" rx="3" fill="${A}"/><rect x="31" y="21" width="11" height="6" rx="3" fill="${M}"/>`),
+          ascii: ["█████ ██"],
+        },
+        {
+          name: "Clock slice",
+          idea: "Time is the resource. The wedge is what is left before the window resets.",
+          svg: svg(`<circle cx="24" cy="24" r="15" stroke="${M}" stroke-width="2.5"/><path d="M24 24V11a13 13 0 0 1 11.3 6.5z" fill="${A}"/><path d="M24 24l-8 5" stroke="${I}" stroke-width="2.5"/>`),
+          ascii: [" ,--. ", "(  |◤)", " `--' "],
+        },
+      ];
+
+      document.getElementById("grid").innerHTML = MARKS.map(
+        (mark, at) => `
+        <div class="card">
+          <div class="top">
+            ${mark.svg}
+            <span class="name">${mark.name}</span>
+            <span class="num">${String(at + 1).padStart(2, "0")}</span>
+          </div>
+          <pre>${mark.ascii.join("\n").replace(/</g, "&lt;")}</pre>
+          <p class="idea">${mark.idea}</p>
+        </div>`,
+      ).join("");
+    </script>
+  </body>
+</html>

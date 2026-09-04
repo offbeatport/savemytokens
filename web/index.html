@@ -17,7 +17,7 @@
     <meta name="twitter:card" content="summary_large_image" />
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231e1e2e'/%3E%3Crect x='6' y='14' width='12' height='4' rx='2' fill='%2389b4fa'/%3E%3Crect x='6' y='21' width='7' height='4' rx='2' fill='%23a6e3a1'/%3E%3Crect x='6' y='7' width='20' height='4' rx='2' fill='%23585b70'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231e1e2e'/%3E%3Crect x='6' y='7' width='20' height='4' rx='2' fill='%2389b4fa'/%3E%3Crect x='6' y='14' width='12' height='4' rx='2' fill='%23585b70'/%3E%3Crect x='6' y='21' width='7' height='4' rx='2' fill='%23585b70'/%3E%3C/svg%3E"
     />
     <style>
       :root {
@@ -26,202 +26,294 @@
         --panel: #fff;
         --ink: #16161d;
         --muted: #5b5b6b;
-        --rule: #e4e4ec;
+        --faint: #8a8a9a;
+        --rule: #e6e6ee;
         --accent: #2f5fd0;
+        --term: #181825;
+        --term-bar: #11111b;
+        --term-ink: #cdd6f4;
         --ok: #2f7a45;
-        --warn: #9a6b12;
+        --shadow: 0 24px 60px -28px rgb(20 20 40 / 32%);
       }
       @media (prefers-color-scheme: dark) {
         :root {
-          --paper: #101018;
-          --panel: #17171f;
+          --paper: #0d0d14;
+          --panel: #15151d;
           --ink: #e9e9f0;
           --muted: #9a9aac;
-          --rule: #26262f;
+          --faint: #6f6f81;
+          --rule: #23232d;
           --accent: #89b4fa;
           --ok: #a6e3a1;
-          --warn: #f9e2af;
+          --shadow: 0 24px 60px -28px rgb(0 0 0 / 70%);
         }
       }
-      * {
-        box-sizing: border-box;
-      }
-      html {
-        -webkit-text-size-adjust: 100%;
-      }
+      * { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
       body {
         margin: 0;
         background: var(--paper);
         color: var(--ink);
-        font:
-          17px/1.65 -apple-system,
-          BlinkMacSystemFont,
-          "Segoe UI",
-          Inter,
-          Roboto,
-          sans-serif;
+        font: 17px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
       }
-      .wrap {
-        max-width: 62rem;
-        margin: 0 auto;
-        padding: 0 1.5rem;
+      .wrap { max-width: 64rem; margin: 0 auto; padding: 0 1.5rem; }
+      a { color: var(--accent); }
+
+      .bar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        border-bottom: 1px solid transparent;
+        background: color-mix(in srgb, var(--paper) 86%, transparent);
+        backdrop-filter: blur(12px);
       }
-      header {
-        padding: 5rem 0 2.5rem;
-        text-align: center;
+      .bar.stuck { border-bottom-color: var(--rule); }
+      .bar .wrap { display: flex; align-items: center; gap: 1.25rem; height: 4rem; }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-weight: 650;
+        letter-spacing: -0.015em;
+        color: inherit;
+        text-decoration: none;
       }
-      h1 {
-        margin: 0;
-        font-size: clamp(2.4rem, 6vw, 3.6rem);
-        letter-spacing: -0.035em;
-        line-height: 1.05;
+      .brand svg { flex: none; }
+      .bar nav { margin-left: auto; display: flex; align-items: center; gap: 0.35rem; }
+      .icon-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.3rem;
+        height: 2.3rem;
+        border-radius: 0.5rem;
+        color: var(--muted);
       }
+      .icon-link:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 7%, transparent); }
+
+      header.hero { padding: 5.5rem 0 1rem; text-align: center; }
+      h1 { margin: 0; font-size: clamp(2.5rem, 6.5vw, 4rem); letter-spacing: -0.04em; line-height: 1.03; }
       .tagline {
-        margin: 1rem auto 0;
-        max-width: 34rem;
+        margin: 1.25rem auto 0;
+        max-width: 33rem;
         font-size: clamp(1.05rem, 2.4vw, 1.3rem);
         color: var(--muted);
       }
-      .run {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.75rem;
-        margin: 2.25rem 0 0.75rem;
-        padding: 0.85rem 1.35rem;
-        border: 1px solid var(--rule);
-        border-radius: 0.6rem;
-        background: var(--panel);
-        font:
-          1.05rem/1 ui-monospace,
-          SFMono-Regular,
-          Menlo,
-          Consolas,
-          monospace;
-        cursor: pointer;
-      }
-      .run:hover {
-        border-color: var(--accent);
-      }
-      .run span {
-        user-select: all;
-      }
-      .run small {
-        color: var(--muted);
-        font-family: inherit;
-        font-size: 0.8rem;
-      }
-      .sub {
-        margin: 0;
-        color: var(--muted);
-        font-size: 0.9rem;
-      }
-      figure {
-        margin: 3.5rem 0 0;
-      }
-      figure img {
+
+      .shell {
         display: block;
         width: 100%;
-        height: auto;
-        border-radius: 0.75rem;
+        max-width: 30rem;
+        margin: 3rem auto 1rem;
+        padding: 0;
+        border: 0;
+        border-radius: 0.7rem;
+        background: var(--term);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        text-align: left;
+        cursor: pointer;
+        font: inherit;
       }
-      figcaption {
-        margin-top: 0.85rem;
-        text-align: center;
-        color: var(--muted);
-        font-size: 0.85rem;
+      .shell:hover .shell-copy { color: var(--term-ink); }
+      .shell-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.6rem 0.85rem;
+        background: var(--term-bar);
       }
-      section {
-        padding: 4rem 0;
-        border-top: 1px solid var(--rule);
+      .shell-bar i { width: 0.65rem; height: 0.65rem; border-radius: 50%; }
+      .shell-title {
+        margin: 0 auto;
+        padding-right: 2.4rem;
+        color: #6c7086;
+        font: 0.72rem ui-monospace, SFMono-Regular, Menlo, monospace;
       }
-      h2 {
-        margin: 0 0 1.75rem;
-        font-size: 0.8rem;
-        font-weight: 600;
-        letter-spacing: 0.09em;
+      .shell-body {
+        display: flex;
+        align-items: baseline;
+        gap: 0.6rem;
+        padding: 1.35rem 1.35rem 1.5rem;
+        font: 1.1rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        color: var(--term-ink);
+      }
+      .shell-body .prompt { color: #89b4fa; }
+      .shell-body .cmd { user-select: all; }
+      .shell-body .cmd b { font-weight: 400; color: #a6e3a1; }
+      .shell-copy {
+        margin-left: auto;
+        color: #585b70;
+        font-size: 0.7rem;
+        letter-spacing: 0.04em;
         text-transform: uppercase;
-        color: var(--muted);
       }
-      .grid {
-        display: grid;
-        gap: 1.75rem 2.5rem;
-        grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+      .sub { margin: 0; color: var(--faint); font-size: 0.88rem; text-align: center; }
+
+      main section { padding: 7rem 0; border-top: 1px solid var(--rule); }
+      main section:first-of-type { border-top: 0; padding-top: 4.5rem; }
+      h2 {
+        margin: 0 0 2.75rem;
+        font-size: 0.78rem;
+        font-weight: 650;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+        color: var(--faint);
       }
-      .grid h3 {
-        margin: 0 0 0.35rem;
-        font-size: 1rem;
-      }
-      .grid p {
-        margin: 0;
-        color: var(--muted);
-        font-size: 0.95rem;
-      }
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.95rem;
-      }
-      td {
-        padding: 0.7rem 0;
-        border-bottom: 1px solid var(--rule);
-        vertical-align: top;
-      }
-      td:first-child {
-        width: 9.5rem;
-        padding-right: 1.5rem;
-        font-weight: 600;
-      }
-      td:last-child {
-        color: var(--muted);
-      }
-      .honest li {
-        margin-bottom: 0.6rem;
-        color: var(--muted);
-      }
-      .honest strong {
-        color: var(--ink);
-        font-weight: 600;
-      }
-      ul {
-        margin: 0;
-        padding-left: 1.1rem;
-      }
+      figure { margin: 4.5rem 0 0; }
+      figure img { display: block; width: 100%; height: auto; border-radius: 0.75rem; box-shadow: var(--shadow); }
+      figcaption { margin-top: 1.1rem; text-align: center; color: var(--faint); font-size: 0.85rem; }
+
+      .grid { display: grid; gap: 2.75rem 3rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+      .grid h3 { margin: 0 0 0.4rem; font-size: 1.02rem; }
+      .grid p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+      table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+      td { padding: 1rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+      tr:last-child td { border-bottom: 0; }
+      td:first-child { width: 10.5rem; padding-right: 1.5rem; font-weight: 600; }
+      td:last-child { color: var(--muted); }
+
       code {
-        font:
-          0.9em ui-monospace,
-          SFMono-Regular,
-          Menlo,
-          Consolas,
-          monospace;
+        font: 0.9em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         background: var(--panel);
         border: 1px solid var(--rule);
         border-radius: 0.3rem;
         padding: 0.1rem 0.35rem;
       }
-      footer {
-        padding: 3rem 0 4rem;
-        border-top: 1px solid var(--rule);
-        color: var(--muted);
-        font-size: 0.9rem;
+      ul { margin: 0; padding-left: 1.15rem; }
+      .honest li { margin-bottom: 1rem; color: var(--muted); }
+      .honest li:last-child { margin-bottom: 0; }
+      .honest strong { color: var(--ink); font-weight: 600; }
+
+      .support { display: flex; flex-wrap: wrap; gap: 1rem; }
+      .chip {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        padding: 0.95rem 1.35rem;
+        border: 1px solid var(--rule);
+        border-radius: 0.7rem;
+        background: var(--panel);
+        font-size: 0.95rem;
+        font-weight: 550;
+      }
+      .chip svg { flex: none; }
+      .chip.on { border-color: color-mix(in srgb, var(--accent) 45%, var(--rule)); }
+      .chip.on .state { color: var(--ok); }
+      .chip.off { color: var(--faint); cursor: not-allowed; }
+      .chip.off svg { opacity: 0.45; }
+      .state {
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--faint);
+      }
+
+      .tip {
+        position: absolute;
+        left: 50%;
+        bottom: calc(100% + 0.6rem);
+        z-index: 30;
+        width: max-content;
+        max-width: 17rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.45rem;
+        background: var(--ink);
+        color: var(--paper);
+        font-size: 0.8rem;
+        font-weight: 400;
+        line-height: 1.4;
         text-align: center;
+        opacity: 0;
+        transform: translate(-50%, 0.3rem);
+        transition: opacity 0.12s ease, transform 0.12s ease;
+        pointer-events: none;
       }
-      a {
-        color: var(--accent);
+      .tip::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border: 5px solid transparent;
+        border-top-color: var(--ink);
       }
-      footer a {
-        color: inherit;
+      .chip:hover .tip,
+      .chip:focus-visible .tip { opacity: 1; transform: translate(-50%, 0); }
+
+      footer {
+        margin-top: 3rem;
+        padding: 3rem 0 4.5rem;
+        border-top: 1px solid var(--rule);
+        color: var(--faint);
+        font-size: 0.9rem;
+      }
+      footer .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
+      footer nav { margin-left: auto; display: flex; align-items: center; gap: 0.35rem; }
+      footer a { color: inherit; }
+
+      @media (max-width: 34rem) {
+        main section { padding: 4.5rem 0; }
+        header.hero { padding-top: 3.5rem; }
+        .shell-title { display: none; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        .tip { transition: none; }
       }
     </style>
   </head>
   <body>
-    <div class="wrap">
-      <header>
+    <div class="bar" id="bar">
+      <div class="wrap">
+        <a class="brand" href="#top">
+          <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true">
+            <rect width="32" height="32" rx="7" fill="#1e1e2e" />
+            <rect x="6" y="7" width="20" height="4" rx="2" fill="#89b4fa" />
+            <rect x="6" y="14" width="12" height="4" rx="2" fill="#585b70" />
+            <rect x="6" y="21" width="7" height="4" rx="2" fill="#585b70" />
+          </svg>
+          SaveMyTokens
+        </a>
+        <nav>
+          <a class="icon-link" href="https://github.com/offbeatport/savemytokens" aria-label="GitHub" title="GitHub">
+            <svg width="19" height="19" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+            </svg>
+          </a>
+          <a class="icon-link" href="https://www.npmjs.com/package/savemytokens" aria-label="npm" title="npm">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M2 5.5h20v13H12v-2.5H7v2.5H2v-13Zm2.5 2.5v8H7v-5.5h2v5.5h1.5V8h-6Zm9 0v8H16v-5.5h2V16h1.5V8h-6Z" />
+            </svg>
+          </a>
+          <a class="icon-link" href="mailto:hello@offbeatport.com" aria-label="Email" title="hello@offbeatport.com">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <rect x="2.5" y="5" width="19" height="14" rx="2.5" />
+              <path d="m3.5 7 8.5 6 8.5-6" />
+            </svg>
+          </a>
+        </nav>
+      </div>
+    </div>
+
+    <div class="wrap" id="top">
+      <header class="hero">
         <h1>SaveMyTokens</h1>
         <p class="tagline">Decide which project gets your Claude allowance.</p>
 
-        <button class="run" type="button" id="copy">
-          <span>npx savemytokens</span>
-          <small id="hint">click to copy</small>
+        <button class="shell" type="button" id="copy" aria-label="Copy npx savemytokens">
+          <span class="shell-bar">
+            <i style="background: #ff5f56"></i><i style="background: #ffbd2e"></i><i style="background: #27c93f"></i>
+            <span class="shell-title">bash</span>
+          </span>
+          <span class="shell-body">
+            <span class="prompt">$</span>
+            <span class="cmd">npx <b>savemytokens</b></span>
+            <span class="shell-copy" id="hint">copy</span>
+          </span>
         </button>
         <p class="sub">Node 18.17+ · zero dependencies · nothing leaves your machine</p>
 
@@ -230,114 +322,179 @@
             src="screenshot.svg"
             width="880"
             height="430"
-            alt="The control centre: three live projects sharing a 5-hour window, each with an allocation, how much of it it has spent, a priority and its last prompt."
+            alt="The control centre: four projects sharing a 5-hour window, three of them open, each with an allocation, how much of it it has spent, a priority and its last prompt."
           />
           <figcaption>Four projects sharing the window, three of them open. obp-ui is at 93% of its slice.</figcaption>
         </figure>
       </header>
 
-      <section>
-        <h2>What it does</h2>
-        <div class="grid">
-          <div>
-            <h3>The real numbers</h3>
-            <p>
-              Your 5-hour and weekly usage exactly as Anthropic publishes it, read from the Claude
-              Code status line. Never an invented “% remaining”.
-            </p>
+      <main>
+        <section>
+          <h2>What it does</h2>
+          <div class="grid">
+            <div>
+              <h3>The real numbers</h3>
+              <p>
+                Your 5-hour and weekly usage exactly as Anthropic publishes it, read from the Claude
+                Code status line. Never an invented “% remaining”.
+              </p>
+            </div>
+            <div>
+              <h3>Two lists you control</h3>
+              <p>
+                ACTIVE is what shares your window. A project joins it when you open Claude Code there
+                and stays after you close it, so a target survives the session. RECENT is everything
+                else; press a to move one up.
+              </p>
+            </div>
+            <div>
+              <h3>Claude working to it</h3>
+              <p>
+                As a session eats into its slice it is told to narrow scope and finish, and to write
+                down whatever it drops. That comes back next time you open the project.
+              </p>
+            </div>
+            <div>
+              <h3>Unused capacity returned</h3>
+              <p>
+                A project with nothing running lends its share to the rest and takes it back when you
+                return. Mark one done and what it did not spend goes to the others immediately.
+              </p>
+            </div>
           </div>
-          <div>
-            <h3>Two lists you control</h3>
-            <p>
-              ACTIVE is what shares your window. A project joins it when you open Claude Code there
-              and stays after you close it, so a target survives the session. RECENT is everything
-              else; press a to move one up.
-            </p>
+        </section>
+
+        <section>
+          <h2>Works with</h2>
+          <div class="support">
+            <span class="chip on" tabindex="0">
+              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  fill="#d97757"
+                  d="M12 2.4a.7.7 0 0 1 .7.64l.42 4.05 2.79-2.96a.7.7 0 1 1 1.02.96l-2.79 2.96 3.96-.99a.7.7 0 1 1 .34 1.36l-3.96.99 3.74 1.65a.7.7 0 1 1-.56 1.28l-3.74-1.65 2.72 3.04a.7.7 0 0 1-1.04.93l-2.72-3.04-.24 4.07a.7.7 0 0 1-1.4-.08l.24-4.07-3.06 2.69a.7.7 0 1 1-.92-1.05l3.06-2.69-4.05.54a.7.7 0 1 1-.18-1.39l4.05-.54-3.65-1.83a.7.7 0 0 1 .62-1.25l3.65 1.83-1.71-3.7a.7.7 0 0 1 1.27-.59l1.71 3.7.33-4.05a.7.7 0 0 1 .7-.64Z"
+                />
+              </svg>
+              Claude Code
+              <span class="state">supported</span>
+              <span class="tip" role="tooltip">Hooks and a status line, reading the 5-hour and weekly windows Anthropic publishes.</span>
+            </span>
+
+            <span class="chip off" tabindex="0" aria-disabled="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <path d="M12 3.2c1.6-1.1 3.7-.6 4.7 1 1.9-.2 3.5 1.4 3.4 3.3 1.5 1.1 1.8 3.2.6 4.6.6 1.8-.5 3.7-2.3 4.1-.5 1.8-2.5 2.8-4.2 2.1-1.3 1.3-3.5 1.3-4.8 0-1.7.7-3.7-.3-4.2-2.1-1.8-.4-2.9-2.3-2.3-4.1-1.2-1.4-.9-3.5.6-4.6-.1-1.9 1.5-3.5 3.4-3.3 1-1.6 3.1-2.1 4.7-1Z" />
+                <path d="M9.4 12.2 12 13.7l2.6-1.5V9.2L12 7.7 9.4 9.2Z" />
+              </svg>
+              Codex
+              <span class="state">soon</span>
+              <span class="tip" role="tooltip">Codex publishes its own rate limits, so visibility is close. A share it can act on needs somewhere to inject the advice.</span>
+            </span>
+
+            <span class="chip off" tabindex="0" aria-disabled="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 2.2c.35 4.6 4.6 8.85 9.2 9.2v1.2c-4.6.35-8.85 4.6-9.2 9.2h-1.2c-.35-4.6-4.6-8.85-9.2-9.2v-1.2c4.6-.35 8.85-4.6 9.2-9.2h1.2Z" opacity="0.85" />
+              </svg>
+              Gemini CLI
+              <span class="state">soon</span>
+              <span class="tip" role="tooltip">Not started. It ships when there is a published quota to read, rather than a number to guess at.</span>
+            </span>
+
+            <span class="chip off" tabindex="0" aria-disabled="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M3.6 20 14.4 4.4h3.3L6.9 20H3.6Zm9.5 0 2.7-3.9L17.9 20h-4.8Zm-2.4-9.7L8.1 6.2h4.7l-2.1 4.1Z" />
+              </svg>
+              Grok CLI
+              <span class="state">soon</span>
+              <span class="tip" role="tooltip">Not started. Same bar as the others: a real published window, or it does not ship.</span>
+            </span>
           </div>
-          <div>
-            <h3>Claude working to it</h3>
-            <p>
-              As a session eats into its slice it is told to narrow scope and finish, and to write
-              down whatever it drops. That comes back next time you open the project.
-            </p>
-          </div>
-          <div>
-            <h3>Unused capacity returned</h3>
-            <p>
-              A project with nothing running lends its share to the rest and takes it back when you
-              return. Mark one done and what it did not spend goes to the others immediately.
-            </p>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <section>
-        <h2>Where the numbers come from</h2>
-        <table>
-          <tr>
-            <td>Published</td>
-            <td>
-              5h and 7d usage, straight from Anthropic through the status line. We do not estimate
-              it and we do not adjust it.
-            </td>
-          </tr>
-          <tr>
-            <td>Measured</td>
-            <td>
-              Tokens per project, counted from the transcripts already on your disk. Nothing is
-              sampled and nothing is sent anywhere.
-            </td>
-          </tr>
-          <tr>
-            <td>Inferred</td>
-            <td>
-              The split between projects. Anthropic publishes one total, so dividing it by measured
-              share is ours, and we label it as ours.
-            </td>
-          </tr>
-        </table>
-      </section>
+        <section>
+          <h2>Where the numbers come from</h2>
+          <table>
+            <tr>
+              <td>Published</td>
+              <td>
+                5h and 7d usage, straight from Anthropic through the status line. We do not estimate
+                it and we do not adjust it.
+              </td>
+            </tr>
+            <tr>
+              <td>Measured</td>
+              <td>
+                Tokens per project, counted from the transcripts already on your disk. Nothing is
+                sampled and nothing is sent anywhere.
+              </td>
+            </tr>
+            <tr>
+              <td>Inferred</td>
+              <td>
+                The split between projects. Anthropic publishes one total, so dividing it by measured
+                share is ours, and we label it as ours.
+              </td>
+            </tr>
+          </table>
+        </section>
 
-      <section>
-        <h2>Install</h2>
-        <table>
-          <tr>
-            <td><code>npx savemytokens</code></td>
-            <td>Opens the control centre and offers to install on first run.</td>
-          </tr>
-          <tr>
-            <td><code>… install</code></td>
-            <td>
-              Four hooks and a status line in <code>settings.json</code>, backed up first. Without
-              them nothing is live.
-            </td>
-          </tr>
-          <tr>
-            <td><code>… uninstall</code></td>
-            <td>Removes every entry it added and restores a status line it wrapped.</td>
-          </tr>
-          <tr>
-            <td><code>… status</code></td>
-            <td>One plain-text snapshot, or <code>--json</code> for a script.</td>
-          </tr>
-        </table>
-      </section>
+        <section>
+          <h2>Install</h2>
+          <table>
+            <tr>
+              <td><code>npx savemytokens</code></td>
+              <td>Opens the control centre and offers to install on first run.</td>
+            </tr>
+            <tr>
+              <td><code>… install</code></td>
+              <td>
+                Four hooks and a status line in <code>settings.json</code>, backed up first. Without
+                them nothing is live.
+              </td>
+            </tr>
+            <tr>
+              <td><code>… uninstall</code></td>
+              <td>Removes every entry it added and restores a status line it wrapped.</td>
+            </tr>
+            <tr>
+              <td><code>… status</code></td>
+              <td>One plain-text snapshot, or <code>--json</code> for a script.</td>
+            </tr>
+          </table>
+        </section>
 
-      <section class="honest">
-        <h2>What it will not do</h2>
-        <ul>
-          <li><strong>It cannot stop a session.</strong> There is no API to pause Claude Code, so a share is advice given to Claude, not a hard cap.</li>
-          <li><strong>It does not predict a lockout.</strong> Anthropic publishes a percentage and a reset time; anything past that would be a guess.</li>
-          <li><strong>It makes no network call.</strong> No account, no telemetry, no daemon. Everything lives in <code>~/.savemytokens</code>.</li>
-        </ul>
-      </section>
-
-      <footer>
-        <a href="https://github.com/offbeatport/savemytokens">GitHub</a> ·
-        <a href="https://www.npmjs.com/package/savemytokens">npm</a> ·
-        <a href="mailto:hello@offbeatport.com">hello@offbeatport.com</a> · MIT
-      </footer>
+        <section class="honest">
+          <h2>What it will not do</h2>
+          <ul>
+            <li><strong>It cannot stop a session.</strong> There is no API to pause Claude Code, so a share is advice given to Claude, not a hard cap.</li>
+            <li><strong>It does not predict a lockout.</strong> Anthropic publishes a percentage and a reset time; anything past that would be a guess.</li>
+            <li><strong>It makes no network call.</strong> No account, no telemetry, no daemon. Everything lives in <code>~/.savemytokens</code>.</li>
+          </ul>
+        </section>
+      </main>
     </div>
+
+    <footer>
+      <div class="wrap">
+        <span>MIT · <a href="mailto:hello@offbeatport.com">hello@offbeatport.com</a></span>
+        <nav>
+          <a class="icon-link" href="https://github.com/offbeatport/savemytokens" aria-label="GitHub" title="GitHub">
+            <svg width="19" height="19" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+            </svg>
+          </a>
+          <a class="icon-link" href="https://www.npmjs.com/package/savemytokens" aria-label="npm" title="npm">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M2 5.5h20v13H12v-2.5H7v2.5H2v-13Zm2.5 2.5v8H7v-5.5h2v5.5h1.5V8h-6Zm9 0v8H16v-5.5h2V16h1.5V8h-6Z" />
+            </svg>
+          </a>
+          <a class="icon-link" href="mailto:hello@offbeatport.com" aria-label="Email" title="hello@offbeatport.com">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <rect x="2.5" y="5" width="19" height="14" rx="2.5" />
+              <path d="m3.5 7 8.5 6 8.5-6" />
+            </svg>
+          </a>
+        </nav>
+      </div>
+    </footer>
 
     <script>
       const button = document.getElementById("copy");
@@ -346,13 +503,18 @@
         try {
           await navigator.clipboard.writeText("npx savemytokens");
           hint.textContent = "copied";
-          setTimeout(() => {
-            hint.textContent = "click to copy";
-          }, 1600);
         } catch {
           hint.textContent = "press ⌘C";
         }
+        setTimeout(() => {
+          hint.textContent = "copy";
+        }, 1600);
       });
+
+      const bar = document.getElementById("bar");
+      const onScroll = () => bar.classList.toggle("stuck", window.scrollY > 8);
+      addEventListener("scroll", onScroll, { passive: true });
+      onScroll();
     </script>
   </body>
 </html>
