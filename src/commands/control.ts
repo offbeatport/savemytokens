@@ -157,6 +157,7 @@ const HINTS = [
   "x down",
   "p priority",
   "⏎ open",
+  "m all",
   "f pin",
   "s settings",
   "? help",

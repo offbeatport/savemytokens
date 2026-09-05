@@ -271,11 +271,9 @@ function footerNote(control: ControlPlan, context: ViewContext): string[] {
   return out;
 }
 
-function sectionTitle(name: string, count: number, hint: string, context: ViewContext): string {
+function sectionTitle(name: string, count: number, context: ViewContext): string {
   const { theme, color } = context;
-  const head = `  ${paintHead(theme, name, color)} ${paint(theme, "dim", String(count), color)}`;
-  const room = context.columns - visibleWidth(head) - 3;
-  return hint.length <= room ? `${head}  ${paint(theme, "dim", hint, color)}` : head;
+  return `  ${paintHead(theme, name, color)} ${paint(theme, "dim", String(count), color)}`;
 }
 
 export function planRows(control: ControlPlan, context: ViewContext): string[] {
@@ -293,7 +291,7 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
   if (set.members.length === 0) {
     out.push(`  ${paint(context.theme, "dim", "Nothing sharing the window yet. Open Claude Code in a project, or press a on one below.", context.color)}`);
   } else {
-    out.push(sectionTitle("ACTIVE", set.members.length, "sharing the window · x drops one", context));
+    out.push(sectionTitle("ACTIVE", set.members.length, context));
     out.push(headerRow(context, widths, shown));
     for (const view of set.members) {
       if (printed < budget) out.push(row(view, index, context, widths, shown));
@@ -304,7 +302,7 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
 
   if (set.candidates.length > 0) {
     out.push("");
-    out.push(sectionTitle("RECENT", set.candidates.length, "holding nothing · space promotes · x hides", context));
+    out.push(sectionTitle("RECENT", set.candidates.length, context));
     out.push(idleHeaderRow(context, widths, shown));
     for (const view of set.candidates) {
       if (printed < budget) out.push(idleRow(view, index, context, widths, now, shown));
@@ -315,7 +313,7 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
 
   const total = set.members.length + set.candidates.length + set.hidden;
   if (total > printed) {
-    out.push(`  ${paint(context.theme, "dim", `+${total - printed} more, m shows them`, context.color)}`);
+    out.push(`  ${paint(context.theme, "dim", `+${total - printed} more`, context.color)}`);
   }
 
   out.push("");
