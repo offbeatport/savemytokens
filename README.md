@@ -67,19 +67,20 @@ npx savemytokens priority webinvoke high # webinvoke now takes spare capacity fi
 ```
 
 The other three split what is left. When one of them finishes, whatever it did not spend goes to
-webinvoke, because it is the only project on the high tier:
+webinvoke, because it is the only project on the high tier.
 
-```
-  ACTIVE 4
-    PROJECT       ALLOCATION USED OF IT           PRIORITY LAST PROMPT
-  ❯ webinvoke            50% █████████░░░  62%    HIGH     Implement the provider fallback chain
-    buydiff              30% ██████░░░░░░  41%    NORMAL   Fix the verdict table alignment
-    obp-ui               20% ██████████░░  93%    LOW      Try the alternate parser
-```
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/offbeatport/savemytokens/main/assets/example.svg" alt="Four projects in the ACTIVE table: webinvoke pinned at 50% and 62% through it, buydiff at 30% and 41% through, obp-ui at 20% and 93% through, reposhine holding 15% with nothing running." width="730">
+
+</div>
 
 `obp-ui` is at 93% of its slice, so its next turn opens with a line telling it to finish what it has
-and write down the rest. Whatever it drops comes back the next time you open that project. Nothing
-here required you to guess how many tokens anything costs.
+and write down the rest. Whatever it drops comes back the next time you open that project.
+`reposhine` is holding 15% with nothing running: it lends that out while it rests, and takes it back
+when you return.
+
+Nothing here required you to guess how many tokens anything costs.
 
 ## Commands
 

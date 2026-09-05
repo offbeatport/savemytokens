@@ -49,13 +49,13 @@
   <text x="20" y="835.25" xml:space="preserve"></text>
   <text x="20" y="854" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">THE STATUS LINE</tspan></text>
   <text x="20" y="872.75" xml:space="preserve"></text>
-  <text x="20" y="891.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Installed. It is the only place Anthropic publishes your 5h and 7d usage, and it is what proves a session</tspan></text>
-  <text x="20" y="910.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">is still open, so without it nothing here is live. Change its shape with P.</tspan></text>
+  <text x="20" y="891.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Installed. It is the only place your 5h and 7d usage is published, and it is what proves a session is</tspan></text>
+  <text x="20" y="910.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">still open, so without it nothing here is live. Change its shape with P.</tspan></text>
   <text x="20" y="929" xml:space="preserve"></text>
   <text x="20" y="947.75" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">THE NUMBERS</tspan></text>
   <text x="20" y="966.5" xml:space="preserve"></text>
-  <text x="20" y="985.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">5h and 7d are Anthropic's own. Share is measured from the tokens in your transcripts. Used of it is their</tspan></text>
-  <text x="20" y="1004" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">number split by that share, so the split between rows is ours, not theirs.</tspan></text>
+  <text x="20" y="985.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">5h and 7d are published figures, not ours. Share is measured from the tokens in your transcripts. Used of</tspan></text>
+  <text x="20" y="1004" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">it is their number split by that share, so the split between rows is ours, not theirs.</tspan></text>
   <text x="20" y="1022.75" xml:space="preserve"></text>
   <text x="20" y="1041.5" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">WHEN IT GETS TIGHT</tspan></text>
   <text x="20" y="1060.25" xml:space="preserve"></text>

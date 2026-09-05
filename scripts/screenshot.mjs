@@ -302,3 +302,9 @@ write(
   "claude",
   STRIP,
 );
+
+const EXAMPLE = 92;
+const full = planRows(CONTROL, context(theme, EXAMPLE));
+const from = full.findIndex((line) => line.includes("ACTIVE"));
+const to = full.findIndex((line, at) => at > from && line.includes("RECENT"));
+write("example.svg", full.slice(from, to - 1), theme, "savemytokens", EXAMPLE);
