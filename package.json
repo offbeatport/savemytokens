@@ -1,6 +1,6 @@
 {
   "name": "savemytokens",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Give every Claude Code session a target share of your Claude window, and keep Claude aware of it. Local, private, zero setup.",
   "keywords": [
     "claude",

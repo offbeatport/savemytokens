@@ -4,6 +4,40 @@ Versions follow [semver](https://semver.org). Before 1.0 the CLI surface and the
 `~/.savemytokens/config.json` can still change; the stored records carry their own `schema`
 number and are migrated rather than broken.
 
+## 0.2.2
+
+### Fixed
+
+- **An open window you are not typing in no longer holds its share.** Ten terminals open with one in
+  use divided the window ten ways and told the one doing the work it was far over budget. A project
+  counts as a consumer only while it is open and has taken a turn in the last ten minutes;
+  otherwise it keeps what it has already spent and lends the rest out.
+- **Priority now reaches the capacity a finished project hands back.** It was folded into the even
+  split whenever any project was unpinned, which is the ordinary case, so the tiers ran on an empty
+  pool.
+- **The arrows keep moving a target the allocator is squeezing.** They stepped from what was granted
+  rather than what you asked for, so each press added five points to an already-reduced number.
+- **Pinned projects hold the order you pinned them in**, rather than resorting by allocation the
+  moment you move one.
+- **`install` says when Claude Code is not on the machine** instead of reporting success and leaving
+  you to find out.
+- Two things that would have been wrong on Windows: `process.env.HOME`, which Windows does not set,
+  and project labels split on a forward slash.
+
+### Added
+
+- **`off` as a status line shape**, so it can be silenced from settings rather than only from the
+  first-run dialog.
+- **The window you allocate against and the arrow step are settings**, not flags you retype.
+- **A section in the help page on reading a row**: what the star means, what the number beside it
+  counts, and why a row is dimmed.
+
+### Changed
+
+- The status line reads `84% of 17%`, the fraction the bar draws, rather than the two terms of it.
+  Countdowns carry their `m`, and `pace` and `empty` say what they mean.
+- Bars use the width the terminal has: up to 32 cells in the table, 12 in the status line.
+
 ## 0.2.1
 
 Published within an hour of 0.2.0, which shipped with four things wrong.
