@@ -62,6 +62,8 @@ export type SettingRow =
   | { kind: "stage"; at: number }
   | { kind: "preserve"; index: number }
   | { kind: "advice" }
+  | { kind: "window" }
+  | { kind: "step" }
   | { kind: "reset" }
   | { kind: "preview" }
   | { kind: "preset" };
@@ -70,6 +72,11 @@ export function settingsRows(config: Config): SettingRow[] {
   const rows: SettingRow[] = [];
   rows.push({ kind: "header", label: "COLUMNS", hint: "space toggles" });
   for (const id of COLUMNS) rows.push({ kind: "column", id });
+
+  rows.push({ kind: "blank" });
+  rows.push({ kind: "header", label: "THE WINDOW", hint: "← → changes it" });
+  rows.push({ kind: "window" });
+  rows.push({ kind: "step" });
 
   rows.push({ kind: "blank" });
   rows.push({ kind: "header", label: "THEME", hint: "← → changes it" });
@@ -152,6 +159,7 @@ export interface TightPreview {
 }
 
 const INDENT = 4;
+export const STEPS = [0.01, 0.05, 0.1];
 
 function clockAt(ms: number): string {
   const at = new Date(ms);
@@ -277,6 +285,22 @@ export function renderSettings(
         });
         for (const line of wrap(text, Math.max(30, width - INDENT - 8))) out.push(`${" ".repeat(INDENT + 6)}${paint(theme, "dim", line, color)}`);
       }
+      continue;
+    }
+    if (row.kind === "window") {
+      const weekly = config.window === "seven_day";
+      const shown = `${weekly ? paint(theme, "dim", "5h", color) : paint(theme, "accent", "[5h]", color)}  ${weekly ? paint(theme, "accent", "[7d]", color) : paint(theme, "dim", "7d", color)}`;
+      const about = weekly ? "allocate against the weekly window" : "allocate against the 5-hour window";
+      out.push(`  ${mark} ${padEndVisible("window", 15)} ${shown}   ${paint(theme, "dim", clip(about, Math.max(0, width - 34)), color)}`);
+      continue;
+    }
+    if (row.kind === "step") {
+      const shown = STEPS.map((value) =>
+        Math.abs(value - config.step) < 1e-9
+          ? paint(theme, "accent", `[${Math.round(value * 100)}%]`, color)
+          : paint(theme, "dim", `${Math.round(value * 100)}%`, color),
+      ).join("  ");
+      out.push(`  ${mark} ${padEndVisible("arrow step", 15)} ${shown}   ${paint(theme, "dim", "how far ← → moves a target", color)}`);
       continue;
     }
     if (row.kind === "reset") {

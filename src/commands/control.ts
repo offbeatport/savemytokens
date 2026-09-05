@@ -5,6 +5,8 @@ import { keyActions, splitKeys, type Action } from "../scheduler/keys.js";
 import {
   buildPlan,
   cyclePriority,
+  cycleStep,
+  cycleWindow,
   demote,
   promote,
   selectionIndex,
@@ -43,7 +45,6 @@ import { colorEnabled, padEndVisible, visibleWidth } from "../util/ansi.js";
 import { ago } from "../util/fmt.js";
 
 const REFRESH_MS = 2500;
-const STEP = 0.05;
 const MAX_CUSTOM = 200;
 
 const ALT_ON = "\u001b[?1049h";
@@ -599,6 +600,8 @@ export async function runControl(options: Options): Promise<void> {
             editing = true;
           } else if (activate) {
             if (current.kind === "reset") resetPreferences();
+            else if (current.kind === "window") cycleWindow();
+            else if (current.kind === "step") cycleStep(1);
             else if (current.kind === "column") toggleColumn(current.id);
             else if (current.kind === "segment") toggleSegment(current.id);
             else if (current.kind === "preserve") togglePreserve(PRESERVE_KINDS[current.index] ?? "");
@@ -607,7 +610,9 @@ export async function runControl(options: Options): Promise<void> {
             else if (current.kind === "preset") cyclePreset(1, Object.keys(HUD_PRESETS));
           } else if (action.kind === "share") {
             const delta = action.delta > 0 ? 1 : -1;
-            if (current.kind === "theme") cycleTheme(current.surface, delta, names);
+            if (current.kind === "window") cycleWindow();
+            else if (current.kind === "step") cycleStep(delta);
+            else if (current.kind === "theme") cycleTheme(current.surface, delta, names);
             else if (current.kind === "policy") cyclePolicy(delta);
             else if (current.kind === "preset") cyclePreset(delta, Object.keys(HUD_PRESETS));
             else if (current.kind === "segment") moveSegment(current.id, delta);
@@ -725,7 +730,7 @@ export async function runControl(options: Options): Promise<void> {
         draw();
         return;
       }
-      for (const action of keyActions(String(chunk), mode === "settings" ? "prefs" : "plan", STEP)) {
+      for (const action of keyActions(String(chunk), mode === "settings" ? "prefs" : "plan", control.config.step ?? 0.05)) {
         if (!apply(action)) return;
       }
       draw();

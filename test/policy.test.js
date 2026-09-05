@@ -418,7 +418,7 @@ test("the settings screen models columns, segments and their order", async () =>
 
   const rows = settingsRows(config);
   const headers = rows.filter((row) => row.kind === "header").map((row) => row.label);
-  assert.deepEqual(headers, ["COLUMNS", "THEME", "STATUS LINE", "WHEN IT GETS TIGHT"]);
+  assert.deepEqual(headers, ["COLUMNS", "THE WINDOW", "THEME", "STATUS LINE", "WHEN IT GETS TIGHT"]);
 
   const selectable = selectableRows(rows);
   for (const index of selectable) {
@@ -1242,4 +1242,17 @@ test("the number beside the bar is the number the bar is filled to", async () =>
   assert.equal(Math.round((filled / cells) * 100), 83, "the bar is drawn at the pressure, near enough");
   assert.equal(renderSegments(["pair"], view(0.17, 0.84), theme, false), "84% of 17%", "and the words say the same");
   assert.equal(renderSegments(["pair"], view(0.5, 0), theme, false), "0% of 50%", "an untouched allocation reads as zero");
+});
+
+test("the window and the arrow step are settings, not flags you retype", async () => {
+  const { settingsRows } = await import("../dist/report/settings.js");
+  const { DEFAULT_CONFIG } = await import("../dist/runtime/kernel.mjs");
+  const config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+
+  assert.equal(config.window, "five_hour", "the 5-hour window is the default");
+  assert.equal(config.step, 0.05, "and five points is the default move");
+
+  const kinds = settingsRows(config).map((row) => row.kind);
+  assert.ok(kinds.includes("window"), "the window is on the settings screen");
+  assert.ok(kinds.includes("step"), "so is the step");
 });

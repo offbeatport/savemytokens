@@ -120,6 +120,8 @@ export interface Config {
   policyFor: Record<string, string>;
   theme: { tui: string; hud: string };
   layout: { hud: string };
+  window: WindowKey;
+  step: number;
   columns: string[];
   hud: { segments: string[] };
   preserveFor: Record<string, string[]>;

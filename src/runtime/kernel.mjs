@@ -71,6 +71,8 @@ export const DEFAULT_CONFIG = {
   primerSeenAt: 0,
   theme: { tui: "default", hud: "default" },
   layout: { hud: "allocation" },
+  window: "five_hour",
+  step: 0.05,
   policy: "finish",
   policyFor: {},
   columns: ["allocation", "used", "priority", "last prompt"],
@@ -106,6 +108,8 @@ export function loadConfig() {
       ...(stored.theme?.hud && THEME_RENAMES[stored.theme.hud] ? { hud: THEME_RENAMES[stored.theme.hud] } : {}),
     },
     layout: { ...DEFAULT_CONFIG.layout, ...(stored.layout || {}) },
+    window: stored.window === "seven_day" ? "seven_day" : "five_hour",
+    step: [0.01, 0.05, 0.1].includes(stored.step) ? stored.step : DEFAULT_CONFIG.step,
     columns: migrateColumns(stored.columns),
     hud: {
       segments: Array.isArray(stored.hud?.segments)

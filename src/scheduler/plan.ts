@@ -84,14 +84,15 @@ function unattributedPercent(plan: SchedulePlanView): number | null {
 
 
 
-export function buildPlan(now = Date.now(), withSweep = true, window: WindowKey = "five_hour", adapter = "claude-code"): ControlPlan {
+export function buildPlan(now = Date.now(), withSweep = true, window?: WindowKey, adapter = "claude-code"): ControlPlan {
   const provider = providerFor(adapter);
+  const chosen: WindowKey = window ?? (loadConfig().window === "seven_day" ? "seven_day" : "five_hour");
   if (withSweep) {
-    const bounds = windowBounds(loadQuota(provider.id), window, now);
-    const span = WINDOW_MS[window] ?? FIVE_HOUR_MS;
+    const bounds = windowBounds(loadQuota(provider.id), chosen, now);
+    const span = WINDOW_MS[chosen] ?? FIVE_HOUR_MS;
     provider.sweep(Math.min(bounds.from, now - span), now);
   }
-  const plan = schedule(provider.id, now, window, null, provider.dataDir ?? null);
+  const plan = schedule(provider.id, now, chosen, null, provider.dataDir ?? null);
   const others = detectedProviders()
     .filter((other) => other.id !== provider.id)
     .map((other) => ({ id: other.id, label: other.label, resources: other.resources(now) }));
@@ -237,6 +238,21 @@ export function resetPreferences(): void {
     offeredInstallAt: config.offeredInstallAt,
     wrappedStatusLine: config.wrappedStatusLine,
   });
+}
+
+export function cycleWindow(): void {
+  const config = loadConfig();
+  config.window = config.window === "seven_day" ? "five_hour" : "seven_day";
+  saveConfig(config);
+}
+
+export function cycleStep(delta: number): void {
+  const config = loadConfig();
+  const steps = [0.01, 0.05, 0.1];
+  const at = steps.findIndex((value) => Math.abs(value - config.step) < 1e-9);
+  const next = steps[(((at === -1 ? 1 : at) + (delta > 0 ? 1 : steps.length - 1)) % steps.length)];
+  config.step = next ?? 0.05;
+  saveConfig(config);
 }
 
 export function toggleColumn(id: string): void {

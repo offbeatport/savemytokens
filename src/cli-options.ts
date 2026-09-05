@@ -10,7 +10,7 @@ export interface Options {
   interval: number;
   dryRun: boolean;
   force: boolean;
-  window: "five_hour" | "seven_day";
+  window?: "five_hour" | "seven_day";
   adapter: string;
   rules: boolean;
   purge: boolean;
@@ -52,7 +52,6 @@ export function parseArgs(argv: string[]): Options {
     interval: 60,
     dryRun: false,
     force: false,
-    window: "five_hour",
     adapter: "claude-code",
     rules: false,
     purge: false,
