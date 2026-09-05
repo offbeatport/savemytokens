@@ -1062,7 +1062,8 @@ test("the primer fits every terminal and names the keys it is there to teach", a
     assert.equal(framed[0].length, framed[framed.length - 1].length, "the box closes as it opened");
     const text = framed.join("\n");
     assert.match(text, /← →/, "the key the product exists for is named first");
-    assert.match(text, /Claude Code gives you one 5-hour allowance/, "it names the agent it is running against");
+    const flat = text.replace(/[\s\u2502]+/g, " ");
+    assert.match(flat, /Claude Code gives you one 5-hour allowance/, "it names the agent it is running against");
     assert.match(text, /\[ Got it \]/);
   }
 
@@ -1076,10 +1077,11 @@ test("the primer names the agent in front of it, not a vendor it assumed", async
   const { loadTheme } = await import("../dist/runtime/kernel.mjs");
   const theme = loadTheme("default");
 
-  const claude = primerScreen(theme, false, 72, "Claude Code", "5-hour").join("\n");
-  assert.match(claude, /Claude Code gives you one 5-hour allowance/);
+  const flat = (agent, span) => primerScreen(theme, false, 72, agent, span).join(" ").replace(/\s+/g, " ");
 
-  const codex = primerScreen(theme, false, 72, "Codex", "weekly").join("\n");
+  assert.match(flat("Claude Code", "5-hour"), /Claude Code gives you one 5-hour allowance/);
+
+  const codex = flat("Codex", "weekly");
   assert.match(codex, /Codex gives you one weekly allowance/);
   assert.doesNotMatch(codex, /Claude|Anthropic|5-hour/, "no trace of the agent it is not talking to");
 });
