@@ -79,10 +79,8 @@ function capacityRow(control: ControlPlan, context: ViewContext): string[] {
       const used = resource.usedPercent ?? 0;
       const key = resource.id.split(":")[1] ?? "";
       const name = key === "five_hour" ? "5h" : key === "seven_day" ? "7d" : "spend";
-      if (resource.usedPercent === null) {
-        return `${paint(theme, "dim", name, color)} ${paint(theme, "dim", level.reset === "none" ? "new" : "new window", color)}`;
-      }
-      const countdown = resource.window.resetsAt ? formatCountdown(resource.window.resetsAt, now) : "";
+      const fresh = resource.usedPercent === null;
+      const countdown = !fresh && resource.window.resetsAt ? formatCountdown(resource.window.resetsAt, now) : "";
       const reset =
         !countdown || level.reset === "none"
           ? ""
@@ -92,7 +90,11 @@ function capacityRow(control: ControlPlan, context: ViewContext): string[] {
               ? ` ${paint(theme, "dim", `resets in ${countdown}`, color)}`
               : ` ${paint(theme, "dim", countdown, color)}`;
       const bar = level.bar > 0 ? ` ${meterBar(theme, used / 100, level.bar, pressureRole(used / 100), color)}` : "";
-      return `${paint(theme, "dim", name, color)}${bar} ${paint(theme, pressureRole(used / 100), percentLabel(used), color)}${reset}`;
+      const figure = fresh
+        ? paint(theme, "dim", percentLabel(0), color)
+        : paint(theme, pressureRole(used / 100), percentLabel(used), color);
+      const note = fresh ? ` ${paint(theme, "dim", "window just reset", color)}` : reset;
+      return `${paint(theme, "dim", name, color)}${bar} ${figure}${note}`;
     });
     return `  ${parts.join(" ".repeat(level.gap))}`;
   };

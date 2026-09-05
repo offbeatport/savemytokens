@@ -289,7 +289,8 @@ test("a window that has rolled over says so instead of vanishing", async () => {
     labels: new Map(),
   };
   const line = planRows(control, context)[0] ?? "";
-  assert.match(line, /5h new/, "the expired window keeps its place and says it rolled over");
-  assert.match(line, /7d .*21%/, "and the one still live is unaffected");
-  assert.doesNotMatch(line, /5h\s+\d+%/, "no stale percentage from a window that has ended");
+  assert.match(line, /5h [\u2591\u2588]+\s+0%/, "the bar stays, at zero, because a window that just reset is empty");
+  assert.match(line, /window just reset/, "and says why the countdown is missing");
+  assert.match(line, /7d .*21%/, "the one still live is unaffected");
+  assert.doesNotMatch(line, /5h.*4\d%/, "no stale percentage from a window that has ended");
 });
