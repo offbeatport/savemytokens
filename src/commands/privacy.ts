@@ -1,9 +1,8 @@
-import fs from "node:fs";
 import { claudeCodeAdapter } from "../adapters/claude-code/index.js";
 import { displayHome } from "../storage/paths.js";
 import { bold, dim } from "../util/ansi.js";
 
-export function runPrivacy(version: string): void {
+export function runPrivacy(): void {
   const out: string[] = ["", bold("SaveMyTokens"), "", bold("What it reads"), ""];
   out.push(`  ${claudeCodeAdapter.dataDir}${dim("  (Claude Code's own session logs, read-only)")}`);
   out.push("");

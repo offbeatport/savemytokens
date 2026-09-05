@@ -2,7 +2,6 @@ import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 import { LifetimeCost } from "../../core/cost.js";
-import { hash32 } from "../../core/hash.js";
 import { usd } from "../../core/pricing.js";
 import { addUsage, emptyUsage, estimateTokens, weigh } from "../../core/tokens.js";
 import {

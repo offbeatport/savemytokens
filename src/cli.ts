@@ -125,7 +125,7 @@ async function main(): Promise<void> {
       process.stdout.write(renderHistory(loadRuns()));
       return;
     case "privacy":
-      runPrivacy(version());
+      runPrivacy();
       return;
     case "unknown": {
       const name = options.args[0] ?? "";

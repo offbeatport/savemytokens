@@ -1,4 +1,4 @@
-import type { Audit, Finding, RunRecord, TaskSummary } from "../core/types.js";
+import type { Audit, RunRecord, TaskSummary } from "../core/types.js";
 import { bold, clip, dim, green, padEndVisible, padStartVisible, red, visibleWidth } from "../util/ansi.js";
 import { ago, bar, compactNumber, money, percent, plural, shortDate, sparkline } from "../util/fmt.js";
 import { displayHome } from "../storage/paths.js";

@@ -59,8 +59,11 @@ function normalizeWindows(rateLimits) {
   const windows = {};
   for (const key of ["five_hour", "seven_day", "spend_limit"]) {
     const window = rateLimits?.[key];
-    if (!window || typeof window.used_percentage !== "number") continue;
-    windows[key] = { usedPercent: window.used_percentage, resetsAt: window.resets_at };
+    if (!window || typeof window.used_percentage !== "number" || !Number.isFinite(window.used_percentage)) continue;
+    windows[key] = {
+      usedPercent: Math.max(0, Math.min(100, window.used_percentage)),
+      resetsAt: window.resets_at,
+    };
   }
   return windows;
 }

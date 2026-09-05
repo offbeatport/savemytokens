@@ -1399,7 +1399,9 @@ const SEGMENTS = {
   },
   reset: (view, theme, on) => {
     const window = windowOf(view, "five_hour");
-    return window ? paint(theme, "dim", `in ${formatCountdown(window.resetsAt, view.now)}`, on) : "";
+    if (!window || typeof window.resetsAt !== "number") return "";
+    const left = formatCountdown(window.resetsAt, view.now);
+    return left ? paint(theme, "dim", `in ${left}`, on) : "";
   },
   meter5h: (view, theme, on) => {
     const window = windowOf(view, "five_hour");

@@ -294,3 +294,19 @@ test("a window that has rolled over says so instead of vanishing", async () => {
   assert.match(line, /7d .*21%/, "the one still live is unaffected");
   assert.doesNotMatch(line, /5h.*4\d%/, "no stale percentage from a window that has ended");
 });
+
+test("a nonsense percentage is clamped, and an absent reset prints nothing", () => {
+  const box = sandbox();
+  const send = (limits) =>
+    execFileSync("node", [STATUSLINE], {
+      env: box.env,
+      encoding: "utf8",
+      input: JSON.stringify({ session_id: "s", transcript_path: "/nope", cwd: process.cwd(), rate_limits: limits }),
+    });
+
+  assert.doesNotMatch(send({ five_hour: { used_percentage: -5 } }), /-\d/, "below zero is not printed");
+  assert.match(send({ five_hour: { used_percentage: -5 } }), /5h 0%/, "it becomes zero");
+  assert.match(send({ five_hour: { used_percentage: 250 } }), /5h 100%/, "and above a hundred becomes a hundred");
+  assert.doesNotMatch(send({ five_hour: { used_percentage: 42 } }), /in\s*$/, "no dangling 'in' when there is no reset");
+  assert.doesNotMatch(send({ five_hour: { used_percentage: "forty" } }), /5h/, "a percentage that is not a number is ignored");
+});

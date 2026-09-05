@@ -21,11 +21,7 @@ import {
   setPriority,
   setShare,
   setPinned,
-  inPlan,
-  joinPlan,
   resetPreferences,
-  leavePlan,
-  workingSet,
   setState,
   visibleRows,
   type ControlPlan,
@@ -144,7 +140,7 @@ function fullScreen(
   return [...top, ...above, ...shown, ...below, ...bottom].join("\n");
 }
 
-function footerFor(control: ControlPlan, context: ViewContext, showHelp: boolean): string[] {
+function footerFor(context: ViewContext, showHelp: boolean): string[] {
   const { theme, color } = context;
   if (showHelp) return [paint(theme, "dim", "  ? close help    q quit", color)];
   return [paint(theme, "dim", keyHints(HINTS, context.columns), color)];
@@ -390,7 +386,6 @@ export async function runControl(options: Options): Promise<void> {
     );
     selectedId = list[selected]?.project ?? null;
   };
-  const context = () => contextFor(control, selected, true, expanded);
 
   const draw = (): void => {
     const context = contextFor(control, selected, true, expanded);
@@ -444,7 +439,7 @@ export async function runControl(options: Options): Promise<void> {
               context.color,
             ),
           ]
-        : footerFor(control, context, showHelp);
+        : footerFor(context, showHelp);
     const title = mode === "setup" ? "setup" : mode === "settings" ? "settings" : mode === "detail" ? "session" : "plan";
     process.stdout.write(CLEAR + fullScreen(control, body, footer, title, context, mode === "setup" && !showHelp));
   };

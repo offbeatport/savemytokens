@@ -26,16 +26,6 @@ export interface ViewContext {
   labels: Map<string, string>;
 }
 
-function stateMark(theme: Theme, bucket: string, state: string): string {
-  const glyphs = theme.tui ?? {};
-  if (state === "blocked") return glyphs.blocked ?? "!";
-  if (bucket !== "active") return glyphs.idle ?? "·";
-  if (state === "needs-more") return "+";
-  if (state === "done") return glyphs.done ?? "✓";
-  return glyphs.active ?? "•";
-}
-const TARGET_COL = 13;
-
 function barCellsFor(columns: number): number {
   if (columns >= 130) return 18;
   if (columns >= 110) return 15;

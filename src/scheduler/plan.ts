@@ -23,7 +23,6 @@ import {
   schedule,
   upsertClaimant,
   windowBounds,
-  type ClaimantPlanView,
   type Config,
   type ProjectView,
   type DeferredItem,

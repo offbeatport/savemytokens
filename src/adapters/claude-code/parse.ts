@@ -9,7 +9,6 @@ import {
   EVIDENCE_SCHEMA,
   type ModelUse,
   type SessionEvidence,
-  type TaskOutcome,
   type TaskSummary,
   type Usage,
 } from "../../core/types.js";

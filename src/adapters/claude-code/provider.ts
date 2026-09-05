@@ -102,7 +102,7 @@ export const claudeCodeMeter = {
 
 export const claudeCodeEnforcer = {
   supports: ["advise"] as EnforcementLevel[],
-  async apply(claimant: Claimant, level: EnforcementLevel, reason: string): Promise<EnforcementResult> {
+  async apply(_claimant: Claimant, level: EnforcementLevel, reason: string): Promise<EnforcementResult> {
     if (level !== "advise") {
       return { applied: false, message: `Claude Code supports advice only; ${level} is not available in V0.` };
     }
