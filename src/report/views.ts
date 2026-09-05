@@ -169,9 +169,11 @@ function row(
   const sessions = view.liveSessions > 1 ? paint(theme, "dim", `${view.liveSessions}`, color) : " ";
   const label = padEndVisible(paint(theme, tone("fg"), clip(view.label, widths.label - 1), color), widths.label - 1);
   const held = view.allocation.target > 0 ? view.allocation.target : (view.settings.share ?? 0);
+  const asked = view.settings.share;
+  const squeezed = asked != null && asked - held > 0.005;
   const allocationCell = padStartVisible(
     held > 0
-      ? paint(theme, tone("fg"), percentLabel(held * 100, 5), color)
+      ? paint(theme, squeezed ? tone("warn") : tone("fg"), percentLabel(held * 100, 5), color)
       : paint(theme, "dim", view.settings.share === 0 ? "none" : "-", color),
     10,
   );

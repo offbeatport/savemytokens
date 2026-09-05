@@ -187,8 +187,7 @@ export function cleanShare(share: number | null): number | null {
 }
 
 export function nextShare(view: ProjectView, delta: number): number {
-  const held = view.settings.share;
-  const from = view.bucket === "active" || held == null ? view.allocation.target : held;
+  const from = view.settings.share ?? view.allocation.target;
   return Math.max(0, Math.min(1, from + delta));
 }
 

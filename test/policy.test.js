@@ -970,3 +970,26 @@ test("a project moves down three levels and back up again", async () => {
   assert.equal(full.hidden, 0);
   assert.equal(inPlan(buried), false, "a buried project never holds a share");
 });
+
+test("holding the arrow keeps raising the target, whatever the allocator grants", async () => {
+  const { nextShare } = await import("../dist/scheduler/plan.js");
+  const view = (share, granted) => ({
+    settings: { share, priority: "normal", pinned: false, parked: false, cap: null, kept: null },
+    allocation: { target: granted, pinned: true, pool: 0, released: false, claimantId: "a" },
+    bucket: "active",
+  });
+
+  let asked = 0.5;
+  const seen = [];
+  for (let press = 0; press < 10; press++) {
+    const granted = asked / Math.max(1, asked + 0.5);
+    seen.push(asked);
+    asked = nextShare(view(asked, granted), 0.05);
+  }
+
+  for (let at = 1; at < seen.length; at++) {
+    assert.ok(seen[at] > seen[at - 1], `press ${at} moved it: ${seen[at - 1]} then ${seen[at]}`);
+  }
+  assert.ok(Math.abs(seen[seen.length - 1] - 0.95) < 1e-9, "ten presses from 50% reach 95%, not a plateau");
+  assert.equal(nextShare(view(1, 0.66), 0.05), 1, "and it stops at the whole window");
+});
