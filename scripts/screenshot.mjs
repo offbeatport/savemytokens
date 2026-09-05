@@ -309,7 +309,7 @@ write(
   STRIP,
 );
 
-const EXAMPLE = 92;
+const EXAMPLE = COLUMNS;
 const full = planRows(CONTROL, context(theme, EXAMPLE));
 const from = full.findIndex((line) => line.includes("ACTIVE"));
 const to = full.findIndex((line, at) => at > from && line.includes("RECENT"));
@@ -359,7 +359,7 @@ const COMMANDS = [
 ];
 
 const CMD_COL = Math.max(...COMMANDS.map(([name]) => `npx savemytokens ${name}`.trimEnd().length)) + 3;
-const CMD_W = CMD_COL + Math.max(...COMMANDS.map(([, what]) => what.length)) + 3;
+const CMD_W = COLUMNS;
 write(
   "commands.svg",
   COMMANDS.map(([name, what]) => {

@@ -73,7 +73,7 @@ burningdemand, because it is the only project on the high tier.
 
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/offbeatport/savemytokens/main/assets/example.svg" alt="Seven projects in the ACTIVE table. Three are pinned, in the order they were pinned: burningdemand at 20% and 71% through it on HIGH, autonomykernel at 18% and 44% through, coldverdict at 12% and 93% through on LOW. Below them the unpinned ones share what is left." width="730">
+<img src="https://raw.githubusercontent.com/offbeatport/savemytokens/main/assets/example.svg" alt="Seven projects in the ACTIVE table. Three are pinned, in the order they were pinned: burningdemand at 20% and 71% through it on HIGH, autonomykernel at 18% and 44% through, coldverdict at 12% and 93% through on LOW. Below them the unpinned ones share what is left." width="955">
 
 </div>
 
@@ -87,7 +87,7 @@ them. Nothing here required you to guess how many tokens anything costs.
 
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/offbeatport/savemytokens/main/assets/commands.svg" alt="The command list: npx savemytokens for the control centre, status, share, priority, release, policy, hud, theme, defer, audit, privacy and uninstall." width="723">
+<img src="https://raw.githubusercontent.com/offbeatport/savemytokens/main/assets/commands.svg" alt="The command list: npx savemytokens for the control centre, status, share, priority, release, policy, hud, theme, defer, audit, privacy and uninstall." width="955">
 
 </div>
 
