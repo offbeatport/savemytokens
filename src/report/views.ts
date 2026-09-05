@@ -54,7 +54,7 @@ export function labelsFor(views: ProjectView[]): Map<string, string> {
 function capacityRow(control: ControlPlan, context: ViewContext): string[] {
   const { theme, color } = context;
   const now = control.schedule.now;
-  const published = control.resources.filter((resource) => resource.usedPercent !== null);
+  const published = control.resources.filter((resource) => resource.usedPercent !== null || resource.rolledOver);
   if (published.length === 0) {
     const installed = control.installed;
     const head = installed ? "waiting for the first reading" : "not installed";
@@ -79,6 +79,9 @@ function capacityRow(control: ControlPlan, context: ViewContext): string[] {
       const used = resource.usedPercent ?? 0;
       const key = resource.id.split(":")[1] ?? "";
       const name = key === "five_hour" ? "5h" : key === "seven_day" ? "7d" : "spend";
+      if (resource.usedPercent === null) {
+        return `${paint(theme, "dim", name, color)} ${paint(theme, "dim", level.reset === "none" ? "new" : "new window", color)}`;
+      }
       const countdown = resource.window.resetsAt ? formatCountdown(resource.window.resetsAt, now) : "";
       const reset =
         !countdown || level.reset === "none"

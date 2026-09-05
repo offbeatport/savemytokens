@@ -252,3 +252,44 @@ test("an implausible reset time is refused, not stored forever", () => {
     "nothing beyond a 5-hour window plus slack is ever written",
   );
 });
+
+test("a window that has rolled over says so instead of vanishing", async () => {
+  const { planRows } = await import("../dist/report/views.js");
+  const { loadTheme } = await import("../dist/runtime/kernel.mjs");
+  const now = Date.now();
+  const resource = (key, usedPercent, rolledOver) => ({
+    id: `claude-code:${key}`,
+    adapter: "claude-code",
+    label: key,
+    unit: "observed_usage",
+    window: { kind: "rolling", ms: 18000000 },
+    capacity: { amount: 100, confidence: rolledOver ? "unknown" : "published" },
+    usedPercent,
+    rolledOver,
+  });
+  const control = {
+    provider: { id: "claude-code", label: "Claude Code" },
+    installed: true,
+    resources: [resource("five_hour", null, true), resource("seven_day", 21, false)],
+    enforcement: ["advise"],
+    unattributed: 0,
+    deferred: [],
+    others: [],
+    config: { columns: ["allocation"] },
+    schedule: { now, key: "five_hour", bounds: { from: now - 1, to: now + 1 }, quota: null, unusedPool: 0, claimants: [], projects: [] },
+  };
+  const context = {
+    theme: loadTheme("default"),
+    color: false,
+    columns: 100,
+    rows: 30,
+    selected: 0,
+    interactive: true,
+    expanded: false,
+    labels: new Map(),
+  };
+  const line = planRows(control, context)[0] ?? "";
+  assert.match(line, /5h new/, "the expired window keeps its place and says it rolled over");
+  assert.match(line, /7d .*21%/, "and the one still live is unaffected");
+  assert.doesNotMatch(line, /5h\s+\d+%/, "no stale percentage from a window that has ended");
+});

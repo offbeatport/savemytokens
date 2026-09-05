@@ -25,6 +25,7 @@ export interface Resource {
   window: Window;
   capacity: Capacity;
   usedPercent: number | null;
+  rolledOver?: boolean;
 }
 
 export type Priority = "high" | "normal" | "low";

@@ -38,6 +38,7 @@ export function resourcesFor(now = Date.now()): Resource[] {
         ? { amount: 100, confidence: "published", asOf: quota?.at ?? now }
         : { amount: 0, confidence: "unknown" },
       usedPercent: window ? window.usedPercent : null,
+      rolledOver: !window && typeof quota?.windows?.[key]?.usedPercent === "number",
     };
   });
 }
