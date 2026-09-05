@@ -274,7 +274,10 @@ export function setupScreen(choice: number, theme: Theme, color: boolean, column
     for (let at = 0; at < labels.length; at++) middle(button(at));
   }
   out.push("");
-  for (const line of wrapPlain(SETUP_CHOICES[choice]?.[1] ?? "", inner)) middle(paint(theme, "dim", line, color));
+  const noteRows = Math.max(...SETUP_CHOICES.map(([, note]) => wrapPlain(note ?? "", inner).length));
+  const note = wrapPlain(SETUP_CHOICES[choice]?.[1] ?? "", inner);
+  for (const line of note) middle(paint(theme, "dim", line, color));
+  for (let spare = note.length; spare < noteRows; spare++) out.push("");
   out.push("");
 
   if (details) {
@@ -294,7 +297,7 @@ export function setupScreen(choice: number, theme: Theme, color: boolean, column
   out.push("");
   const long = "Undo any time: npx savemytokens uninstall";
   middle(paint(theme, "dim", long.length <= inner ? long : "npx savemytokens uninstall", color));
-  return out;
+  return out.map((line) => padEndVisible(line, inner));
 }
 
 function clipLine(text: string, width: number): string {
