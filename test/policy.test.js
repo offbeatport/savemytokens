@@ -1256,3 +1256,30 @@ test("the window and the arrow step are settings, not flags you retype", async (
   assert.ok(kinds.includes("window"), "the window is on the settings screen");
   assert.ok(kinds.includes("step"), "so is the step");
 });
+
+test("pinned projects hold the order you pinned them in", async () => {
+  const { workingSet } = await import("../dist/scheduler/plan.js");
+  const base = { share: null, priority: "normal", cap: null, parked: false, kept: null };
+  const make = (label, pinned, pinnedAt, target) => ({
+    project: `/tmp/${label}`,
+    label,
+    settings: { ...base, project: `/tmp/${label}`, label, pinned, pinnedAt },
+    sessions: [],
+    allocation: { claimantId: label, target, pinned, pool: 0, released: false },
+    observed: 0,
+    usage: { tokens: 0, weighted: 0, requests: 0 },
+    lastSeen: 0,
+    bucket: "active",
+    attributedPercent: 0,
+    pressure: { value: 0, basis: "budget" },
+    prompt: "",
+    liveSessions: 1,
+  });
+
+  const projects = [make("loose", false, 0, 0.4), make("second", true, 2000, 0.9), make("first", true, 1000, 0.1)];
+  assert.deepEqual(
+    workingSet({ projects }).members.map((view) => view.label),
+    ["first", "second", "loose"],
+    "the first thing you pinned stays first, whatever the allocations do",
+  );
+});

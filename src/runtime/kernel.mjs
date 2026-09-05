@@ -320,7 +320,7 @@ export function projectKey(project) {
 }
 
 function blankProject(project) {
-  return { schema: 1, project, label: project ? projectLabel(project) : "unknown", share: null, priority: "normal", cap: null, pinned: false, parked: false, kept: null };
+  return { schema: 1, project, label: project ? projectLabel(project) : "unknown", share: null, priority: "normal", cap: null, pinned: false, pinnedAt: 0, parked: false, kept: null };
 }
 
 export function loadProject(adapter, project) {

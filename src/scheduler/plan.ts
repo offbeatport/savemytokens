@@ -128,8 +128,13 @@ export function inPlan(view: ProjectView): boolean {
 function byInterest(a: ProjectView, b: ProjectView): number {
   const live = Number(b.bucket === "active") - Number(a.bucket === "active");
   if (live !== 0) return live;
+  const pinned = Number(b.settings.pinned) - Number(a.settings.pinned);
+  if (pinned !== 0) return pinned;
+  if (a.settings.pinned && b.settings.pinned) {
+    const order = (a.settings.pinnedAt || 0) - (b.settings.pinnedAt || 0);
+    if (order !== 0) return order;
+  }
   return (
-    Number(b.settings.pinned) - Number(a.settings.pinned) ||
     (b.allocation.target || b.settings.share || 0) - (a.allocation.target || a.settings.share || 0) ||
     b.lastSeen - a.lastSeen
   );
@@ -324,7 +329,7 @@ export function saveCustomAdvice(project: string, text: string): void {
 }
 
 export function setPinned(project: string, pinned: boolean, adapter = "claude-code"): void {
-  upsertProject(adapter, project, { pinned });
+  upsertProject(adapter, project, { pinned, pinnedAt: pinned ? Date.now() : 0 });
 }
 
 export function setParked(project: string, parked: boolean, adapter = "claude-code"): void {

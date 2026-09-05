@@ -60,6 +60,7 @@ export interface ClaimantRecord extends Claimant {
   advice: AdviceState;
   heartbeat: number;
   pinned: boolean;
+  pinnedAt: number;
   parked: boolean;
   kept: boolean | null;
 }
@@ -265,6 +266,7 @@ export interface ProjectSettings {
   priority: Priority;
   cap: number | null;
   pinned: boolean;
+  pinnedAt: number;
   parked: boolean;
   kept: boolean | null;
 }
