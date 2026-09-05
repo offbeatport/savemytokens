@@ -33,6 +33,9 @@ Published within an hour of 0.2.0, which shipped with four things wrong.
   settings, so the hooks can run with nothing drawn.
 - A second first-run screen explaining that moving one target moves the others to fit.
 - A parked tier: `space` moves a project up a level and `x` moves it down, so twice down hides one.
+- The window you allocate against, and how far the arrows move a target, are settings rather than
+  flags you retype.
+- Pinned projects hold the order you pinned them in, rather than resorting by allocation.
 - RECENT is seeded from Claude Code's own project directory, so it is populated on a fresh install.
 
 ### Changed
