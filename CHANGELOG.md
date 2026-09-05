@@ -27,10 +27,12 @@ First published release.
 
 ### The control centre
 
-- Two tables. ACTIVE is what shares your window; a project joins it the moment you open Claude Code
-  there and stays after you close it, so a target outlives the session that earned it. RECENT is
-  everything else SaveMyTokens has seen, holding nothing. `a` moves one up, `x` sends one back. A
-  filled dot means a session is open there right now.
+- Two tables and a parked tier. ACTIVE shares your window; a project joins it the moment you open
+  Claude Code there and holds its target after you close it. RECENT is every project Claude Code has
+  opened, read from its own directory so the list is populated on a fresh install. `space` moves a
+  project up a level and `x` moves it down, so twice down puts one away for good and `m` shows what
+  is hidden. A project with nothing running is dimmed rather than badged.
+- The allocation column turns amber when you asked for more than the window can give you.
 - A per-project drill-down into its sessions.
 - Reset every preference back to the defaults from the settings screen; allocations are kept.
 - Settings for columns, themes, status-line shape and what to protect when it gets tight.
@@ -41,7 +43,8 @@ First published release.
 ### Honesty about numbers
 
 - 5h and 7d are Anthropic's published figures, read from the status line and stored with a
-  timestamp. Nothing is estimated.
+  timestamp. Nothing is estimated. A window that has just reset draws an empty bar at zero rather
+  than vanishing, and an implausible reading is refused instead of stored.
 - Per-project share is measured from transcripts on disk, incrementally, including subagents.
 - The split of Anthropic's total between projects is the only inferred number, and is labelled as
   such. Window that moved while none of your projects had a turn is reported separately rather than
