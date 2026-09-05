@@ -296,10 +296,9 @@ test("a window that has rolled over says so instead of vanishing", async () => {
 });
 
 test("a nonsense percentage is clamped, and an absent reset prints nothing", () => {
-  const box = sandbox();
   const send = (limits) =>
     execFileSync("node", [STATUSLINE], {
-      env: box.env,
+      env: sandbox().env,
       encoding: "utf8",
       input: JSON.stringify({ session_id: "s", transcript_path: "/nope", cwd: process.cwd(), rate_limits: limits }),
     });
