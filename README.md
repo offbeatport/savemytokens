@@ -101,6 +101,10 @@ them. Nothing here required you to guess how many tokens anything costs.
 `--codex` points any of these at Codex instead, which publishes its own rate limits and needs no
 hooks. It is metered and shown, but nothing can be injected into it, so there is no advice.
 
+In a row, `★` means you pinned it and pinned rows keep the order you pinned them in; a number beside
+it is how many Claude Code windows are open in that project, shown only when there is more than one;
+a dimmed row is holding its share while nothing runs there.
+
 Inside the control centre, `?` lists every key. The ones worth knowing: **`←→` moves an allocation,
 and the others move to fit** so the window always adds up. `space` moves a project up a level and
 `x` moves it down, so one you never want to see goes ACTIVE to RECENT to hidden, and `m` shows what

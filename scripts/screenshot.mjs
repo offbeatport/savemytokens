@@ -222,14 +222,18 @@ function toSvg(lines, theme, { title, columns = COLUMNS }) {
   const body = lines
     .map((line, at) => {
       const y = PAD + chrome + at * LINE + FONT_SIZE;
-      const spans = runs(line)
+      const parts = runs(line);
+      const used = parts.reduce((total, run) => total + [...run.text].length, 0);
+      if (used < columns) parts.push({ text: " ".repeat(columns - used), fill: null, bold: false });
+      const spans = parts
         .map((run) => {
           const attrs = [`fill="${run.fill ?? theme.colors.fg}"`];
           if (run.bold) attrs.push('font-weight="600"');
           return `<tspan ${attrs.join(" ")}>${escape(run.text)}</tspan>`;
         })
         .join("");
-      return `<text x="${PAD}" y="${y}" xml:space="preserve">${spans}</text>`;
+      const advance = (Math.max(used, columns) * CELL).toFixed(1);
+      return `<text x="${PAD}" y="${y}" xml:space="preserve" textLength="${advance}" lengthAdjust="spacing">${spans}</text>`;
     })
     .join("\n  ");
 

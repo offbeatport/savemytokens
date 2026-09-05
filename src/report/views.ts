@@ -461,6 +461,9 @@ export function helpOverlay(control: ControlPlan, context: ViewContext): string[
     }
   }
 
+  out.push(...helpSection("reading a row", context));
+  out.push(...helpProse("A star means you pinned it, and pinned rows keep the order you pinned them in. A number after it is how many Claude Code windows are open in that project, shown only when there is more than one. A dimmed row is holding its share while nothing runs there.", context));
+
   out.push(...helpSection("the two tables", context));
   out.push(...helpProse("ACTIVE is what shares your window. A project joins it on its own the moment you open Claude Code there, and stays after you close it, holding whatever target you gave it.", context));
   out.push("");
