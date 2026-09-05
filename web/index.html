@@ -179,31 +179,48 @@
       figcaption { margin-top: 1.1rem; text-align: center; color: var(--faint); font-size: 0.85rem; }
 
       .grid {
+        max-width: 46rem;
+        margin: 0 auto;
+      }
+      .feature {
         display: grid;
-        gap: 3.5rem 3.5rem;
-        grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+        grid-template-columns: 3.25rem 1fr;
+        column-gap: 1.5rem;
+        align-items: start;
+        padding: 2rem 0;
+        border-top: 1px solid var(--rule);
       }
-      .feature { display: grid; grid-template-columns: 3.75rem 1fr; column-gap: 1.35rem; }
-      .feature svg {
+      .feature:first-child { padding-top: 0; border-top: 0; }
+      .feature:last-child { padding-bottom: 0; }
+      .feature .mark {
         grid-row: 1 / span 2;
-        width: 44px;
-        height: 44px;
-        display: block;
-        margin-top: 0.15rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 3.25rem;
+        height: 3.25rem;
+        border-radius: 0.85rem;
+        background: color-mix(in srgb, var(--accent) 11%, transparent);
         color: var(--accent);
-        opacity: 0.9;
       }
+      .feature svg { width: 28px; height: 28px; display: block; }
       .feature h3 {
-        margin: 0 0 0.45rem;
-        font-size: 1.06rem;
-        letter-spacing: -0.015em;
-        line-height: 1.3;
-        align-self: end;
+        margin: 0.4rem 0 0.5rem;
+        font-size: 1.1rem;
+        letter-spacing: -0.018em;
+        line-height: 1.25;
       }
-      .feature p { margin: 0; color: var(--muted); font-size: 0.94rem; line-height: 1.65; }
-      @media (max-width: 40rem) {
-        .feature { grid-template-columns: 1fr; column-gap: 0; }
-        .feature svg { grid-row: auto; margin-bottom: 0.9rem; }
+      .feature p {
+        margin: 0;
+        max-width: 34rem;
+        color: var(--muted);
+        font-size: 0.95rem;
+        line-height: 1.7;
+      }
+      @media (max-width: 34rem) {
+        .feature { grid-template-columns: 1fr; column-gap: 0; padding: 1.75rem 0; }
+        .feature .mark { grid-row: auto; margin-bottom: 1rem; }
+        .feature h3 { margin-top: 0; }
       }
 
       table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
@@ -419,27 +436,27 @@
           <h2>What it does</h2>
           <div class="grid">
             <div class="feature">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M13.41 10.59l2.59 -2.59" /><path d="M7 12a5 5 0 0 1 5 -5" /></svg>
+              <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M13.41 10.59l2.59 -2.59" /><path d="M7 12a5 5 0 0 1 5 -5" /></svg></span>
               <h3>The real numbers</h3>
               <p>Your 5-hour and weekly usage exactly as your agent publishes it. Never an invented &ldquo;% remaining&rdquo;.</p>
             </div>
             <div class="feature">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M4 6l8 0" /><path d="M16 6l4 0" /><path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M4 12l2 0" /><path d="M10 12l10 0" /><path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M4 18l11 0" /><path d="M19 18l1 0" /></svg>
+              <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M4 6l8 0" /><path d="M16 6l4 0" /><path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M4 12l2 0" /><path d="M10 12l10 0" /><path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M4 18l11 0" /><path d="M19 18l1 0" /></svg></span>
               <h3>A share you set</h3>
               <p>Move one project's target and the others move to fit, so the window always adds up. Priority decides who gets what is handed back.</p>
             </div>
             <div class="feature">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9h8" /><path d="M8 13h6" /><path d="M9 18h-3a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-3l-3 3l-3 -3" /></svg>
+              <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9h8" /><path d="M8 13h6" /><path d="M9 18h-3a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-3l-3 3l-3 -3" /></svg></span>
               <h3>The agent works to it</h3>
               <p>Each session is told the budget it is inside, and asked to narrow scope and finish as that budget runs down.</p>
             </div>
             <div class="feature">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17l-2 2l2 2" /><path d="M10 19h9a2 2 0 0 0 1.75 -2.75l-.55 -1" /><path d="M8.536 11l-.732 -2.732l-2.732 .732" /><path d="M7.804 8.268l-4.5 7.794a2 2 0 0 0 1.506 2.89l1.141 .024" /><path d="M15.464 11l2.732 .732l.732 -2.732" /><path d="M18.196 11.732l-4.5 -7.794a2 2 0 0 0 -3.256 -.14l-.591 .976" /></svg>
+              <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17l-2 2l2 2" /><path d="M10 19h9a2 2 0 0 0 1.75 -2.75l-.55 -1" /><path d="M8.536 11l-.732 -2.732l-2.732 .732" /><path d="M7.804 8.268l-4.5 7.794a2 2 0 0 0 1.506 2.89l1.141 .024" /><path d="M15.464 11l2.732 .732l.732 -2.732" /><path d="M18.196 11.732l-4.5 -7.794a2 2 0 0 0 -3.256 -.14l-.591 .976" /></svg></span>
               <h3>Capacity comes back</h3>
               <p>A project with nothing running lends its share out and reclaims it on your return. Mark one done and the rest have it at once.</p>
             </div>
             <div class="feature">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2l0 -14" /><path d="M9 7l6 0" /><path d="M9 11l6 0" /><path d="M9 15l4 0" /></svg>
+              <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2l0 -14" /><path d="M9 7l6 0" /><path d="M9 11l6 0" /><path d="M9 15l4 0" /></svg></span>
               <h3>Nothing is dropped silently</h3>
               <p>Work a session set aside to stay in budget is written down, and handed back the next time you open that project.</p>
             </div>
