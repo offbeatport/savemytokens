@@ -18,7 +18,7 @@
 
 <br>
 
-<img src="https://raw.githubusercontent.com/offbeatport/savemytokens/main/assets/statusline.svg" alt="A Claude Code status line: a braille bar, then 21% of 50%, 5h 42%, resets in 3h52m." width="520">
+<img src="https://raw.githubusercontent.com/offbeatport/savemytokens/main/assets/statusline.svg" alt="A Claude Code status line: a braille bar, then 42% of 50%, 5h 42%, resets in 3h52m." width="520">
 
 </div>
 
@@ -53,7 +53,7 @@ out.
 | **A split you control** | Give each project a target and a priority. Move one and the others move to fit, so the window always adds up. |
 | **The agent working to it** | As a session eats into its slice it is told to narrow scope and finish, and to write down whatever it drops. That comes back the next time you open the project. |
 | **Capacity returned** | A project with nothing running lends its share to the rest and reclaims it when you come back. |
-| **In your status line** | `⣿⣿⣿⣿⣿⣀⣀⣀⣀⣀⣀⣀ 21% of 50% · 5h 42% · resets in 3h52m`. Pick a shape, arrange the pieces yourself, or run it silent. |
+| **In your status line** | `⣿⣿⣿⣿⣿⣀⣀⣀⣀⣀⣀⣀ 42% of 50% · 5h 42% · resets in 3h52m`. Pick a shape, arrange the pieces yourself, or run it silent. |
 
 <br>
 

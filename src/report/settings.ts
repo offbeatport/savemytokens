@@ -38,7 +38,7 @@ const SEGMENT_ABOUT: Record<string, string> = {
   target: "its allocation, as a percentage of the window",
   used: "how much of the window this session has spent",
   share: "its part of the tokens measured on disk",
-  pair: "what you spent of what you were given, as 21% of 50%",
+  pair: "how much of your allocation is gone, and what it is, as 84% of 17%",
   bar: "how far through its allocation it is",
   priority: "HIGH, NORMAL or LOW",
   "5h": "the 5-hour window Anthropic publishes",

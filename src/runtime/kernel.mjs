@@ -1398,8 +1398,9 @@ const SEGMENTS = {
   },
   share: (view, theme, on) => `${paint(theme, "dim", "share", on)} ${percentText((view.observed ?? 0) * 100)}`,
   pair: (view, theme, on) => {
-    const value = typeof view.used === "number" ? view.used : (view.observed ?? 0) * 100;
-    return `${paint(theme, pressureRole(view.pressure ?? 0), percentText(value), on)}${paint(theme, "dim", ` of ${percentText((view.target ?? 0) * 100)}`, on)}`;
+    const target = (view.target ?? 0) * 100;
+    const spent = (view.pressure ?? 0) * 100;
+    return `${paint(theme, pressureRole(view.pressure ?? 0), percentText(spent), on)}${paint(theme, "dim", ` of ${percentText(target)}`, on)}`;
   },
   bar: (view, theme, on) =>
     hudMeter(theme, view.pressure ?? 0, 12, pressureRole(view.pressure ?? 0), on, theme.glyphs?.hudFull ?? "\u28ff", theme.glyphs?.hudEmpty ?? "\u28c0"),

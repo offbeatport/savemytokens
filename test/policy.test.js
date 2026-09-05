@@ -772,7 +772,7 @@ test("the status line offers shapes before pieces", async () => {
   const line = renderHud("default", view, loadTheme("default"), false);
   assert.match(line, /[\u2800-\u28ff]/, "a bar comes first");
   assert.doesNotMatch(line, /[\u2800-\u28ff] \u00b7/, "and runs straight into the numbers, with no separator");
-  assert.match(line, /21% of 50%/, "what this session has spent, of what it was given, in words");
+  assert.match(line, /42% of 50%/, "the number beside the bar is the number the bar is drawing");
   assert.match(line, /5h 42%/, "and where the window is");
   assert.match(line, /resets in 1h/, "and when it comes back, said as a reset rather than a bare in");
   assert.doesNotMatch(line, /webinvoke/, "not the project name: the line is drawn inside that project");
@@ -1212,7 +1212,7 @@ test("no status line segment reads as jargon", async () => {
   };
 
   const of = (name) => renderSegments([name], view, loadTheme("default"), false);
-  assert.equal(of("pair"), "21% of 50%", "not a slash between two different things");
+  assert.equal(of("pair"), "42% of 50%", "the fraction the bar draws, not the two terms of it");
   assert.match(of("reset"), /^resets in /, "not a bare 'in'");
   assert.match(of("pace"), /(ahead of|behind) the clock|on pace/, "not '+19 vs pace'");
   assert.match(of("empty"), /runs dry|lasts the window/, "not a bare 'empty'");
@@ -1229,4 +1229,17 @@ test("there is one default status line, not two that disagree", async () => {
   assert.deepEqual(DEFAULT_CONFIG.hud.segments, DEFAULT_HUD_SEGMENTS, "a fresh config gets the documented default");
   assert.deepEqual(DEFAULT_HUD_SEGMENTS, HUD_PRESETS.default, "and the default is the shape called default");
   assert.equal(presetMatching(DEFAULT_CONFIG.hud.segments), "default", "so settings names it rather than calling it custom");
+});
+
+test("the number beside the bar is the number the bar is filled to", async () => {
+  const { renderSegments, loadTheme } = await import("../dist/runtime/kernel.mjs");
+  const theme = loadTheme("default");
+  const view = (target, pressure) => ({ target, pressure, used: 14, observed: 0.42, now: Date.now(), quota: {} });
+
+  const bar = renderSegments(["bar"], view(0.17, 0.84), theme, false);
+  const filled = [...bar].filter((glyph) => glyph === "⣿").length;
+  const cells = [...bar].length;
+  assert.equal(Math.round((filled / cells) * 100), 83, "the bar is drawn at the pressure, near enough");
+  assert.equal(renderSegments(["pair"], view(0.17, 0.84), theme, false), "84% of 17%", "and the words say the same");
+  assert.equal(renderSegments(["pair"], view(0.5, 0), theme, false), "0% of 50%", "an untouched allocation reads as zero");
 });
