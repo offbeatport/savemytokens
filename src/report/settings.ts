@@ -38,17 +38,17 @@ const SEGMENT_ABOUT: Record<string, string> = {
   target: "its allocation, as a percentage of the window",
   used: "how much of the window this session has spent",
   share: "its part of the tokens measured on disk",
-  pair: "used and allocation together, as 21%/50%",
+  pair: "what you spent of what you were given, as 21% of 50%",
   bar: "how far through its allocation it is",
   priority: "HIGH, NORMAL or LOW",
   "5h": "the 5-hour window Anthropic publishes",
   "7d": "the weekly window",
   spend: "a gateway spend limit, when you have one",
-  reset: "how long until the 5-hour window resets",
+  reset: "how long until the 5-hour window comes back",
   meter5h: "the 5-hour window drawn as a bar",
   spark: "the shape of the window so far",
   pace: "how far ahead or behind the clock you are",
-  empty: "when you run dry at this rate",
+  empty: "when you run dry, at this rate",
 };
 
 export type SettingRow =

@@ -1397,7 +1397,7 @@ const SEGMENTS = {
   share: (view, theme, on) => `${paint(theme, "dim", "share", on)} ${percentText((view.observed ?? 0) * 100)}`,
   pair: (view, theme, on) => {
     const value = typeof view.used === "number" ? view.used : (view.observed ?? 0) * 100;
-    return `${paint(theme, pressureRole(view.pressure ?? 0), percentText(value), on)}${paint(theme, "dim", `/${percentText((view.target ?? 0) * 100)}`, on)}`;
+    return `${paint(theme, pressureRole(view.pressure ?? 0), percentText(value), on)}${paint(theme, "dim", ` of ${percentText((view.target ?? 0) * 100)}`, on)}`;
   },
   bar: (view, theme, on) =>
     hudMeter(theme, view.pressure ?? 0, 8, pressureRole(view.pressure ?? 0), on, theme.glyphs?.hudFull ?? "\u28ff", theme.glyphs?.hudEmpty ?? "\u28c0"),
@@ -1418,7 +1418,7 @@ const SEGMENTS = {
     const window = windowOf(view, "five_hour");
     if (!window || typeof window.resetsAt !== "number") return "";
     const left = formatCountdown(window.resetsAt, view.now);
-    return left ? paint(theme, "dim", `in ${left}`, on) : "";
+    return left ? paint(theme, "dim", `resets in ${left}`, on) : "";
   },
   meter5h: (view, theme, on) => {
     const window = windowOf(view, "five_hour");
@@ -1437,7 +1437,9 @@ const SEGMENTS = {
     if (!window || typeof view.from !== "number" || typeof view.to !== "number") return "";
     const elapsed = Math.max(0, Math.min(1, (view.now - view.from) / Math.max(1, view.to - view.from))) * 100;
     const ahead = window.usedPercent - elapsed;
-    return paint(theme, ahead > 5 ? "warn" : "ok", `${ahead >= 0 ? "+" : ""}${Math.round(ahead)} vs pace`, on);
+    const points = Math.abs(Math.round(ahead));
+    if (points < 1) return paint(theme, "ok", "on pace", on);
+    return paint(theme, ahead > 5 ? "warn" : "ok", `${points}% ${ahead > 0 ? "ahead of" : "behind"} the clock`, on);
   },
   empty: (view, theme, on) => {
     const window = windowOf(view, "five_hour");
@@ -1445,7 +1447,7 @@ const SEGMENTS = {
     const at = view.now + ((100 - window.usedPercent) / view.rate) * 3600000;
     const resetsAt = typeof window.resetsAt === "number" ? window.resetsAt * 1000 : null;
     if (resetsAt !== null && at >= resetsAt) return paint(theme, "ok", "lasts the window", on);
-    return paint(theme, "danger", `empty ${formatReset(Math.floor(at / 1000), view.now)}`, on);
+    return paint(theme, "danger", `runs dry ${formatReset(Math.floor(at / 1000), view.now)}`, on);
   },
 };
 

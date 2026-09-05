@@ -772,9 +772,9 @@ test("the status line offers shapes before pieces", async () => {
   const line = renderHud("default", view, loadTheme("default"), false);
   assert.match(line, /[\u2800-\u28ff]/, "a bar comes first");
   assert.doesNotMatch(line, /[\u2800-\u28ff] \u00b7/, "and runs straight into the numbers, with no separator");
-  assert.match(line, /21%\/50%/, "what this session has spent of what it was given");
+  assert.match(line, /21% of 50%/, "what this session has spent, of what it was given, in words");
   assert.match(line, /5h 42%/, "and where the window is");
-  assert.match(line, /in 1h/, "and when it comes back");
+  assert.match(line, /resets in 1h/, "and when it comes back, said as a reset rather than a bare in");
   assert.doesNotMatch(line, /webinvoke/, "not the project name: the line is drawn inside that project");
   assert.doesNotMatch(line, /HIGH/, "priority is not in the default, it rarely changes");
   assert.match(renderHud("everything", view, loadTheme("default"), false), /webinvoke/, "but it is one keystroke away");
@@ -1188,4 +1188,38 @@ test("dropping a project whose window is still open says so instead of doing not
   assert.match(row, /leaving/, "the row it was pressed on shows the keypress registered");
   assert.ok(!(lines.find((line) => line.includes("webinvoke")) ?? "").includes("leaving"), "and no other row does");
   assert.match(lines.join("\n"), /leaves ACTIVE when its window closes/, "and the footer says when it takes effect");
+});
+
+test("no status line segment reads as jargon", async () => {
+  const { HUD_SEGMENTS, renderSegments, loadTheme } = await import("../dist/runtime/kernel.mjs");
+  const now = Date.now();
+  const view = {
+    label: "webinvoke",
+    target: 0.5,
+    observed: 0.42,
+    used: 21,
+    pressure: 0.42,
+    priority: "high",
+    rate: 12,
+    from: now - 3600000,
+    to: now + 3600000,
+    history: [10, 20, 30, 42],
+    now,
+    quota: {
+      five_hour: { usedPercent: 42, resetsAt: Math.floor(now / 1000) + 7200 },
+      seven_day: { usedPercent: 18 },
+    },
+  };
+
+  const of = (name) => renderSegments([name], view, loadTheme("default"), false);
+  assert.equal(of("pair"), "21% of 50%", "not a slash between two different things");
+  assert.match(of("reset"), /^resets in /, "not a bare 'in'");
+  assert.match(of("pace"), /(ahead of|behind) the clock|on pace/, "not '+19 vs pace'");
+  assert.match(of("empty"), /runs dry|lasts the window/, "not a bare 'empty'");
+
+  for (const name of HUD_SEGMENTS) {
+    const text = of(name);
+    assert.ok(!text.includes("\n"), `${name} must stay on one line`);
+    assert.ok(text.length < 40, `${name} is too long for a status line: ${text}`);
+  }
 });
