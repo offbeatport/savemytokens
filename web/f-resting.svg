@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="580" height="90" viewBox="0 0 580 90" role="img" aria-label="">
+  <rect width="580" height="90" rx="10" fill="#181825"/>
+  <rect width="580" height="12" rx="10" fill="#11111b"/>
+  
+  
+  
+  <g font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5">
+  <text x="20" y="44.5" xml:space="preserve" textLength="540.0" lengthAdjust="spacing"><tspan fill="rgb(205,214,244)" font-weight="600">    PROJECT         ALLOCATION USED OF IT       PRIORITY LAST PROMPT</tspan><tspan fill="#cdd6f4">    </tspan></text>
+  <text x="20" y="63.25" xml:space="preserve" textLength="540.0" lengthAdjust="spacing"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">picsuper</tspan><tspan fill="#cdd6f4">             </tspan><tspan fill="rgb(147,153,178)">  10%</tspan><tspan fill="#cdd6f4"> </tspan><tspan fill="rgb(147,153,178)">░░░░░░░░</tspan><tspan fill="#cdd6f4"> </tspan><tspan fill="rgb(147,153,178)">idle</tspan><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">NORMAL</tspan><tspan fill="#cdd6f4">   </tspan><tspan fill="rgb(147,153,178)">Compare the tw…</tspan></text>
+  </g>
+</svg>

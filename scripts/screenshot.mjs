@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { DEFAULT_HUD_SEGMENTS, loadTheme, renderSegments } from "../dist/runtime/kernel.mjs";
+import { DEFAULT_HUD_SEGMENTS, POLICIES, loadTheme, renderSegments, stageText } from "../dist/runtime/kernel.mjs";
 import { helpOverlay, labelsFor, planRows } from "../dist/report/views.js";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -31,7 +31,7 @@ function project(label, options) {
       kept: options.member === false ? false : true,
     },
     sessions: [],
-    allocation: { claimantId: label, target: options.target, pinned: options.pinned ? options.target : null, pool: 0, released: !options.live },
+    allocation: { claimantId: label, target: options.live ? options.target : 0, pinned: options.pinned ? options.target : null, pool: 0, released: !options.live },
     observed: options.observed ?? options.target * 0.8,
     usage: { tokens: options.tokens, weighted: options.tokens * 2, requests: options.requests },
     lastSeen: START - (options.lastSeen ?? 90_000),
@@ -80,6 +80,11 @@ const PROJECTS = [
     priority: "low", live: true,
     prompt: "Fix the verdict table alignment on mobile",
   }),
+  project("picsuper", {
+    target: 0.1, used: 0, observed: 0, tokens: 0, requests: 0,
+    priority: "normal", live: false, lastSeen: 40 * 60_000,
+    prompt: "Compare the two upscalers on the same source",
+  }),
   project("meshaway", {
     target: 0, used: 0, observed: 0, tokens: 0, requests: 0,
     priority: "normal", live: false, member: false,
@@ -89,11 +94,6 @@ const PROJECTS = [
     target: 0, used: 0, observed: 0, tokens: 0, requests: 0,
     priority: "normal", live: false, member: false,
     lastSeen: 9 * 3600_000, prompt: "Move the migrations into their own package",
-  }),
-  project("picsuper", {
-    target: 0, used: 0, observed: 0, tokens: 0, requests: 0,
-    priority: "normal", live: false, member: false,
-    lastSeen: 26 * 3600_000, prompt: "Compare the two upscalers on the same source",
   }),
   project("obp-ui", {
     target: 0, used: 0, observed: 0, tokens: 0, requests: 0,
@@ -212,13 +212,13 @@ function escape(text) {
   return text.replace(/[&<>]/g, (char) => ESCAPE[char] ?? char);
 }
 
-function toSvg(lines, theme, { title, columns = COLUMNS }) {
+function toSvg(lines, theme, { title, columns = COLUMNS, bare = false }) {
   const width = Math.round(columns * CELL + PAD * 2);
-  const chrome = 34;
+  const chrome = bare ? 12 : 34;
   const height = Math.round(lines.length * LINE + PAD * 2 + chrome);
-  const dots = ["#ff5f56", "#ffbd2e", "#27c93f"]
-    .map((color, at) => `<circle cx="${PAD + 5 + at * 16}" cy="17" r="5" fill="${color}"/>`)
-    .join("");
+  const dots = bare
+    ? ""
+    : ["#ff5f56", "#ffbd2e", "#27c93f"].map((color, at) => `<circle cx="${PAD + 5 + at * 16}" cy="17" r="5" fill="${color}"/>`).join("");
   const body = lines
     .map((line, at) => {
       const y = PAD + chrome + at * LINE + FONT_SIZE;
@@ -240,9 +240,9 @@ function toSvg(lines, theme, { title, columns = COLUMNS }) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escape(title)}">
   <rect width="${width}" height="${height}" rx="${RADIUS}" fill="#181825"/>
   <rect width="${width}" height="${chrome}" rx="${RADIUS}" fill="#11111b"/>
-  <rect y="${chrome - RADIUS}" width="${width}" height="${RADIUS}" fill="#11111b"/>
+  ${bare ? "" : `<rect y="${chrome - RADIUS}" width="${width}" height="${RADIUS}" fill="#11111b"/>`}
   ${dots}
-  <text x="${width / 2}" y="21" text-anchor="middle" font-family="${FONT}" font-size="11" fill="#6c7086">${escape(title)}</text>
+  ${bare ? "" : `<text x="${width / 2}" y="21" text-anchor="middle" font-family="${FONT}" font-size="11" fill="#6c7086">${escape(title)}</text>`}
   <g font-family="${FONT}" font-size="${FONT_SIZE}">
   ${body}
   </g>
@@ -250,10 +250,10 @@ function toSvg(lines, theme, { title, columns = COLUMNS }) {
 `;
 }
 
-function write(name, lines, theme, title, columns) {
+function write(name, lines, theme, title, columns, bare = false) {
   const file = path.join(ROOT, "assets", name);
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, toSvg(lines, theme, { title, columns }));
+  fs.writeFileSync(file, toSvg(lines, theme, { title, columns, bare }));
   process.stdout.write(`${path.relative(ROOT, file)}  ${lines.length} lines\n`);
 }
 
@@ -370,4 +370,62 @@ write(
   theme,
   "savemytokens",
   CMD_W,
+);
+
+const FEAT = 72;
+const dim = (text) => `\u001b[38;2;147;153;178m${text}\u001b[0m`;
+const all = planRows(CONTROL, context(theme, FEAT));
+const headerAt = all.findIndex((line) => line.includes("PROJECT"));
+
+write("f-numbers.svg", [all[0]], theme, "", FEAT, true);
+write("f-share.svg", [all[headerAt], ...all.slice(headerAt + 1, headerAt + 4)], theme, "", FEAT, true);
+const restingAt = all.findIndex((line, at) => at > headerAt && line.includes("idle"));
+write("f-resting.svg", [all[headerAt], all[restingAt]], theme, "", FEAT, true);
+
+const advice = stageText(80, {
+  target: 0.2,
+  observed: 0.16,
+  pressure: 0.84,
+  basis: "budget",
+  preserve: ["tests"],
+  policy: POLICIES.finish,
+  custom: "",
+});
+const wrapAt = (text, width) => {
+  const out = [];
+  let line = "";
+  for (const word of text.split(" ")) {
+    if (!line) line = word;
+    else if (line.length + 1 + word.length <= width) line += ` ${word}`;
+    else {
+      out.push(line);
+      line = word;
+    }
+  }
+  if (line) out.push(line);
+  return out;
+};
+write(
+  "f-agent.svg",
+  wrapAt(`[savemytokens] 84% of your 20% target share of this Claude window is spent. ${advice}`, FEAT - 4)
+    .slice(0, 5)
+    .map((line) => `  ${dim(line)}`),
+  theme,
+  "",
+  FEAT,
+  true,
+);
+write(
+  "f-defer.svg",
+  [
+    `  \u001b[38;2;137;180;250mDeferred work\u001b[0m`,
+    "",
+    `  ${dim("obp-ui")}`,
+    `    ${dim("give Codex an injection point, not just metering")}`,
+    `    ${dim("a three-session allocation demo for the launch")}`,
+  ],
+  theme,
+  "",
+  FEAT,
+  true,
 );

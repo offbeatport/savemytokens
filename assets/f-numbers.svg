@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="580" height="71" viewBox="0 0 580 71" role="img" aria-label="">
+  <rect width="580" height="71" rx="10" fill="#181825"/>
+  <rect width="580" height="12" rx="10" fill="#11111b"/>
+  
+  
+  
+  <g font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5">
+  <text x="20" y="44.5" xml:space="preserve" textLength="540.0" lengthAdjust="spacing"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">5h</tspan><tspan fill="#cdd6f4"> </tspan><tspan fill="rgb(166,227,161)">████</tspan><tspan fill="rgb(88,91,112)">░░░░░░</tspan><tspan fill="#cdd6f4"> </tspan><tspan fill="rgb(166,227,161)"> 42%</tspan><tspan fill="#cdd6f4"> </tspan><tspan fill="rgb(147,153,178)">1h57m</tspan><tspan fill="#cdd6f4">   </tspan><tspan fill="rgb(147,153,178)">7d</tspan><tspan fill="#cdd6f4"> </tspan><tspan fill="rgb(166,227,161)">██</tspan><tspan fill="rgb(88,91,112)">░░░░░░░░</tspan><tspan fill="#cdd6f4"> </tspan><tspan fill="rgb(166,227,161)"> 18%</tspan><tspan fill="#cdd6f4"> </tspan><tspan fill="rgb(147,153,178)">2d3h</tspan><tspan fill="#cdd6f4">                    </tspan></text>
+  </g>
+</svg>
