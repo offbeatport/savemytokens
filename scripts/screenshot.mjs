@@ -266,7 +266,7 @@ write(
   "screenshot.svg",
   frame(
     planRows(CONTROL, context(theme, COLUMNS)),
-    `[38;2;147;153;178m  ↑↓ select   ←→ target   space move   p priority   ⏎ open   f pin   s settings   ? help   q quit[0m`,
+    `[38;2;147;153;178m  ↑↓ select   ←→ target   space up   x down   p priority   ⏎ open   f pin   s settings   ? help   q quit[0m`,
   ),
   theme,
   "savemytokens",

@@ -914,7 +914,7 @@ test("the footer offers the keys the plan screen is actually for", async () => {
     assert.ok(line.length <= width, `${width} overflowed: ${line.length}`);
     assert.match(line, /q quit/, "quitting is offered at every width");
     if (width >= 80) {
-      for (const key of ["space move", "←→ target", "p priority"]) {
+      for (const key of ["space up", "x down", "←→ target"]) {
         assert.ok(line.includes(key), `${key} survives at ${width} columns`);
       }
     }
@@ -934,4 +934,39 @@ test("space moves a project between the tables, and remembers its target", async
   assert.equal(row("recent", false).settings.share, 0.3, "and the target it held is kept, not erased");
   assert.equal(inPlan(row("recent", true)), true, "promoting it brings it back");
   assert.equal(inPlan(row("active", false)), true, "an open session is in ACTIVE whatever you pressed");
+});
+
+test("a project moves down three levels and back up again", async () => {
+  const { workingSet, inPlan } = await import("../dist/scheduler/plan.js");
+  const base = { share: null, priority: "normal", cap: null, pinned: false, parked: false, kept: null };
+  const make = (label, kept, parked) => ({
+    project: `/tmp/${label}`,
+    label,
+    settings: { ...base, project: `/tmp/${label}`, label, kept, parked },
+    sessions: [],
+    allocation: { claimantId: label, target: 0, pinned: false, pool: 0, released: true },
+    observed: 0,
+    usage: { tokens: 0, weighted: 0, requests: 0 },
+    lastSeen: Date.now(),
+    bucket: "recent",
+    attributedPercent: 0,
+    pressure: { value: 0, basis: "share" },
+    prompt: "",
+    liveSessions: 0,
+  });
+
+  const kept = make("kept", true, false);
+  const seen = make("seen", null, false);
+  const buried = make("buried", null, true);
+  const plan = { projects: [kept, seen, buried] };
+
+  const collapsed = workingSet(plan, false);
+  assert.deepEqual(collapsed.members.map((v) => v.label), ["kept"], "ACTIVE holds what you kept");
+  assert.deepEqual(collapsed.candidates.map((v) => v.label), ["seen"], "RECENT hides what you buried");
+  assert.equal(collapsed.hidden, 1, "and says one is out of sight");
+
+  const full = workingSet(plan, true);
+  assert.deepEqual(full.candidates.map((v) => v.label), ["seen", "buried"], "m reveals it, at the bottom");
+  assert.equal(full.hidden, 0);
+  assert.equal(inPlan(buried), false, "a buried project never holds a share");
 });

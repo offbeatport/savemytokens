@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="880" height="1162" viewBox="0 0 880 1162" role="img" aria-label="savemytokens · help">
-  <rect width="880" height="1162" rx="10" fill="#181825"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="1180" viewBox="0 0 880 1180" role="img" aria-label="savemytokens · help">
+  <rect width="880" height="1180" rx="10" fill="#181825"/>
   <rect width="880" height="34" rx="10" fill="#11111b"/>
   <rect y="24" width="880" height="10" fill="#11111b"/>
   <circle cx="25" cy="17" r="5" fill="#ff5f56"/><circle cx="41" cy="17" r="5" fill="#ffbd2e"/><circle cx="57" cy="17" r="5" fill="#27c93f"/>
@@ -13,8 +13,8 @@
   <text x="20" y="160.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">u    </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">unset this target: back to an even split with the rest</tspan></text>
   <text x="20" y="179" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">e    </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">unset every target at once</tspan></text>
   <text x="20" y="197.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">p    </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">priority: high → normal → low, who gets spare capacity first</tspan></text>
-  <text x="20" y="216.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">space</tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">move a project between ACTIVE and RECENT, either way</tspan></text>
-  <text x="20" y="235.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">a x  </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">the same move, said explicitly: promote, drop</tspan></text>
+  <text x="20" y="216.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">space</tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">move it up: hidden to RECENT, RECENT to ACTIVE</tspan></text>
+  <text x="20" y="235.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">x    </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">move it down: ACTIVE to RECENT, RECENT to hidden</tspan></text>
   <text x="20" y="254" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">f    </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">pin the row to the top of the list</tspan></text>
   <text x="20" y="272.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">d    </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">mark it done: hands its unspent share to the others now</tspan></text>
   <text x="20" y="291.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(137,180,250)">b n  </tspan><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">mark it blocked, or needs-more</tspan></text>
@@ -28,40 +28,41 @@
   <text x="20" y="441.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">ACTIVE is what shares your window. A project joins it on its own the moment you open Claude Code there,</tspan></text>
   <text x="20" y="460.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">and stays after you close it, holding whatever target you gave it.</tspan></text>
   <text x="20" y="479" xml:space="preserve"></text>
-  <text x="20" y="497.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">RECENT is everything else SaveMyTokens has seen. Nothing there holds a share. Space moves the selected</tspan></text>
-  <text x="20" y="516.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">project between the two, either way, and a target you set is remembered if it goes back down.</tspan></text>
-  <text x="20" y="535.25" xml:space="preserve"></text>
-  <text x="20" y="554" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">A filled dot means a session is open there right now. Only those spend the window, so one sitting in</tspan></text>
-  <text x="20" y="572.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">ACTIVE with nothing running lends its share to the rest and takes it back when you return.</tspan></text>
-  <text x="20" y="591.5" xml:space="preserve"></text>
-  <text x="20" y="610.25" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">ALLOCATION AND PRIORITY</tspan></text>
-  <text x="20" y="629" xml:space="preserve"></text>
-  <text x="20" y="647.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Allocation is what you asked for: the share of the window this project should get. Move it with the</tspan></text>
-  <text x="20" y="666.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">arrows.</tspan></text>
-  <text x="20" y="685.25" xml:space="preserve"></text>
-  <text x="20" y="704" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Priority decides who gets the leftovers. Capacity is released whenever a project finishes or sits idle</tspan></text>
-  <text x="20" y="722.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">under its target, and that spare goes to every HIGH project first, then NORMAL, then LOW. It is an order,</tspan></text>
-  <text x="20" y="741.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">not a weighting: a LOW project gets nothing while a HIGH one still has room.</tspan></text>
-  <text x="20" y="760.25" xml:space="preserve"></text>
-  <text x="20" y="779" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">So allocation is your intent and priority is the tie-break. If pinned targets already add up to the whole</tspan></text>
-  <text x="20" y="797.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">window there is no spare, and priority does nothing.</tspan></text>
-  <text x="20" y="816.5" xml:space="preserve"></text>
-  <text x="20" y="835.25" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">THE STATUS LINE</tspan></text>
-  <text x="20" y="854" xml:space="preserve"></text>
-  <text x="20" y="872.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Installed. It is the only place Anthropic publishes your 5h and 7d usage, and it is what proves a session</tspan></text>
-  <text x="20" y="891.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">is still open, so without it nothing here is live. Change its shape with P.</tspan></text>
-  <text x="20" y="910.25" xml:space="preserve"></text>
-  <text x="20" y="929" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">THE NUMBERS</tspan></text>
-  <text x="20" y="947.75" xml:space="preserve"></text>
-  <text x="20" y="966.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">5h and 7d are Anthropic's own. Share is measured from the tokens in your transcripts. Used of it is their</tspan></text>
-  <text x="20" y="985.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">number split by that share, so the split between rows is ours, not theirs.</tspan></text>
-  <text x="20" y="1004" xml:space="preserve"></text>
-  <text x="20" y="1022.75" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">WHEN IT GETS TIGHT</tspan></text>
-  <text x="20" y="1041.5" xml:space="preserve"></text>
-  <text x="20" y="1060.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Claude is told to wind down at 50/80/90% of a project's target. Change it with P.</tspan></text>
-  <text x="20" y="1079" xml:space="preserve"></text>
-  <text x="20" y="1097.75" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">ANYTHING ELSE</tspan></text>
-  <text x="20" y="1116.5" xml:space="preserve"></text>
-  <text x="20" y="1135.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Questions, bugs and ideas: hello@offbeatport.com</tspan></text>
+  <text x="20" y="497.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">RECENT is everything else SaveMyTokens has seen, holding nothing. Space moves the selected project up a</tspan></text>
+  <text x="20" y="516.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">level and x moves it down, so x on a RECENT row hides it for good. Press m to see what is hidden and space</tspan></text>
+  <text x="20" y="535.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">to bring one back. A target you set is remembered wherever the project sits.</tspan></text>
+  <text x="20" y="554" xml:space="preserve"></text>
+  <text x="20" y="572.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">A filled dot means a session is open there right now. Only those spend the window, so one sitting in</tspan></text>
+  <text x="20" y="591.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">ACTIVE with nothing running lends its share to the rest and takes it back when you return.</tspan></text>
+  <text x="20" y="610.25" xml:space="preserve"></text>
+  <text x="20" y="629" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">ALLOCATION AND PRIORITY</tspan></text>
+  <text x="20" y="647.75" xml:space="preserve"></text>
+  <text x="20" y="666.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Allocation is what you asked for: the share of the window this project should get. Move it with the</tspan></text>
+  <text x="20" y="685.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">arrows.</tspan></text>
+  <text x="20" y="704" xml:space="preserve"></text>
+  <text x="20" y="722.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Priority decides who gets the leftovers. Capacity is released whenever a project finishes or sits idle</tspan></text>
+  <text x="20" y="741.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">under its target, and that spare goes to every HIGH project first, then NORMAL, then LOW. It is an order,</tspan></text>
+  <text x="20" y="760.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">not a weighting: a LOW project gets nothing while a HIGH one still has room.</tspan></text>
+  <text x="20" y="779" xml:space="preserve"></text>
+  <text x="20" y="797.75" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">So allocation is your intent and priority is the tie-break. If pinned targets already add up to the whole</tspan></text>
+  <text x="20" y="816.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">window there is no spare, and priority does nothing.</tspan></text>
+  <text x="20" y="835.25" xml:space="preserve"></text>
+  <text x="20" y="854" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">THE STATUS LINE</tspan></text>
+  <text x="20" y="872.75" xml:space="preserve"></text>
+  <text x="20" y="891.5" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Installed. It is the only place Anthropic publishes your 5h and 7d usage, and it is what proves a session</tspan></text>
+  <text x="20" y="910.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">is still open, so without it nothing here is live. Change its shape with P.</tspan></text>
+  <text x="20" y="929" xml:space="preserve"></text>
+  <text x="20" y="947.75" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">THE NUMBERS</tspan></text>
+  <text x="20" y="966.5" xml:space="preserve"></text>
+  <text x="20" y="985.25" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">5h and 7d are Anthropic's own. Share is measured from the tokens in your transcripts. Used of it is their</tspan></text>
+  <text x="20" y="1004" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">number split by that share, so the split between rows is ours, not theirs.</tspan></text>
+  <text x="20" y="1022.75" xml:space="preserve"></text>
+  <text x="20" y="1041.5" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">WHEN IT GETS TIGHT</tspan></text>
+  <text x="20" y="1060.25" xml:space="preserve"></text>
+  <text x="20" y="1079" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Claude is told to wind down at 50/80/90% of a project's target. Change it with P.</tspan></text>
+  <text x="20" y="1097.75" xml:space="preserve"></text>
+  <text x="20" y="1116.5" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(205,214,244)" font-weight="600">ANYTHING ELSE</tspan></text>
+  <text x="20" y="1135.25" xml:space="preserve"></text>
+  <text x="20" y="1154" xml:space="preserve"><tspan fill="#cdd6f4">    </tspan><tspan fill="rgb(147,153,178)">Questions, bugs and ideas: hello@offbeatport.com</tspan></text>
   </g>
 </svg>

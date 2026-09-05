@@ -5,6 +5,8 @@ import { keyActions, splitKeys, type Action } from "../scheduler/keys.js";
 import {
   buildPlan,
   cyclePriority,
+  demote,
+  promote,
   selectionIndex,
   equalize,
   cyclePolicy,
@@ -151,7 +153,8 @@ function footerFor(control: ControlPlan, context: ViewContext, showHelp: boolean
 const HINTS = [
   "↑↓ select",
   "←→ target",
-  "space move",
+  "space up",
+  "x down",
   "p priority",
   "⏎ open",
   "f pin",
@@ -605,21 +608,14 @@ export async function runControl(options: Options): Promise<void> {
           break;
         case "park":
           if (view) {
-            leavePlan(view.project, control.provider.id);
+            demote(view, control.provider.id);
             refresh();
           }
           break;
         case "add":
-          if (view) {
-            joinPlan(view.project, control.provider.id);
-            selectedId = view.project;
-            refresh();
-          }
-          break;
         case "toggleMember":
           if (view) {
-            if (inPlan(view)) leavePlan(view.project, control.provider.id);
-            else joinPlan(view.project, control.provider.id);
+            promote(view, control.provider.id);
             selectedId = view.project;
             refresh();
           }

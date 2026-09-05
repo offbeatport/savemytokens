@@ -137,8 +137,10 @@ function byInterest(a: ProjectView, b: ProjectView): number {
 
 export function workingSet(plan: SchedulePlanView, full = false): WorkingSet {
   const members = plan.projects.filter(inPlan).sort(byInterest);
-  const rest = plan.projects.filter((view) => !inPlan(view)).sort(byInterest);
-  const candidates = full ? rest : rest.slice(0, CANDIDATE_LIMIT);
+  const rest = plan.projects.filter((view) => !inPlan(view));
+  const open = rest.filter((view) => !view.settings.parked).sort(byInterest);
+  const buried = rest.filter((view) => view.settings.parked).sort(byInterest);
+  const candidates = full ? [...open, ...buried] : open.slice(0, CANDIDATE_LIMIT);
   return { members, candidates, hidden: rest.length - candidates.length };
 }
 
@@ -153,6 +155,16 @@ export function joinPlan(project: string, adapter = "claude-code"): void {
 
 export function leavePlan(project: string, adapter = "claude-code"): void {
   upsertProject(adapter, project, { kept: false });
+}
+
+export function demote(view: ProjectView, adapter = "claude-code"): void {
+  if (inPlan(view)) upsertProject(adapter, view.project, { kept: false });
+  else upsertProject(adapter, view.project, { parked: true, kept: false });
+}
+
+export function promote(view: ProjectView, adapter = "claude-code"): void {
+  if (view.settings.parked) upsertProject(adapter, view.project, { parked: false });
+  else upsertProject(adapter, view.project, { kept: true, parked: false });
 }
 
 export function activeViews(plan: SchedulePlanView): ProjectView[] {
