@@ -76,6 +76,56 @@ test("with nothing running the whole window is spare", () => {
   assert.equal(round(result.unusedPool), 0.8);
 });
 
+test("an unpinned project that finished under an even share hands the difference to the top tier", () => {
+  const result = allocate([
+    { id: "done", share: null, priority: "normal", state: "done", consumed: 0.2 },
+    { id: "release", share: null, priority: "high", state: "active", consumed: 0.1 },
+    { id: "experiment", share: null, priority: "low", state: "active", consumed: 0.1 },
+  ]);
+  const targets = shares(result);
+  assert.equal(targets.done, 0.2, "it keeps what it actually used");
+  assert.equal(targets.release, 0.467, "the 13 points it did not use go to the only high tier project");
+  assert.equal(targets.experiment, 0.333, "the low tier keeps its even share and no more");
+});
+
+test("priority does nothing until capacity is actually released", () => {
+  const result = allocate([
+    { id: "release", share: null, priority: "high", state: "active", consumed: 0.4 },
+    { id: "experiment", share: null, priority: "low", state: "active", consumed: 0.1 },
+  ]);
+  assert.deepEqual(shares(result), { release: 0.5, experiment: 0.5 });
+});
+
+test("projects that have not run this window hold no claim to hand back", () => {
+  const busy = allocate([
+    { id: "release", share: null, priority: "high", state: "active", consumed: 0.4 },
+    { id: "experiment", share: null, priority: "low", state: "active", consumed: 0.1 },
+    ...Array.from({ length: 10 }, (_, index) => ({
+      id: `cold${index}`,
+      share: null,
+      priority: "normal",
+      state: "done",
+      consumed: 0,
+    })),
+  ]);
+  const targets = shares(busy);
+  assert.equal(targets.release, 0.5, "an idle project that spent nothing cannot starve the low tier");
+  assert.equal(targets.experiment, 0.5);
+});
+
+test("a quiet session beside a busy one is judged on its project's ratio, not on a rounding error", () => {
+  const project = pressureFor(0.2, 0.5, 40);
+  const quiet = pressureFor(0.2 * 0.005, 0.5 * 0.005, 40);
+  assert.equal(round(quiet.value), round(project.value));
+  assert.equal(quiet.basis, "budget");
+  assert.ok(stageFor(quiet.value) < 90, "it must not be handed the wind-down meant for an overrun");
+});
+
+test("consuming with no allocation at all is still the top of the scale", () => {
+  assert.equal(pressureFor(0.2, 0, 40).value, 9.99);
+  assert.equal(pressureFor(0, 0, 40).value, 0);
+});
+
 test("pressure is measured against the published window when there is one", () => {
   const withQuota = pressureFor(0.5, 0.4, 40);
   assert.equal(withQuota.basis, "budget");

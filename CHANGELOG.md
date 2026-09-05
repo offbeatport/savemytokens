@@ -4,6 +4,25 @@ Versions follow [semver](https://semver.org). Before 1.0 the CLI surface and the
 `~/.savemytokens/config.json` can still change; the stored records carry their own `schema`
 number and are migrated rather than broken.
 
+## 0.2.3
+
+### Fixed
+
+- **Priority actually works on a default install.** 0.2.2 claimed this and only half delivered it:
+  capacity was released to the tiers only by a project with a target you had pinned by hand, and
+  nothing pins one for you, so on an ordinary install the tiers still ran on an empty pool. A
+  project that finishes now hands back the difference between its even share and what it spent,
+  whether or not you pinned it. Three projects, one of them done at 20%: HIGH now holds 47% and LOW
+  33%, where both used to hold 40%. A project that has taken no turn in the window at all holds no
+  claim, so a long RECENT list cannot starve anything.
+- **A quiet session next to a busy one is no longer told to wind down.** Two windows in one project
+  split its allocation by what they are burning, so the quiet one was handed a target small enough
+  to trip the divide-by-nothing guard: maximum pressure, the harshest advice, and a line that read
+  "0% of measured usage against a 0% target". Worse, that stage was recorded, which silenced every
+  real warning for the rest of the window. Both sessions are now judged on their project's ratio.
+- Two lines of the help screen: a sentence that had been half-rewritten, and a limitation the
+  README still listed after it was fixed.
+
 ## 0.2.2
 
 ### Fixed
@@ -12,9 +31,9 @@ number and are migrated rather than broken.
   use divided the window ten ways and told the one doing the work it was far over budget. A project
   counts as a consumer only while it is open and has taken a turn in the last ten minutes;
   otherwise it keeps what it has already spent and lends the rest out.
-- **Priority now reaches the capacity a finished project hands back.** It was folded into the even
-  split whenever any project was unpinned, which is the ordinary case, so the tiers ran on an empty
-  pool.
+- **A pinned project that finishes under its target hands the remainder to the priority tiers**
+  rather than folding it into the even split. This was reported at the time as fixing priority
+  outright; it did not, and 0.2.3 finishes the job.
 - **The arrows keep moving a target the allocator is squeezing.** They stepped from what was granted
   rather than what you asked for, so each press added five points to an already-reduced number.
 - **Pinned projects hold the order you pinned them in**, rather than resorting by allocation the

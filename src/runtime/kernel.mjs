@@ -684,21 +684,30 @@ export function usageInWindow(record, from, to) {
   return { ...total, tokens, weighted };
 }
 
+const isPinned = (entry) => typeof entry.share === "number" && entry.share >= 0;
+const isRunning = (entry) => entry.state === "active" || entry.state === "needs-more";
+const holdsAClaim = (entry) => isRunning(entry) || isPinned(entry) || (entry.consumed || 0) > 0;
+
 export function allocate(entries) {
   const targets = new Map();
   const eligible = [];
   let reserved = 0;
   let released = 0;
 
+  const claiming = entries.filter(holdsAClaim);
+  const pinnedClaims = claiming.reduce((sum, entry) => (isPinned(entry) ? sum + entry.share : sum), 0);
+  const openClaims = claiming.filter((entry) => !isPinned(entry)).length;
+  const evenClaim = openClaims > 0 ? Math.max(0, 1 - Math.min(1, pinnedClaims)) / openClaims : 0;
+
   for (const entry of entries) {
-    const state = entry.state;
-    if (state === "active" || state === "needs-more") {
+    if (isRunning(entry)) {
       eligible.push(entry);
       continue;
     }
     const keep = Math.max(0, Math.min(1, entry.consumed || 0));
+    const nominal = isPinned(entry) ? entry.share : holdsAClaim(entry) ? evenClaim : 0;
     reserved += keep;
-    if (typeof entry.share === "number" && entry.share > keep) released += entry.share - keep;
+    if (nominal > keep) released += nominal - keep;
     targets.set(entry.id, { claimantId: entry.id, target: keep, pinned: false, pool: 0, released: true });
   }
 
@@ -712,8 +721,8 @@ export function allocate(entries) {
   let budget = Math.max(0, 1 - Math.min(1, reserved));
   if (eligible.length === 0) return { targets, unusedPool: budget };
 
-  const pinned = eligible.filter((entry) => typeof entry.share === "number" && entry.share >= 0);
-  const free = eligible.filter((entry) => !(typeof entry.share === "number" && entry.share >= 0));
+  const pinned = eligible.filter(isPinned);
+  const free = eligible.filter((entry) => !isPinned(entry));
   const pinnedSum = pinned.reduce((sum, entry) => sum + entry.share, 0);
   const scale = pinnedSum > budget && pinnedSum > 0 ? budget / pinnedSum : 1;
 
@@ -941,15 +950,16 @@ export function viewFor(plan, id) {
   return plan.claimants.find((view) => view.claimant.id === id) ?? null;
 }
 
-const MIN_TARGET = 0.001;
 const MAX_PRESSURE = 9.99;
 
 export function pressureFor(consumedShare, target, quotaUsedPercent) {
-  if (!(target > MIN_TARGET)) return { value: consumedShare > 0 ? MAX_PRESSURE : 0, basis: "share" };
+  const spent = consumedShare > 0 ? consumedShare : 0;
+  if (!(target > 0)) return { value: spent > 0 ? MAX_PRESSURE : 0, basis: "share" };
+  const ratio = spent / target;
   if (typeof quotaUsedPercent === "number" && quotaUsedPercent >= 0) {
-    return { value: Math.min(MAX_PRESSURE, (quotaUsedPercent / 100) * (consumedShare / target)), basis: "budget" };
+    return { value: Math.min(MAX_PRESSURE, (quotaUsedPercent / 100) * ratio), basis: "budget" };
   }
-  return { value: Math.min(MAX_PRESSURE, consumedShare / target), basis: "share" };
+  return { value: Math.min(MAX_PRESSURE, ratio), basis: "share" };
 }
 
 export const POLICIES = {

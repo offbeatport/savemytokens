@@ -483,7 +483,7 @@ export function helpOverlay(control: ControlPlan, context: ViewContext): string[
     ...helpProse(
       control.installed
         ? "Installed. It is the only place your 5h and 7d usage is published, and it is what proves a session is still open, so without it nothing here is live. Change its shape with P."
-        : "Not installed, so nothing here is live. It is the only place your 5h and 7d usage is publishes your 5h and 7d usage, and it is what proves a session is still open. Run: npx savemytokens install",
+        : "Not installed, so nothing here is live. It is the only place your 5h and 7d usage is published, and it is what proves a session is still open. Run: npx savemytokens install",
       context,
     ),
   );

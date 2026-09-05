@@ -191,9 +191,9 @@ bar the built-in themes have to clear.
   beyond those two facts would be a guess dressed up as a number.
 - **It cannot see usage it did not measure.** Another machine, claude.ai, or work done before you
   installed it shows up as unattributed window, labelled as such.
-- **An idle window still holds its share.** A session with nothing running keeps its slice rather
-  than lending it out, so ten open terminals divide the window ten ways. Treating a target as a
-  weight among sessions actually consuming is the next fix.
+- **The split moves under you.** A window that has taken no turn in ten minutes lends its share to
+  the rest, and takes it back the moment you type in it again. What is on screen is the current
+  split, not a contract: a project's allocation can change without you touching anything.
 - **It makes no network call.** No account, no telemetry, no daemon. `savemytokens privacy` prints
   every file it reads and writes.
 
