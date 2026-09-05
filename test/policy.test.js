@@ -993,3 +993,59 @@ test("holding the arrow keeps raising the target, whatever the allocator grants"
   assert.ok(Math.abs(seen[seen.length - 1] - 0.95) < 1e-9, "ten presses from 50% reach 95%, not a plateau");
   assert.equal(nextShare(view(1, 0.66), 0.05), 1, "and it stops at the whole window");
 });
+
+test("allocation holds its invariants across every shape of plan", async () => {
+  const { allocate } = await import("../dist/runtime/kernel.mjs");
+  const E = (id, o = {}) => ({ id, share: null, priority: "normal", state: "active", consumed: 0, cap: null, ...o });
+  const sumOf = (targets) => [...targets.values()].reduce((total, t) => total + t.target, 0);
+
+  const even = allocate([E("a"), E("b"), E("c")]).targets;
+  for (const id of ["a", "b", "c"]) assert.ok(Math.abs(even.get(id).target - 1 / 3) < 1e-9, "unpinned split evenly");
+
+  const pinned = allocate([E("a", { share: 0.6 }), E("b"), E("c")]).targets;
+  assert.ok(Math.abs(pinned.get("a").target - 0.6) < 1e-9, "a pin is honoured exactly");
+  assert.ok(Math.abs(pinned.get("b").target - 0.2) < 1e-9, "and the rest divide what is left");
+
+  const over = allocate([E("a", { share: 0.8 }), E("b", { share: 0.8 })]).targets;
+  assert.ok(Math.abs(sumOf(over) - 1) < 1e-9, "pins that over-subscribe are scaled to fit, not clipped");
+  assert.ok(Math.abs(over.get("a").target - over.get("b").target) < 1e-9, "and scaled in proportion");
+
+  const tiers = allocate([
+    E("a", { priority: "high" }),
+    E("b", { priority: "low" }),
+    E("c", { state: "done", consumed: 0.1, share: 0.5 }),
+  ]).targets;
+  assert.ok(
+    tiers.get("a").target > tiers.get("b").target + 0.3,
+    `capacity handed back reaches HIGH before LOW: ${tiers.get("a").target} vs ${tiers.get("b").target}`,
+  );
+  assert.ok(Math.abs(sumOf(tiers) - 1) < 1e-9);
+
+  const capped = allocate([E("a", { cap: 0.2 }), E("b"), E("c")]).targets;
+  assert.ok(Math.abs(capped.get("a").target - 0.2) < 1e-9, "a cap holds");
+  assert.ok(Math.abs(sumOf(capped) - 1) < 1e-9, "and what it refused goes to the others");
+
+  const impossible = allocate([
+    E("a", { state: "done", consumed: 0.8 }),
+    E("b", { state: "done", consumed: 0.75 }),
+  ]);
+  assert.ok(sumOf(impossible.targets) <= 1 + 1e-9, "even a corrupt meter cannot allocate more than the window");
+
+  const random = (n) => Math.floor(Math.random() * n);
+  for (let run = 0; run < 2000; run++) {
+    const entries = Array.from({ length: 1 + random(6) }, (_, at) =>
+      E(`p${at}`, {
+        share: Math.random() < 0.4 ? random(21) / 20 : null,
+        priority: ["high", "normal", "low"][random(3)],
+        state: Math.random() < 0.3 ? "done" : "active",
+        consumed: Math.random() < 0.5 ? random(11) / 20 : 0,
+        cap: Math.random() < 0.2 ? random(21) / 20 : null,
+      }),
+    );
+    const { targets, unusedPool } = allocate(entries);
+    const total = sumOf(targets);
+    assert.ok(total <= 1 + 1e-9, `allocated ${total} of one window: ${JSON.stringify(entries)}`);
+    assert.ok(unusedPool >= -1e-9, "the pool never goes negative");
+    for (const target of targets.values()) assert.ok(target.target >= -1e-9, "no negative target");
+  }
+});

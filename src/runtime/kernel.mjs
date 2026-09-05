@@ -689,6 +689,13 @@ export function allocate(entries) {
     targets.set(entry.id, { claimantId: entry.id, target: keep, pinned: false, pool: 0, released: true });
   }
 
+  if (reserved > 1) {
+    const shrink = 1 / reserved;
+    for (const allocation of targets.values()) allocation.target *= shrink;
+    released *= shrink;
+    reserved = 1;
+  }
+
   let budget = Math.max(0, 1 - Math.min(1, reserved));
   if (eligible.length === 0) return { targets, unusedPool: budget };
 
@@ -702,13 +709,15 @@ export function allocate(entries) {
   }
   const spent = Math.min(pinnedSum, budget);
   const spare = Math.max(0, budget - spent);
-  const even = free.length > 0 ? spare / free.length : 0;
+  const handedBack = Math.min(spare, released);
+  const base = Math.max(0, spare - handedBack);
+  const even = free.length > 0 ? base / free.length : 0;
   for (const entry of free) {
     targets.set(entry.id, { claimantId: entry.id, target: even, pinned: false, pool: 0, released: false });
   }
 
-  let pool = free.length > 0 ? 0 : Math.min(spare, released);
-  const idle = free.length > 0 ? 0 : spare - pool;
+  let pool = handedBack;
+  const idle = free.length > 0 ? 0 : spare - handedBack;
   for (const entry of eligible) {
     const allocation = targets.get(entry.id);
     const cap = typeof entry.cap === "number" ? entry.cap : 1;
