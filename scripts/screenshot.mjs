@@ -372,7 +372,7 @@ write(
   CMD_W,
 );
 
-const FEAT = 72;
+const FEAT = 104;
 const dim = (text) => `\u001b[38;2;147;153;178m${text}\u001b[0m`;
 const all = planRows(CONTROL, context(theme, FEAT));
 const headerAt = all.findIndex((line) => line.includes("PROJECT"));

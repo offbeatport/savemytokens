@@ -1,14 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="580" height="146" viewBox="0 0 580 146" role="img" aria-label="">
-  <rect width="580" height="146" rx="10" fill="#181825"/>
-  <rect width="580" height="12" rx="10" fill="#11111b"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="146" viewBox="0 0 820 146" role="img" aria-label="">
+  <rect width="820" height="146" rx="10" fill="#181825"/>
+  <rect width="820" height="12" rx="10" fill="#11111b"/>
   
   
   
   <g font-family="ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5">
-  <text x="20" y="44.5" xml:space="preserve" textLength="540.0" lengthAdjust="spacing"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">[savemytokens] 84% of your 20% target share of this Claude window is</tspan><tspan fill="#cdd6f4">  </tspan></text>
-  <text x="20" y="63.25" xml:space="preserve" textLength="540.0" lengthAdjust="spacing"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">spent. Narrow the scope to the smallest version that is genuinely</tspan><tspan fill="#cdd6f4">     </tspan></text>
-  <text x="20" y="82" xml:space="preserve" textLength="540.0" lengthAdjust="spacing"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">done. Cut optional work, stop comparing alternatives, start nothing</tspan><tspan fill="#cdd6f4">   </tspan></text>
-  <text x="20" y="100.75" xml:space="preserve" textLength="540.0" lengthAdjust="spacing"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">new, and keep enough capacity for tests. Whatever you drop, write on</tspan><tspan fill="#cdd6f4">  </tspan></text>
-  <text x="20" y="119.5" xml:space="preserve" textLength="540.0" lengthAdjust="spacing"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">its own line as `SMT: DEFER &lt;one line&gt;`. It comes back at the start</tspan><tspan fill="#cdd6f4">   </tspan></text>
+  <text x="20" y="44.5" xml:space="preserve" textLength="780.0" lengthAdjust="spacing"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">[savemytokens] 84% of your 20% target share of this Claude window is spent. Narrow the scope to the</tspan><tspan fill="#cdd6f4">   </tspan></text>
+  <text x="20" y="63.25" xml:space="preserve" textLength="780.0" lengthAdjust="spacing"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">smallest version that is genuinely done. Cut optional work, stop comparing alternatives, start</tspan><tspan fill="#cdd6f4">        </tspan></text>
+  <text x="20" y="82" xml:space="preserve" textLength="780.0" lengthAdjust="spacing"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">nothing new, and keep enough capacity for tests. Whatever you drop, write on its own line as `SMT:</tspan><tspan fill="#cdd6f4">    </tspan></text>
+  <text x="20" y="100.75" xml:space="preserve" textLength="780.0" lengthAdjust="spacing"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">DEFER &lt;one line&gt;`. It comes back at the start of the next session in this project, so dropping it</tspan><tspan fill="#cdd6f4">     </tspan></text>
+  <text x="20" y="119.5" xml:space="preserve" textLength="780.0" lengthAdjust="spacing"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">now costs nothing.</tspan><tspan fill="#cdd6f4">                                                                                    </tspan></text>
   </g>
 </svg>
