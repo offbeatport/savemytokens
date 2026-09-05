@@ -191,13 +191,12 @@ test("usage outside the published window is not counted against it", () => {
   assert.equal(session(box).tokens, 1000, "the six-hour-old turn is outside the 5h window");
 });
 
-test("the dead carry warning survives as part of the same hook", () => {
+test("the hook says nothing about how much context you are carrying", () => {
   const box = sandbox();
   appendTurns(box, [turn(box, "m1", 400_000, Date.now() - 60_000)]);
   const out = runHook(box, "prompt", { prompt: "add rate limiting to the invoice export endpoint" });
-  assert.match(out, /400k tokens of earlier work are still in context/);
-  const followUp = runHook(box, "prompt", { prompt: "ok now do the same for the other ones" });
-  assert.doesNotMatch(followUp, /still in context/, "follow-up prompts stay quiet");
+  assert.doesNotMatch(out, /still in context|per 10 turns|\/clear/, "nobody installed this to be told about their context");
+  assert.equal(fs.existsSync(path.join(box.home, "nudges.json")), false, "and nothing is recorded about it either");
 });
 
 test("hooks exit 0 and print nothing on malformed input", () => {

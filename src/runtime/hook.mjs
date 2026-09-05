@@ -21,13 +21,6 @@ import {
 } from "./kernel.mjs";
 
 const ADAPTER = "claude-code";
-const NUDGE_FILE = path.join(HOME, "nudges.json");
-const NUDGE_THRESHOLD = 150000;
-const NUDGE_COOLDOWN_MS = 30 * 60 * 1000;
-const NUDGE_HORIZON_TURNS = 10;
-const NUDGE_TAIL_BYTES = 262144;
-const RATE_PER_TOKEN = 5 / 1000000;
-const CACHE_READ_WEIGHT = 0.1;
 const MAX_SUBAGENT_DEPTH = 4;
 const ANAPHORIC =
   /^\s*(ok|okay|now|also|and|then|next|again|yes|no|nope|yep|same|do the same|the other|these|those|them|it|that|this|continue|carry on|keep going|go on|more|another|fix (it|that|this)|try again|redo|revert|undo|hmm|wait|great|nice|thanks|perfect|good)\b/i;
@@ -102,68 +95,6 @@ function guidance(id, project, now) {
   });
 }
 
-function selfContained(prompt) {
-  const text = String(prompt || "").trim();
-  return text.length >= 40 && !ANAPHORIC.test(text);
-}
-
-function tailContext(file) {
-  let fd;
-  try {
-    fd = fs.openSync(file, "r");
-  } catch {
-    return 0;
-  }
-  try {
-    const size = fs.fstatSync(fd).size;
-    const start = Math.max(0, size - NUDGE_TAIL_BYTES);
-    const buffer = Buffer.alloc(size - start);
-    fs.readSync(fd, buffer, 0, buffer.length, start);
-    const lines = buffer.toString("utf8").split("\n");
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i];
-      if (!line || !line.includes('"usage"')) continue;
-      let record;
-      try {
-        record = JSON.parse(line);
-      } catch {
-        continue;
-      }
-      const usage = record?.message?.usage;
-      if (!usage) continue;
-      const total =
-        (usage.input_tokens || 0) + (usage.cache_read_input_tokens || 0) + (usage.cache_creation_input_tokens || 0);
-      if (total > 0) return total;
-    }
-    return 0;
-  } catch {
-    return 0;
-  } finally {
-    try {
-      fs.closeSync(fd);
-    } catch {}
-  }
-}
-
-function deadCarryNudge(payload, now) {
-  if (!selfContained(payload.prompt)) return "";
-  const transcript = payload.transcript_path;
-  if (typeof transcript !== "string" || !fs.existsSync(transcript)) return "";
-  const context = tailContext(transcript);
-  if (context < NUDGE_THRESHOLD) return "";
-
-  const state = readJson(NUDGE_FILE, null);
-  const events = Array.isArray(state?.events) ? state.events : [];
-  const previous = events.filter((event) => event.session === payload.session_id).pop();
-  if (previous && now - previous.at < NUDGE_COOLDOWN_MS) return "";
-
-  const horizon = context * CACHE_READ_WEIGHT * RATE_PER_TOKEN * NUDGE_HORIZON_TURNS;
-  events.push({ at: now, session: payload.session_id, context, usd: horizon });
-  writeJson(NUDGE_FILE, { installedAt: state?.installedAt ?? now, events: events.slice(-500) });
-
-  return `[savemytokens] This reads as a new task and ${Math.round(context / 1000)}k tokens of earlier work are still in context, about $${horizon.toFixed(2)} per ${NUDGE_HORIZON_TURNS} turns from here. Open your reply with one short line saying so, and that /clear or a fresh session drops it. Then do what was asked.`;
-}
-
 function run() {
   const event = process.argv[2] ?? "";
   const payload = readInput();
@@ -212,8 +143,6 @@ function run() {
     });
     const advice = guidance(id, project, now);
     if (advice) lines.push(advice);
-    const nudge = deadCarryNudge(payload, now);
-    if (nudge) lines.push(nudge);
   }
 
   if (event === "stop") {

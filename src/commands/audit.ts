@@ -9,7 +9,7 @@ import { renderAudit } from "../report/render.js";
 import { loadRuns, previousRun, saveRun } from "../storage/store.js";
 import { dim } from "../util/ansi.js";
 import type { Options } from "../cli-options.js";
-import { hookInstalled, nudgeStats } from "./install.js";
+import { hookInstalled } from "./install.js";
 
 function progress(done: number, total: number): void {
   if (!process.stderr.isTTY || total < 12) return;
@@ -60,7 +60,6 @@ export async function runAudit(options: Options): Promise<Audit | null> {
         audit,
         previous,
         history: runs,
-        nudges: nudgeStats(),
         installed: hookInstalled(),
         verbose: options.verbose,
       }),

@@ -3,7 +3,6 @@ import { bold, clip, dim, green, padEndVisible, padStartVisible, red, visibleWid
 import { ago, bar, compactNumber, money, percent, plural, shortDate, sparkline } from "../util/fmt.js";
 import { displayHome } from "../storage/paths.js";
 import { pricingNote } from "../core/pricing.js";
-import type { NudgeStats } from "../commands/install.js";
 
 const INDENT = "  ";
 const BAR_WIDTH = 8;
@@ -12,7 +11,6 @@ export interface RenderInput {
   audit: Audit;
   previous: RunRecord | null;
   history?: RunRecord[];
-  nudges?: NudgeStats | null;
   installed?: boolean;
   verbose?: boolean;
 }
@@ -86,7 +84,7 @@ function footer(audit: Audit, previous: RunRecord | null, history: RunRecord[], 
 }
 
 export function renderAudit(input: RenderInput): string {
-  const { audit, previous, history = [], nudges = null, installed = false, verbose = false } = input;
+  const { audit, previous, history = [], installed = false, verbose = false } = input;
   const columns = width();
   const out: string[] = [""];
 
@@ -159,13 +157,6 @@ export function renderAudit(input: RenderInput): string {
     out.push("");
   }
 
-  if (nudges && installed) {
-    out.push(
-      `${green("Since you installed:")} ${nudges.fired} ${plural(nudges.fired, "warning")}, ${money(nudges.usdAtStake)} at stake ${dim(`(${ago(nudges.installedAt)})`)}`,
-    );
-  } else if (!installed) {
-    out.push(`${green("Do this:")}  ${bold("npx savemytokens install")}   ${dim("→ warns you before the next one, and gives each session a target share")}`);
-  }
 
   out.push(...footer(audit, previous, history, verbose));
 

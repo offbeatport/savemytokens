@@ -397,22 +397,3 @@ function describeState(): string {
   }
 }
 
-export interface NudgeStats {
-  installedAt: number;
-  fired: number;
-  usdAtStake: number;
-}
-
-export function nudgeStats(): NudgeStats | null {
-  try {
-    const parsed = JSON.parse(fs.readFileSync(path.join(HOME, "nudges.json"), "utf8"));
-    if (!Array.isArray(parsed.events) || parsed.events.length === 0) return null;
-    return {
-      installedAt: parsed.installedAt ?? parsed.events[0]?.at ?? Date.now(),
-      fired: parsed.events.length,
-      usdAtStake: parsed.events.reduce((sum: number, event: { usd?: number }) => sum + (event.usd ?? 0), 0),
-    };
-  } catch {
-    return null;
-  }
-}
