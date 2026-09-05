@@ -1057,16 +1057,29 @@ test("the primer fits every terminal and names the keys it is there to teach", a
   const theme = loadTheme("default");
 
   for (const columns of [40, 60, 80, 100, 140]) {
-    const framed = boxed(primerScreen(theme, false, columns), theme, false, columns);
+    const framed = boxed(primerScreen(theme, false, columns, "Claude Code", "5-hour"), theme, false, columns);
     for (const line of framed) assert.ok(line.length <= columns, `${columns} overflowed: ${line.length}`);
     assert.equal(framed[0].length, framed[framed.length - 1].length, "the box closes as it opened");
     const text = framed.join("\n");
     assert.match(text, /← →/, "the key the product exists for is named first");
-    assert.match(text, /5-hour/, "and what is being divided is explained");
+    assert.match(text, /Claude Code gives you one 5-hour allowance/, "it names the agent it is running against");
     assert.match(text, /\[ Got it \]/);
   }
 
   for (const key of ["e", "p", " "]) {
     assert.ok(keyActions(key).length > 0, `${key}, taught by the primer, does something`);
   }
+});
+
+test("the primer names the agent in front of it, not a vendor it assumed", async () => {
+  const { primerScreen } = await import("../dist/commands/control.js");
+  const { loadTheme } = await import("../dist/runtime/kernel.mjs");
+  const theme = loadTheme("default");
+
+  const claude = primerScreen(theme, false, 72, "Claude Code", "5-hour").join("\n");
+  assert.match(claude, /Claude Code gives you one 5-hour allowance/);
+
+  const codex = primerScreen(theme, false, 72, "Codex", "weekly").join("\n");
+  assert.match(codex, /Codex gives you one weekly allowance/);
+  assert.doesNotMatch(codex, /Claude|Anthropic|5-hour/, "no trace of the agent it is not talking to");
 });

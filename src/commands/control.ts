@@ -286,7 +286,11 @@ function clipLine(text: string, width: number): string {
   return text.length <= width ? text : `${text.slice(0, Math.max(0, width - 1))}…`;
 }
 
-export function primerScreen(theme: Theme, color: boolean, columns: number): string[] {
+function spanLabel(key: string): string {
+  return key === "seven_day" ? "weekly" : key === "spend_limit" ? "monthly spend" : "5-hour";
+}
+
+export function primerScreen(theme: Theme, color: boolean, columns: number, agent = "your agent", span = "rolling"): string[] {
   const inner = Math.max(24, Math.min(columns - 8, 54));
   const out: string[] = [];
   const middle = (line: string): void => {
@@ -305,7 +309,7 @@ export function primerScreen(theme: Theme, color: boolean, columns: number): str
   middle(paint(theme, "accent", "One window, split by you", color));
   out.push("");
   flush(
-    "Anthropic gives you one 5-hour allowance across every Claude Code window you have open. This divides it between your projects.",
+    `${agent} gives you one ${span} allowance across every window you have open. This divides it between your projects.`,
     "dim",
   );
   out.push("");
@@ -440,7 +444,7 @@ export async function runControl(options: Options): Promise<void> {
       : mode === "setup"
         ? setupScreen(setupChoice, context.theme, context.color, context.columns, setupDetails)
         : mode === "primer"
-          ? primerScreen(context.theme, context.color, context.columns)
+          ? primerScreen(context.theme, context.color, context.columns, control.provider.label, spanLabel(control.schedule.key))
         : mode === "settings"
           ? renderSettings(
               control.config,
