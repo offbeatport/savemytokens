@@ -24,6 +24,10 @@
 
 <br>
 
+You have four Claude Code windows open. One of them is a throwaway experiment and it is quietly
+eating the afternoon, but Anthropic reports a single number for all four, so there is no way to know
+which. By the time the window is gone, the work that mattered is the work that did not finish.
+
 ## Get started
 
 ```sh
@@ -45,13 +49,37 @@ out.
 
 |  |  |
 | :-- | :-- |
-| **The real numbers** | Your 5-hour and weekly usage exactly as Anthropic publishes it. Never an invented *"% remaining"*. |
-| **Two lists you control** | **ACTIVE** is what shares your window; **RECENT** is every project Claude Code has opened, read from its own directory so the list is full on a fresh install. A project joins ACTIVE by itself when you open it there and holds its target after you close it. `space` moves one up, `x` moves it down. |
+| **The real numbers** | Your 5-hour and weekly usage exactly as Anthropic publishes it, read from the status line. Never an invented *"% remaining"*. |
+| **A split you control** | Give each project a target and a priority. Move one and the others move to fit, so the window always adds up. |
 | **The agent working to it** | As a session eats into its slice it is told to narrow scope and finish, and to write down whatever it drops. That comes back the next time you open the project. |
-| **Unused capacity returned** | A project with nothing running lends its share to the rest and takes it back when you return. Mark one done and what it did not spend goes to the others immediately. |
-| **In your status line** | `⣿⣿⣿⣀⣀⣀⣀⣀ 21% of 50% · 5h 42% · resets in 3h52`. How much of your share you have spent, where the window is, when it comes back. Pick a shape, arrange the pieces yourself, or run it silent. |
+| **Capacity returned** | A project with nothing running lends its share to the rest and reclaims it when you come back. |
+| **In your status line** | `⣿⣿⣿⣀⣀⣀⣀⣀ 21% of 50% · 5h 42% · resets in 3h52`. Pick a shape, arrange the pieces yourself, or run it silent. |
 
 <br>
+
+## A worked example
+
+Four sessions open, and the release matters more than the experiment.
+
+```sh
+npx savemytokens share webinvoke 50      # Set webinvoke target to 50%
+npx savemytokens priority webinvoke high # webinvoke now takes spare capacity first
+```
+
+The other three split what is left. When one of them finishes, whatever it did not spend goes to
+webinvoke, because it is the only project on the high tier:
+
+```
+  ACTIVE 4
+    PROJECT       ALLOCATION USED OF IT           PRIORITY LAST PROMPT
+  ❯ webinvoke            50% █████████░░░  62%    HIGH     Implement the provider fallback chain
+    buydiff              30% ██████░░░░░░  41%    NORMAL   Fix the verdict table alignment
+    obp-ui               20% ██████████░░  93%    LOW      Try the alternate parser
+```
+
+`obp-ui` is at 93% of its slice, so its next turn opens with a line telling it to finish what it has
+and write down the rest. Whatever it drops comes back the next time you open that project. Nothing
+here required you to guess how many tokens anything costs.
 
 ## Commands
 
