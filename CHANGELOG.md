@@ -4,6 +4,43 @@ Versions follow [semver](https://semver.org). Before 1.0 the CLI surface and the
 `~/.savemytokens/config.json` can still change; the stored records carry their own `schema`
 number and are migrated rather than broken.
 
+## 0.2.1
+
+Published within an hour of 0.2.0, which shipped with four things wrong.
+
+### Fixed
+
+- **Install, no line did not work.** Choosing it stored an empty segment list and the config loader
+  replaced any empty list with the default before anything could read it, so the status line
+  appeared anyway. The line also wrote a newline when it had nothing to say, which Claude Code drew
+  as an empty row; it writes nothing at all now.
+- **The default status line was not the one that was tested.** `DEFAULT_CONFIG` carried its own
+  hand-written copy of the segment list, so a fresh install got a different shape from the constant
+  every test asserted.
+- **Priority never reached the capacity a finished project handed back**, because the released pool
+  was folded into the even split whenever any project was unpinned, which is the ordinary case. Two
+  projects, one HIGH and one LOW, with forty points handed back, both received forty-five.
+- **The arrow keys stopped moving a target that was being squeezed.** They stepped from what the
+  allocator granted rather than what you asked for, so each press added five points to an
+  already-reduced number and it converged instead of climbing.
+- **Two things that would have been wrong on Windows**: `process.env.HOME`, which Windows does not
+  set, and project labels split on a forward slash, which a Windows path does not contain.
+- A window that has just reset draws an empty bar at zero rather than vanishing from the row.
+
+### Added
+
+- **Install, no line** as a third answer on the first run, and `off` as a status line shape in
+  settings, so the hooks can run with nothing drawn.
+- A second first-run screen explaining that moving one target moves the others to fit.
+- A parked tier: `space` moves a project up a level and `x` moves it down, so twice down hides one.
+- RECENT is seeded from Claude Code's own project directory, so it is populated on a fresh install.
+
+### Changed
+
+- The status line says `21% of 50%` rather than `21%/50%`, `resets in 3h52m` rather than `in 3h52`,
+  and `19% ahead of the clock` rather than `+19 vs pace`.
+- Bars use the width the terminal has: up to 32 cells in the table, 12 in the status line.
+
 ## 0.2.0
 
 First published release.
