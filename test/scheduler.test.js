@@ -575,7 +575,12 @@ test("a share set on a project with nothing running keeps climbing", async () =>
   assert.equal(nextShare(recent(0), -0.05), 0, "or drops below nothing");
 
   const live = { bucket: "active", settings: { share: 0.1 }, allocation: { target: 0.4, pinned: 0.1 } };
-  assert.ok(Math.abs(nextShare(live, 0.05) - 0.45) < 1e-9, "a running project still steps from what it actually holds");
+  assert.ok(
+    Math.abs(nextShare(live, 0.05) - 0.15) < 1e-9,
+    "a pinned project steps from what you asked for, not from the slack it happens to be enjoying",
+  );
+  const unpinned = { bucket: "active", settings: { share: null }, allocation: { target: 0.4, pinned: null } };
+  assert.ok(Math.abs(nextShare(unpinned, 0.05) - 0.45) < 1e-9, "an unpinned one starts from the even split it has");
 });
 
 test("a quota tick during a live turn is not blamed on another machine", () => {
