@@ -385,7 +385,11 @@ function describeState(): string {
     };
     walk(HOME);
     parts.push(bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
-    const projects = fs.readdirSync(path.join(HOME, "projects", "claude-code")).filter((name) => name.endsWith(".json")).length;
+    const root = path.join(HOME, "projects");
+    let projects = 0;
+    for (const adapter of fs.readdirSync(root)) {
+      projects += fs.readdirSync(path.join(root, adapter)).filter((name) => name.endsWith(".json")).length;
+    }
     if (projects > 0) parts.push(`${projects} ${projects === 1 ? "project" : "projects"}`);
     return parts.join(" · ");
   } catch {

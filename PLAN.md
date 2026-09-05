@@ -80,10 +80,15 @@ attributed across a reset boundary.
 
 ## V0, shipped: Claude allowance across your active sessions
 
-> **See where your Claude usage goes, give each session a target share, and keep Claude aware of the
+> **See where your Claude usage goes, give each project a target share, and keep Claude aware of the
 > budget you want it to work within.**
 
 Local, OSS, no daemon, no account, nothing uploaded. Enforcement level: `advise` only.
+
+**Status: complete and tagged `v0.2.0`, unpublished.** 127 tests, green on Node 18.20.8 and 24. The
+package installs and runs from a packed tarball. `npm publish` is the only step left. Eighteen
+themes for both surfaces, all contrast-tested; the control centre fits any terminal from 60 columns
+up; a fuzz over eight thousand random plans finds no allocation above one hundred percent.
 
 ### Install
 
@@ -112,24 +117,32 @@ implementation.
 ### What it shows
 
 ```
-  SaveMyTokens · Claude Code
+  5h ████░░░░░░░░  42% resets in 1h57 (21:55)    7d ██░░░░░░░░░░  18% resets in 2d3h (Sun)
 
-  Claude capacity  published · read just now
-    5h    ████░░░░░░  43% used · resets 12:27
-    7d    █░░░░░░░░░  12% used · resets Mon
+  ACTIVE 4
+     PROJECT      ALLOCATION USED OF IT              PRIORITY LAST PROMPT
+  ❯★2 webinvoke           50% █████████░░░░░░  62%    HIGH     Implement the provider fallback chain
+     buydiff             30% ██████░░░░░░░░░  41%    NORMAL   Fix the verdict table alignment
+     obp-ui              20% ██████████████░  93%    LOW      Try the alternate parser
+     reposhine           15% ░░░░░░░░░░░░░░░   0%    NORMAL   Draft the plan for the ingest rewrite
 
-    session      target   used   share  priority last prompt
-  ❯ webinvoke       50%    19%     44%  HIGH     Implement provider fallback…
-    buydiff         30%    14%     32%  NORMAL   Fix verdict table…
-  ✓ scratch          9%     9%     21%  LOW      Try alternate parser…
+  RECENT 12
+     PROJECT             LAST TURN        LAST PROMPT
+     picsuper               9h ago        Compare the two upscalers on the same source
+  +7 more
 
-    spare target capacity  11%
+  3 of 4 open, across 4 sessions, 1 waiting.
 ```
 
-`target` and `used` are percentages of the published window and are comparable. `share` is the
-session's exact part of the measured tokens, and `used` is the published percentage times that
-share. Without a published window, `target` and `share` are portions of measured usage and the
-footnote says so.
+Three tiers, walked by one pair of keys. **ACTIVE** shares the window. **RECENT** is every project
+Claude Code has opened, seeded from `~/.claude/projects` rather than only from what SMT has metered,
+so the list is populated on a fresh install. **Parked** is out of sight until `m`. `space` moves a
+project up a level, `x` moves it down. A row with nothing running is dimmed rather than badged, and
+holds its target until you return to it.
+
+`ALLOCATION` is what the project is granted, and turns amber when you asked for more than the window
+can give. `USED OF IT` is the published percentage times the project's measured share, so the total
+is Anthropic's and the split between rows is ours.
 
 ### Allocation
 
@@ -212,12 +225,31 @@ Layouts `compact`, `allocation` and `global`; themes `default`, `minimal`, `nord
 `matrix`, plus anything in `~/.savemytokens/themes/*.json`. The TUI and the status line are themed
 independently. Themes are data, not code, and the whole tool still has zero runtime dependencies.
 
-### Codex, in V0 rather than V2
+### More than one agent
 
-Codex writes `rate_limits` (`primary.used_percent`, `window_minutes`, `resets_at`) straight into
-its rollout files, so its published windows need no hook and no status line. `savemytokens --codex`
-meters it from the same incremental reader and renders the same view. Its `Enforcer.supports` is
-empty, because Codex has nowhere to inject advice, and the UI says so rather than pretending.
+The scheduler knows nothing about Claude. A `Provider` supplies four things and the rest of the
+product is written against the interface: `resources(now)` for the published windows, a `Meter` for
+consumption, an `Enforcer` declaring what it can actually do, and `dataDir` for where the transcripts
+live. Storage is keyed by `(adapter, claimantId)`, so two agents on one machine never collide, and
+`Capacity.confidence` records whether a window was published or is unknown.
+
+| adapter | published window | metering | enforcement | state |
+| --- | --- | --- | --- | --- |
+| Claude Code | 5h and 7d, from the status line | transcripts | `advise`, via four hooks | **shipped** |
+| Codex | `rate_limits` in its own rollout files, no hook needed | transcripts | none: nowhere to inject | **metered, visibility only** |
+| Gemini CLI | none published yet | not written | unknown | not started |
+| Grok CLI | none published yet | not written | unknown | not started |
+
+`savemytokens --codex` renders the same view against Codex, from the same incremental reader. Its
+`Enforcer.supports` is empty and the interface says so rather than pretending. That is the bar for
+any new adapter: a **published** window to read, or it does not ship, because the alternative is
+inventing a number and the whole product is a bet against doing that.
+
+**What is still Claude-shaped and would need work for a third adapter.** Thirteen setters in
+`plan.ts` default their adapter argument to `claude-code`; callers all pass the real one, but the
+default is a trap for the next integration. `audit` only walks the Claude adapter. The three runtime
+scripts are Claude hooks by definition and would be joined by, not replaced with, another agent's
+equivalents.
 
 ### What V0 cannot see
 
@@ -225,8 +257,13 @@ empty, because Codex has nowhere to inject advice, and the UI says so rather tha
 - `rate_limits` is absent for API-key and Console users, and before the first API response of a
   session.
 - Usage from another machine, or from claude.ai, lands in the local sessions' slices. SMT reports the
-  part of the window that moved while nothing local was running, which is the visible half of it.
+  part of the window that moved while nothing local was metered for five minutes or more, which is
+  the visible half of it.
 - Advice only. Nothing stops a session from blowing through its target.
+- An open session that is not typing still reserves its share. Ten windows open with one in use
+  divides the window ten ways and tells the one doing the work it is far over budget. The fix is to
+  treat a target as a weight among sessions actually consuming, rather than a reservation held by
+  anyone with a window open.
 
 ### Deliberately out of scope for V0
 
