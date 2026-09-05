@@ -152,7 +152,7 @@ function columnWidths(context: ViewContext, wanted: string[]): Widths {
 
 function headerRow(context: ViewContext, widths: Widths, columns: string[]): string {
   const { theme, color } = context;
-  const cells = [`     ${padEndVisible(clip("PROJECT", widths.label - 2), widths.label - 2)}`];
+  const cells = [`    ${padEndVisible(clip("PROJECT", widths.label - 1), widths.label - 1)}`];
   if (columns.includes("allocation")) cells.push(padStartVisible("ALLOCATION", 10));
   if (columns.includes("used")) cells.push(padEndVisible("USED OF IT", widths.used));
   if (columns.includes("share")) cells.push(padStartVisible("SHARE", 6));
@@ -175,13 +175,13 @@ function row(
     context.interactive && context.selected === index ? paint(theme, "accent", theme.tui?.cursor ?? "❯", color) : " ";
   const pin = view.settings.pinned ? paint(theme, "accent", theme.tui?.pin ?? "★", color) : " ";
   const open = view.bucket === "active";
-  const dot = open ? " " : paint(theme, "dim", "○", color);
+  const tone = (want: string) => (open ? want : "dim");
   const sessions = view.liveSessions > 1 ? paint(theme, "dim", `${view.liveSessions}`, color) : " ";
-  const label = padEndVisible(clip(view.label, widths.label - 2), widths.label - 2);
+  const label = padEndVisible(paint(theme, tone("fg"), clip(view.label, widths.label - 1), color), widths.label - 1);
   const held = view.allocation.target > 0 ? view.allocation.target : (view.settings.share ?? 0);
   const allocationCell = padStartVisible(
     held > 0
-      ? paint(theme, open ? "fg" : "dim", percentLabel(held * 100, 5), color)
+      ? paint(theme, tone("fg"), percentLabel(held * 100, 5), color)
       : paint(theme, "dim", view.settings.share === 0 ? "none" : "-", color),
     10,
   );
@@ -189,16 +189,16 @@ function row(
   const used = padEndVisible(
     starved
       ? `${emptyBar(widths.bar, theme, color)} ${padStartVisible(paint(theme, "dim", open ? "-" : "idle", color), 4)}`
-      : `${smallBar(view.pressure.value, widths.bar, theme, color, role)} ${padStartVisible(paint(theme, role, percentLabel(view.pressure.value * 100, 4), color), 4)}`,
+      : `${smallBar(view.pressure.value, widths.bar, theme, color, tone(role))} ${padStartVisible(paint(theme, tone(role), percentLabel(view.pressure.value * 100, 4), color), 4)}`,
     widths.used,
   );
   const share = padStartVisible(paint(theme, "dim", percentLabel(view.observed * 100, 5), color), 6);
   const tokens = padStartVisible(paint(theme, "dim", compactNumber(view.usage.tokens), color), 7);
   const priority = padEndVisible(
-    paint(theme, view.settings.priority === "high" ? "accent" : "dim", view.settings.priority.toUpperCase(), color),
+    paint(theme, view.settings.priority === "high" ? tone("accent") : "dim", view.settings.priority.toUpperCase(), color),
     8,
   );
-  const cells = [`${cursor}${pin}${dot}${sessions} ${label}`];
+  const cells = [`${cursor}${pin}${sessions} ${label}`];
   if (columns.includes("allocation")) cells.push(allocationCell);
   if (columns.includes("used")) cells.push(used);
   if (columns.includes("share")) cells.push(share);
