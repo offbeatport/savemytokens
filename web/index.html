@@ -98,6 +98,23 @@
       }
       .icon-link:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 7%, transparent); }
       button.icon-link { border: 0; background: none; padding: 0; cursor: pointer; font: inherit; }
+      .star {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        margin-left: 0.3rem;
+        padding: 0.45rem 0.85rem;
+        border: 1px solid var(--rule);
+        border-radius: 0.5rem;
+        background: var(--panel);
+        color: var(--ink);
+        font-size: 0.85rem;
+        font-weight: 600;
+        line-height: 1;
+        text-decoration: none;
+      }
+      .star:hover { border-color: var(--accent); color: var(--accent); }
+      .star svg { flex: none; }
 
       header.hero { padding: 5.5rem 0 1rem; text-align: center; }
       h1 { margin: 0; font-size: clamp(2.5rem, 6.5vw, 4rem); letter-spacing: -0.04em; line-height: 1.03; }
@@ -171,6 +188,9 @@
       figure { margin: 4.5rem 0 0; }
       figure img { display: block; width: 100%; height: auto; border-radius: 0.75rem; box-shadow: var(--shadow); }
       figcaption { margin-top: 1.1rem; text-align: center; color: var(--faint); font-size: 0.85rem; }
+      .strip { margin: 0; display: flex; flex-direction: column; align-items: center; }
+      .strip img { width: 100%; max-width: 32.5rem; border-radius: 0.7rem; }
+      .strip figcaption { max-width: 34rem; }
 
       .grid {
         max-width: 46rem;
@@ -181,8 +201,8 @@
         grid-template-columns: 3.25rem 1fr;
         column-gap: 1.5rem;
         align-items: start;
-        padding: 2rem 0;
-        border-top: 1px solid var(--rule);
+        padding: 2.15rem 0;
+        border-top: 1px solid color-mix(in srgb, var(--rule) 70%, transparent);
       }
       .feature:first-child { padding-top: 0; border-top: 0; }
       .feature:last-child { padding-bottom: 0; }
@@ -199,8 +219,9 @@
       }
       .feature svg { width: 28px; height: 28px; display: block; }
       .feature h3 {
-        margin: 0.4rem 0 0.5rem;
-        font-size: 1.1rem;
+        margin: 0 0 0.55rem;
+        padding-top: 0.55rem;
+        font-size: 1.08rem;
         letter-spacing: -0.018em;
         line-height: 1.25;
       }
@@ -217,22 +238,35 @@
         .feature h3 { margin-top: 0; }
       }
 
-      table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
-      td { padding: 1rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
-      tr:last-child td { border-bottom: 0; }
-      td:first-child {
-        width: 15rem;
-        padding-right: 2rem;
-        font-weight: 600;
+      table {
+        width: 100%;
+        max-width: 46rem;
+        margin: 0 auto;
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 1px solid var(--rule);
+        border-radius: 0.85rem;
+        overflow: hidden;
+        font-size: 0.95rem;
+      }
+      td { padding: 1.15rem 1.5rem; border-top: 1px solid var(--rule); vertical-align: top; }
+      tr:first-child td { border-top: 0; }
+      td:first-child { width: 16rem; padding-right: 1.25rem; white-space: nowrap; }
+      td:last-child { color: var(--muted); }
+      td code {
+        background: color-mix(in srgb, var(--accent) 9%, transparent);
+        border-color: transparent;
+        color: var(--ink);
+        font-size: 0.86rem;
+        padding: 0.28rem 0.55rem;
         white-space: nowrap;
       }
-      td:last-child { color: var(--muted); }
-      td code { white-space: nowrap; }
-      @media (max-width: 40rem) {
-        td { display: block; border-bottom: 0; padding: 0.35rem 0; }
-        td:first-child { width: auto; padding-right: 0; white-space: normal; }
-        td:last-child { padding-bottom: 1.25rem; border-bottom: 1px solid var(--rule); }
-        tr:last-child td:last-child { border-bottom: 0; }
+      td:last-child code { background: none; border: 1px solid var(--rule); padding: 0.08rem 0.3rem; }
+      @media (max-width: 44rem) {
+        td { display: block; padding: 0.9rem 1.15rem; border-top: 0; }
+        td:first-child { width: auto; padding-bottom: 0.5rem; white-space: normal; border-top: 1px solid var(--rule); }
+        tr:first-child td:first-child { border-top: 0; }
+        td:last-child { padding-top: 0; }
       }
 
       code {
@@ -339,8 +373,19 @@
       .chip:hover .tip,
       .chip:focus-visible .tip { opacity: 1; transform: translate(-50%, 0); }
 
+      .hello {
+        padding: 5rem 0;
+        border-top: 1px solid var(--rule);
+        text-align: center;
+      }
+      .hello p {
+        margin: 0 auto;
+        max-width: 34rem;
+        color: var(--muted);
+        font-size: 1.02rem;
+      }
       footer {
-        margin-top: 3rem;
+        margin-top: 0;
         padding: 3rem 0 4.5rem;
         border-top: 1px solid var(--rule);
         color: var(--faint);
@@ -375,20 +420,10 @@
           <button class="icon-link" type="button" id="theme" aria-label="Switch between light and dark" title="Light or dark">
             <svg id="theme-icon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg>
           </button>
-          <a class="icon-link" href="https://github.com/offbeatport/savemytokens" aria-label="GitHub" title="GitHub">
-            <svg width="19" height="19" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
-            </svg>
-          </a>
+          <a class="star" href="https://github.com/offbeatport/savemytokens" aria-label="Star on GitHub"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" /></svg><span>Star</span></a>
           <a class="icon-link" href="https://www.npmjs.com/package/savemytokens" aria-label="npm" title="npm">
             <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M2 5.5h20v13H12v-2.5H7v2.5H2v-13Zm2.5 2.5v8H7v-5.5h2v5.5h1.5V8h-6Zm9 0v8H16v-5.5h2V16h1.5V8h-6Z" />
-            </svg>
-          </a>
-          <a class="icon-link" href="mailto:hello@offbeatport.com" aria-label="Email" title="hello@offbeatport.com">
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-              <rect x="2.5" y="5" width="19" height="14" rx="2.5" />
-              <path d="m3.5 7 8.5 6 8.5-6" />
             </svg>
           </a>
         </nav>
@@ -454,6 +489,22 @@
               <p>Work a session set aside to stay in budget is written down, and handed back the next time you open that project.</p>
             </div>
           </div>
+        </section>
+
+        <section>
+          <h2>In your status line</h2>
+          <figure class="strip">
+            <img
+              src="statusline.svg"
+              width="520"
+              height="130"
+              alt="A Claude Code status line reading: a braille bar three eighths full, then 21%/50%, 5h 42%, in 3h52."
+            />
+            <figcaption>
+              How much of your share you have spent, where the window is, and when it comes back.
+              Pick a shape, arrange the pieces yourself, or install it silent and see none of it.
+            </figcaption>
+          </figure>
         </section>
 
         <section>
@@ -559,9 +610,18 @@
       </main>
     </div>
 
+    <section class="hello">
+      <div class="wrap">
+        <p>
+          For any questions, bugs, or just to say hello, send an email to
+          <a href="mailto:hello@offbeatport.com">hello@offbeatport.com</a>.
+        </p>
+      </div>
+    </section>
+
     <footer>
       <div class="wrap">
-        <span>By <a href="https://offbeatport.com">Offbeatport</a> · MIT · <a href="mailto:hello@offbeatport.com">hello@offbeatport.com</a></span>
+        <span>By <a href="https://offbeatport.com">Offbeatport</a> · MIT</span>
         <nav>
           <a class="icon-link" href="https://github.com/offbeatport/savemytokens" aria-label="GitHub" title="GitHub">
             <svg width="19" height="19" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">

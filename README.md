@@ -16,6 +16,10 @@
 
 <img src="https://raw.githubusercontent.com/offbeatport/savemytokens/main/assets/screenshot.svg" alt="The SaveMyTokens control centre: three live projects sharing one 5-hour window, each row showing its allocation, how much of that allocation it has spent, its priority and its last prompt." width="880">
 
+<br>
+
+<img src="https://raw.githubusercontent.com/offbeatport/savemytokens/main/assets/statusline.svg" alt="A Claude Code status line: a braille bar, then 21%/50%, 5h 42%, in 3h52." width="520">
+
 </div>
 
 <br>

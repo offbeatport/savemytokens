@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadTheme } from "../dist/runtime/kernel.mjs";
+import { DEFAULT_HUD_SEGMENTS, loadTheme, renderSegments } from "../dist/runtime/kernel.mjs";
 import { helpOverlay, labelsFor, planRows } from "../dist/report/views.js";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -210,8 +210,8 @@ function escape(text) {
   return text.replace(/[&<>]/g, (char) => ESCAPE[char] ?? char);
 }
 
-function toSvg(lines, theme, { title }) {
-  const width = Math.round(COLUMNS * CELL + PAD * 2);
+function toSvg(lines, theme, { title, columns = COLUMNS }) {
+  const width = Math.round(columns * CELL + PAD * 2);
   const chrome = 34;
   const height = Math.round(lines.length * LINE + PAD * 2 + chrome);
   const dots = ["#ff5f56", "#ffbd2e", "#27c93f"]
@@ -244,10 +244,10 @@ function toSvg(lines, theme, { title }) {
 `;
 }
 
-function write(name, lines, theme, title) {
+function write(name, lines, theme, title, columns) {
   const file = path.join(ROOT, "assets", name);
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, toSvg(lines, theme, { title }));
+  fs.writeFileSync(file, toSvg(lines, theme, { title, columns }));
   process.stdout.write(`${path.relative(ROOT, file)}  ${lines.length} lines\n`);
 }
 
@@ -273,3 +273,32 @@ write(
 );
 
 write("help.svg", helpOverlay(CONTROL, context(theme, COLUMNS)), theme, "savemytokens · help");
+
+const hudView = {
+  label: "webinvoke",
+  project: "/Users/you/webinvoke",
+  target: 0.5,
+  observed: 0.44,
+  used: 21,
+  pressure: 0.42,
+  priority: "high",
+  now: START,
+  quota: {
+    five_hour: { usedPercent: 42, resetsAt: Math.floor(START / 1000) + 13920 },
+    seven_day: { usedPercent: 18 },
+  },
+};
+
+const STRIP = 64;
+const strip = renderSegments(DEFAULT_HUD_SEGMENTS, hudView, theme, true);
+write(
+  "statusline.svg",
+  [
+    `\u001b[38;2;137;180;250m>\u001b[0m \u001b[38;2;205;214;244mImplement the provider fallback chain end to end\u001b[0m`,
+    "",
+    strip,
+  ],
+  theme,
+  "claude",
+  STRIP,
+);
