@@ -62,7 +62,7 @@
       }
       :root[data-theme="light"] { color-scheme: light; }
       * { box-sizing: border-box; }
-      html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+      html { -webkit-text-size-adjust: 100%; }
       body {
         margin: 0;
         background: var(--paper);
@@ -73,14 +73,8 @@
       a { color: var(--accent); }
 
       .bar {
-        position: sticky;
-        top: 0;
-        z-index: 20;
-        border-bottom: 1px solid transparent;
-        background: color-mix(in srgb, var(--paper) 86%, transparent);
-        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--rule);
       }
-      .bar.stuck { border-bottom-color: var(--rule); }
       .bar .wrap { display: flex; align-items: center; gap: 1.25rem; height: 4rem; }
       .brand {
         display: flex;
@@ -362,13 +356,12 @@
         .shell-title { display: none; }
       }
       @media (prefers-reduced-motion: reduce) {
-        html { scroll-behavior: auto; }
         .tip { transition: none; }
       }
     </style>
   </head>
   <body>
-    <div class="bar" id="bar">
+    <div class="bar">
       <div class="wrap">
         <a class="brand" href="#top">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -628,10 +621,6 @@
         } catch {}
       });
 
-      const bar = document.getElementById("bar");
-      const onScroll = () => bar.classList.toggle("stuck", window.scrollY > 8);
-      addEventListener("scroll", onScroll, { passive: true });
-      onScroll();
     </script>
   </body>
 </html>
