@@ -99,7 +99,7 @@ test("the status line is the only place the published window is captured from", 
   appendTurns(box, [turn(box, "m1", 1000, Date.now() - 60_000)]);
 
   const withoutLimits = runStatusLine(box, {});
-  assert.match(withoutLimits, /webinvoke/, "the session is named even with no window to report");
+  assert.match(withoutLimits, /[\u2800-\u28ff]+ \d+% of/, "the share is still drawn with no window to report");
   assert.equal(fs.existsSync(path.join(box.home, "quota", "claude-code.json")), false, "nothing to capture yet");
 
   const line = runStatusLine(box, rateLimits(42.5));
@@ -119,7 +119,7 @@ test("a status line already in place is wrapped, not replaced", () => {
   );
   appendTurns(box, [turn(box, "m1", 1000, Date.now() - 60_000)]);
   const line = runStatusLine(box, rateLimits(10));
-  assert.match(line, /^mine {2}webinvoke/, "their output comes first, ours is appended");
+  assert.match(line, /^mine {2}[\u2800-\u28ff]/, "their output comes first, ours is appended");
 });
 
 test("session start states the target share and the release protocol", () => {

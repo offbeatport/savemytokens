@@ -1223,3 +1223,10 @@ test("no status line segment reads as jargon", async () => {
     assert.ok(text.length < 40, `${name} is too long for a status line: ${text}`);
   }
 });
+
+test("there is one default status line, not two that disagree", async () => {
+  const { DEFAULT_CONFIG, DEFAULT_HUD_SEGMENTS, HUD_PRESETS, presetMatching } = await import("../dist/runtime/kernel.mjs");
+  assert.deepEqual(DEFAULT_CONFIG.hud.segments, DEFAULT_HUD_SEGMENTS, "a fresh config gets the documented default");
+  assert.deepEqual(DEFAULT_HUD_SEGMENTS, HUD_PRESETS.default, "and the default is the shape called default");
+  assert.equal(presetMatching(DEFAULT_CONFIG.hud.segments), "default", "so settings names it rather than calling it custom");
+});

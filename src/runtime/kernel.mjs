@@ -61,6 +61,8 @@ function listJson(dir) {
   }
 }
 
+const DEFAULT_SEGMENTS = ["bar", "pair", "5h", "reset"];
+
 export const DEFAULT_CONFIG = {
   version: 1,
   createdAt: 0,
@@ -72,7 +74,7 @@ export const DEFAULT_CONFIG = {
   policy: "finish",
   policyFor: {},
   columns: ["allocation", "used", "priority", "last prompt"],
-  hud: { segments: ["project", "pair", "5h", "reset"] },
+  hud: { segments: [...DEFAULT_SEGMENTS] },
   preserveFor: {},
   customAdvice: {},
   wrappedStatusLine: null,
@@ -1287,7 +1289,7 @@ export function formatCountdown(resetsAt, now = Date.now()) {
   if (minutes < 60) return `${minutes}m`;
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
-  if (hours < 24) return rest === 0 ? `${hours}h` : `${hours}h${String(rest).padStart(2, "0")}`;
+  if (hours < 24) return rest === 0 ? `${hours}h` : `${hours}h${String(rest).padStart(2, "0")}m`;
   const days = Math.floor(hours / 24);
   return `${days}d${hours % 24 > 0 ? `${hours % 24}h` : ""}`;
 }
@@ -1327,7 +1329,7 @@ export const HUD_SEGMENTS = [
 ];
 
 export const HUD_PRESETS = {
-  default: ["bar", "pair", "5h", "reset"],
+  default: [...DEFAULT_SEGMENTS],
   minimal: ["bar", "pair"],
   window: ["5h", "reset", "7d"],
   pacing: ["bar", "pace", "5h", "reset"],
@@ -1400,7 +1402,7 @@ const SEGMENTS = {
     return `${paint(theme, pressureRole(view.pressure ?? 0), percentText(value), on)}${paint(theme, "dim", ` of ${percentText((view.target ?? 0) * 100)}`, on)}`;
   },
   bar: (view, theme, on) =>
-    hudMeter(theme, view.pressure ?? 0, 8, pressureRole(view.pressure ?? 0), on, theme.glyphs?.hudFull ?? "\u28ff", theme.glyphs?.hudEmpty ?? "\u28c0"),
+    hudMeter(theme, view.pressure ?? 0, 12, pressureRole(view.pressure ?? 0), on, theme.glyphs?.hudFull ?? "\u28ff", theme.glyphs?.hudEmpty ?? "\u28c0"),
   priority: (view, theme, on) => paint(theme, "dim", String(view.priority ?? "normal").toUpperCase(), on),
   "5h": (view, theme, on) => {
     const window = windowOf(view, "five_hour");
@@ -1422,7 +1424,7 @@ const SEGMENTS = {
   },
   meter5h: (view, theme, on) => {
     const window = windowOf(view, "five_hour");
-    return window ? hudMeter(theme, window.usedPercent / 100, 8, pressureRole(window.usedPercent / 100), on) : "";
+    return window ? hudMeter(theme, window.usedPercent / 100, 12, pressureRole(window.usedPercent / 100), on) : "";
   },
   spark: (view, theme, on) => {
     const points = Array.isArray(view.history) ? view.history.slice(-12) : [];
