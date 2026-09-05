@@ -6,7 +6,7 @@
 
 ### Decide which projects get your Claude allowance.
 
-<sub>A capacity scheduler for Claude Code</sub>
+<sub>A capacity scheduler for Claude Code · Node 18.17+ · nothing leaves your machine</sub>
 
 <a href="https://www.npmjs.com/package/savemytokens"><img src="https://img.shields.io/npm/v/savemytokens?style=flat-square&color=1a7f37&label=npm" alt="npm version"></a>
 <img src="https://img.shields.io/badge/dependencies-0-1a7f37?style=flat-square" alt="zero dependencies">
