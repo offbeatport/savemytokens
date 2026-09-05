@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import readline from "node:readline";
 import { LifetimeCost } from "../../core/cost.js";
@@ -59,7 +60,7 @@ function topBuckets(map: Map<string, Bucket>, ends: number[]) {
 
 function displayPath(filePath: string, cwd: string): string {
   if (cwd && filePath.startsWith(cwd + path.sep)) return filePath.slice(cwd.length + 1);
-  const home = process.env.HOME ?? "";
+  const home = os.homedir();
   if (home && filePath.startsWith(home + path.sep)) return "~/" + filePath.slice(home.length + 1);
   return filePath;
 }
