@@ -304,7 +304,7 @@ test("the first-run dialog fits any terminal it is drawn in", async () => {
 
   for (const columns of [40, 60, 80, 100, 140]) {
     for (const details of [false, true]) {
-    const body = setupScreen(true, theme, false, columns, details);
+    const body = setupScreen(0, theme, false, columns, details);
     const framed = boxed(body, theme, false, columns);
     for (const line of framed) {
       assert.ok(line.length <= columns, `a ${columns}-column terminal overflowed: ${line.length} chars`);
@@ -1084,4 +1084,24 @@ test("the primer names the agent in front of it, not a vendor it assumed", async
   const codex = flat("Codex", "weekly");
   assert.match(codex, /Codex gives you one weekly allowance/);
   assert.doesNotMatch(codex, /Claude|Anthropic|5-hour/, "no trace of the agent it is not talking to");
+});
+
+test("the install dialog offers a silent status line, not only all or nothing", async () => {
+  const { setupScreen } = await import("../dist/commands/control.js");
+  const { loadTheme } = await import("../dist/runtime/kernel.mjs");
+  const theme = loadTheme("default");
+
+  const chosen = (at) => setupScreen(at, theme, false, 76).join("\n");
+  assert.match(chosen(0), /\[ Install \]/, "installing everything is the default");
+  assert.match(chosen(1), /\[ Install, no line \]/, "the middle option installs and stays quiet");
+  assert.match(chosen(1).replace(/\s+/g, " "), /numbers still arrive, nothing is drawn/, "and says what it costs you");
+  assert.match(chosen(2), /\[ Not now \]/);
+
+  for (const at of [0, 1, 2]) {
+    for (const columns of [40, 60, 100]) {
+      for (const line of setupScreen(at, theme, false, columns)) {
+        assert.ok(line.length <= columns, `choice ${at} at ${columns} overflowed: ${line.length}`);
+      }
+    }
+  }
 });

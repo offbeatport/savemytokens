@@ -243,10 +243,14 @@ function wrapPlain(text: string, width: number): string[] {
   return out;
 }
 
-export function setupScreen(choice: boolean, theme: Theme, color: boolean, columns: number, details = false): string[] {
-  const yes = choice ? paint(theme, "ok", "[ Install ]", color) : paint(theme, "dim", "  Install  ", color);
-  const no = choice ? paint(theme, "dim", "  Not now  ", color) : paint(theme, "warn", "[ Not now ]", color);
-  const inner = Math.max(20, Math.min(columns - 6, details ? 60 : 46));
+const SETUP_CHOICES = [
+  ["Install", "hooks and a status line"],
+  ["Install, no line", "hooks and a silent status line: the numbers still arrive, nothing is drawn"],
+  ["Not now", "nothing is written"],
+];
+
+export function setupScreen(choice: number, theme: Theme, color: boolean, columns: number, details = false): string[] {
+  const inner = Math.max(20, Math.min(columns - 6, details ? 60 : 50));
   const out: string[] = [];
   const middle = (line: string): void => {
     out.push(centre(line, inner));
@@ -258,7 +262,19 @@ export function setupScreen(choice: boolean, theme: Theme, color: boolean, colum
     out.push(paint(theme, "fg", line, color));
   }
   out.push("");
-  middle(`${yes}    ${no}`);
+  const labels = SETUP_CHOICES.map(([label]) => label);
+  const button = (at: number) =>
+    at === choice
+      ? paint(theme, at === 2 ? "warn" : "ok", `[ ${labels[at] ?? ""} ]`, color)
+      : paint(theme, "dim", `  ${labels[at] ?? ""}  `, color);
+  const oneLine = labels.reduce((total, label) => total + (label ?? "").length + 6, 0);
+  if (oneLine <= inner) {
+    middle(labels.map((_, at) => button(at)).join(" "));
+  } else {
+    for (let at = 0; at < labels.length; at++) middle(button(at));
+  }
+  out.push("");
+  for (const line of wrapPlain(SETUP_CHOICES[choice]?.[1] ?? "", inner)) middle(paint(theme, "dim", line, color));
   out.push("");
 
   if (details) {
@@ -277,8 +293,7 @@ export function setupScreen(choice: boolean, theme: Theme, color: boolean, colum
   middle(paint(theme, "dim", clipLine(keys, inner), color));
   out.push("");
   const long = "Undo any time: npx savemytokens uninstall";
-  const undo = long.length <= inner ? long : "npx savemytokens uninstall";
-  middle(paint(theme, "dim", undo, color));
+  middle(paint(theme, "dim", long.length <= inner ? long : "npx savemytokens uninstall", color));
   return out;
 }
 
@@ -407,7 +422,7 @@ export async function runControl(options: Options): Promise<void> {
   let mode: "plan" | "settings" | "setup" | "detail" | "primer" = offerInstall ? "setup" : offerPrimer ? "primer" : "plan";
   let setupDetails = false;
   let settingsCursor = 0;
-  let setupChoice = true;
+  let setupChoice = 0;
   let expanded = false;
   let showHelp = false;
   let editing = false;
@@ -523,16 +538,21 @@ export async function runControl(options: Options): Promise<void> {
       }
 
       if (mode === "setup") {
-        if (action.kind === "share") setupChoice = action.delta > 0 ? false : true;
-        else if (action.kind === "up" || action.kind === "down") setupChoice = !setupChoice;
+        if (action.kind === "share") setupChoice = (setupChoice + (action.delta > 0 ? 1 : 2)) % 3;
+        else if (action.kind === "up" || action.kind === "down") setupChoice = (setupChoice + 1) % 3;
         else if (action.kind === "state" && action.state === "done") setupDetails = !setupDetails;
         else if (action.kind === "resume" || action.kind === "save") {
           const stored = loadConfig();
           stored.offeredInstallAt = Date.now();
           saveConfig(stored);
-          if (setupChoice) {
+          if (setupChoice < 2) {
             try {
               runInstall({ dryRun: false, force: false, rules: false, quiet: true });
+              if (setupChoice === 1) {
+                const after = loadConfig();
+                after.hud = { ...after.hud, segments: [] };
+                saveConfig(after);
+              }
             } catch {}
           }
           mode = offerPrimer ? "primer" : "plan";
