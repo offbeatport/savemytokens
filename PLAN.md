@@ -4,12 +4,12 @@
 
 **Tell SaveMyTokens what matters. It makes your scarce AI capacity go there.**
 
-A free local utility for developers running several Claude Code sessions at once. It grows into a
-scheduler for scarce AI capacity, and then into an economic control plane for autonomous software.
+A local utility for developers running several Claude Code sessions at once, built to generalise
+into a scheduler for scarce AI capacity of any kind.
 
 - Resource scheduler, not project manager.
 - No permanent daemon. Hooks, the status line, and shared local state do the work.
-- Individual developers and HN/GitHub are the distribution wedge, not the final market.
+- Published numbers only. If a figure cannot be read, it is not shown.
 
 The scheduler is the product. The waste-audit engine is now `savemytokens audit`, kept because its
 measurements are the scheduler's meter and its findings are reallocation signals, not because
@@ -301,13 +301,12 @@ Add adapters, not concepts. Each new provider supplies a `{ Resource[], Meter, E
 
 ## V3: production agent economics
 
-Same loop, different claimants: deployed agents, tasks, customers. Budgets per agent, task and
-customer; limits on time, model calls, tool calls, external API spend and compute; kill switches,
-approval thresholds, team policy, audit history, margin controls.
+Same loop, different claimants. A deployed agent, a task or a customer is a `Claimant` like a Claude
+session is, so budgets, priorities and redistribution work unchanged. What each needs is a `Resource`
+of its own: time, model calls, tool calls, external API spend, compute. The enforcement levels
+already declared per adapter are what would carry kill switches and approval thresholds.
 
-Buyers: AI-native SaaS, agent platforms, teams running production agents. Monetisation: free local
-V0; paid team scheduler; production SDK on usage plus subscription; enterprise policy, audit and
-approvals.
+Nothing here requires rewriting the loop, which is the point of the abstraction.
 
 ---
 
@@ -342,4 +341,5 @@ budget-aware guidance, and eventually enforcement.
 Claude local scheduler → local enforcement → cross-platform capacity scheduler → production economics
 ```
 
-Each step adds a resource type or an enforcement level. None of them requires rewriting the loop.
+Each step adds a resource type or an enforcement level. None of them requires rewriting the loop,
+which is the test every design decision here was made against.
