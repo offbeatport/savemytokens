@@ -27,7 +27,9 @@ npx savemytokens
 ```
 
 That is the whole install. It opens the control centre and, on the first run, offers to add four
-hooks and a status line to Claude Code's `settings.json`, backing the file up first.
+hooks and a status line to Claude Code's `settings.json`, backing the file up first. Prefer it
+installed once rather than fetched each time? `npm i -g savemytokens`, then the command is just
+`savemytokens`.
 
 **Say yes.** The status line is the only place Anthropic publishes your 5h and weekly usage, and it
 is what proves a session is still open, so nothing is live without it. Changed your mind?
