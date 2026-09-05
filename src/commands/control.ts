@@ -149,15 +149,20 @@ function footerFor(control: ControlPlan, context: ViewContext, showHelp: boolean
 
 const HINTS = [
   "↑↓ select",
-  "⏎ open",
   "←→ target",
+  "a promote",
+  "x drop",
   "p priority",
+  "⏎ open",
   "f pin",
-  "x park",
-  "P settings",
+  ", settings",
   "? help",
   "q quit",
 ];
+
+export function footerKeys(columns: number): string {
+  return keyHints(HINTS, columns);
+}
 
 function keyHints(hints: string[], columns: number): string {
   for (let keep = hints.length; keep > 1; keep--) {
@@ -420,7 +425,7 @@ export async function runControl(options: Options): Promise<void> {
               paint(
                 context.theme,
                 "dim",
-                keyHints(["↑↓ project", "←→ target", "p priority", "f pin", "x park", "d done", "esc back", "q quit"], context.columns),
+                keyHints(["↑↓ project", "←→ target", "p priority", "f pin", "d done", "esc back", "q quit"], context.columns),
                 context.color,
               ),
             ]

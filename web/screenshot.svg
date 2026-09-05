@@ -23,6 +23,6 @@
   <text x="20" y="347.75" xml:space="preserve"></text>
   <text x="20" y="366.5" xml:space="preserve"><tspan fill="#cdd6f4">  </tspan><tspan fill="rgb(147,153,178)">3 of 4 open, across 4 sessions, 1 waiting.</tspan></text>
   <text x="20" y="385.25" xml:space="preserve"><tspan fill="rgb(147,153,178)">────────────────────────────────────────────────────────────────────────────────────────────────────────────────</tspan></text>
-  <text x="20" y="404" xml:space="preserve"><tspan fill="rgb(147,153,178)">  ↑↓ select   ⏎ open   ←→ target   p priority   a promote   x drop   f pin   P settings   ? help   q quit</tspan></text>
+  <text x="20" y="404" xml:space="preserve"><tspan fill="rgb(147,153,178)">  ↑↓ select   ←→ target   a promote   x drop   p priority   ⏎ open   f pin   , settings   ? help   q quit</tspan></text>
   </g>
 </svg>

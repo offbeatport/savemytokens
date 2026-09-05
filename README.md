@@ -62,8 +62,8 @@ is what proves a session is still open, so nothing is live without it. Changed y
 | `npx savemytokens uninstall` | remove every trace · `--purge` drops the data too |
 
 Inside the control centre, `?` lists every key. The ones worth knowing: `←→` moves an allocation,
-`p` cycles priority, `a` promotes a project and `x` drops it, `⏎` opens a project's sessions,
-`P` opens settings.
+`a` promotes a project from RECENT and `x` drops one, `p` cycles priority, `⏎` opens a project's
+sessions, `,` opens settings.
 
 ## Where the numbers come from
 

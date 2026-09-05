@@ -266,7 +266,7 @@ write(
   "screenshot.svg",
   frame(
     planRows(CONTROL, context(theme, COLUMNS)),
-    `[38;2;147;153;178m  ↑↓ select   ⏎ open   ←→ target   p priority   a promote   x drop   f pin   P settings   ? help   q quit[0m`,
+    `[38;2;147;153;178m  ↑↓ select   ←→ target   a promote   x drop   p priority   ⏎ open   f pin   , settings   ? help   q quit[0m`,
   ),
   theme,
   "savemytokens",

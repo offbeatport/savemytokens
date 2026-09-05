@@ -104,6 +104,7 @@ export function actionFor(key: string, mode: "plan" | "prefs", step: number): Ac
     case "r":
       return { kind: "refresh" };
     case "P":
+    case ",":
       return { kind: "preferences" };
     case "?":
       return { kind: "help" };
@@ -111,8 +112,6 @@ export function actionFor(key: string, mode: "plan" | "prefs", step: number): Ac
       return { kind: "pin" };
     case "x":
       return { kind: "park" };
-    case "A":
-      return { kind: "state", state: "active" };
     case "m":
       return { kind: "expand" };
     case "\r":

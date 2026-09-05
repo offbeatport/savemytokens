@@ -845,10 +845,11 @@ test("the help page fits, and every key it lists is a key that works", async () 
     expanded: false,
     labels: new Map(),
   }).join("\n");
-  for (const key of ["u", "e", "p", "f", "x", "d", "b", "a", "n", "m", "P", "r", "q"]) {
+  for (const key of ["u", "e", "p", "f", "x", "d", "b", "a", "n", "m", "P", ",", "r", "q"]) {
     assert.ok(listed.includes(key), `${key} is documented`);
     assert.ok(keyActions(key).length > 0, `${key} actually does something`);
   }
+  assert.deepEqual(keyActions("A"), [], "no shifted twin of a key that already means something else");
 });
 
 test("no em dash anywhere in the source or the docs", async () => {
@@ -902,5 +903,23 @@ test("both tables share a left edge, and the prompt column does not drift far", 
       `the prompt columns stay within sight of each other at ${columns}: ${prompt.join(" and ")}`,
     );
     for (const line of lines) assert.ok(line.length <= columns, `${columns} overflowed: ${line.length}`);
+  }
+});
+
+test("the footer offers the keys the plan screen is actually for", async () => {
+  const { keyActions } = await import("../dist/scheduler/keys.js");
+  const { footerKeys } = await import("../dist/commands/control.js");
+  for (const width of [60, 80, 100, 140]) {
+    const line = footerKeys(width);
+    assert.ok(line.length <= width, `${width} overflowed: ${line.length}`);
+    assert.match(line, /q quit/, "quitting is offered at every width");
+    if (width >= 80) {
+      for (const key of ["a promote", "x drop", "←→ target"]) {
+        assert.ok(line.includes(key), `${key} survives at ${width} columns`);
+      }
+    }
+  }
+  for (const key of ["a", "x", "p", "f", ",", "q"]) {
+    assert.ok(keyActions(key).length > 0, `${key} in the footer does something`);
   }
 });
