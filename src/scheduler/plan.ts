@@ -137,7 +137,7 @@ export function joinPlan(project: string, adapter = "claude-code"): void {
 }
 
 export function leavePlan(project: string, adapter = "claude-code"): void {
-  upsertProject(adapter, project, { kept: false, pinned: false, share: null });
+  upsertProject(adapter, project, { kept: false });
 }
 
 export function activeViews(plan: SchedulePlanView): ProjectView[] {

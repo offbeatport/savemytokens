@@ -845,7 +845,7 @@ test("the help page fits, and every key it lists is a key that works", async () 
     expanded: false,
     labels: new Map(),
   }).join("\n");
-  for (const key of ["u", "e", "p", "f", "x", "d", "b", "a", "n", "m", "P", ",", "r", "q"]) {
+  for (const key of ["u", "e", "p", "f", "x", "d", "b", "a", "n", "m", "s", "r", "q", " "]) {
     assert.ok(listed.includes(key), `${key} is documented`);
     assert.ok(keyActions(key).length > 0, `${key} actually does something`);
   }
@@ -914,12 +914,24 @@ test("the footer offers the keys the plan screen is actually for", async () => {
     assert.ok(line.length <= width, `${width} overflowed: ${line.length}`);
     assert.match(line, /q quit/, "quitting is offered at every width");
     if (width >= 80) {
-      for (const key of ["a promote", "x drop", "←→ target"]) {
+      for (const key of ["space move", "←→ target", "p priority"]) {
         assert.ok(line.includes(key), `${key} survives at ${width} columns`);
       }
     }
   }
-  for (const key of ["a", "x", "p", "f", ",", "q"]) {
+  for (const key of ["a", "x", "p", "f", "s", ",", "P", " ", "q"]) {
     assert.ok(keyActions(key).length > 0, `${key} in the footer does something`);
   }
+});
+
+test("space moves a project between the tables, and remembers its target", async () => {
+  const { inPlan } = await import("../dist/scheduler/plan.js");
+  const settings = { share: 0.3, priority: "normal", cap: null, pinned: false, parked: false, kept: null };
+  const row = (bucket, kept) => ({ bucket, settings: { ...settings, kept }, allocation: { target: 0 } });
+
+  assert.equal(inPlan(row("recent", null)), true, "a held share puts it in ACTIVE to begin with");
+  assert.equal(inPlan(row("recent", false)), false, "dropping it sends it down");
+  assert.equal(row("recent", false).settings.share, 0.3, "and the target it held is kept, not erased");
+  assert.equal(inPlan(row("recent", true)), true, "promoting it brings it back");
+  assert.equal(inPlan(row("active", false)), true, "an open session is in ACTIVE whatever you pressed");
 });

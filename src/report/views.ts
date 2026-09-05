@@ -293,7 +293,7 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
   if (set.members.length === 0) {
     out.push(`  ${paint(context.theme, "dim", "Nothing sharing the window yet. Open Claude Code in a project, or press a on one below.", context.color)}`);
   } else {
-    out.push(sectionTitle("ACTIVE", set.members.length, "sharing the window · x drops one", context));
+    out.push(sectionTitle("ACTIVE", set.members.length, "sharing the window · space drops one", context));
     out.push(headerRow(context, widths, shown));
     for (const view of set.members) {
       if (printed < budget) out.push(row(view, index, context, widths, shown));
@@ -304,7 +304,7 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
 
   if (set.candidates.length > 0) {
     out.push("");
-    out.push(sectionTitle("RECENT", set.candidates.length, "holding nothing · a moves one up", context));
+    out.push(sectionTitle("RECENT", set.candidates.length, "holding nothing · space moves one up", context));
     out.push(idleHeaderRow(context, widths, shown));
     for (const view of set.candidates) {
       if (printed < budget) out.push(idleRow(view, index, context, widths, now, shown));
@@ -398,13 +398,13 @@ const HELP_KEYS: Array<[string, string]> = [
   ["u", "unset this target: back to an even split with the rest"],
   ["e", "unset every target at once"],
   ["p", "priority: high → normal → low, who gets spare capacity first"],
-  ["a", "add a project to the plan"],
-  ["x", "take one out of the plan"],
+  ["space", "move a project between ACTIVE and RECENT, either way"],
+  ["a x", "the same move, said explicitly: promote, drop"],
   ["f", "pin the row to the top of the list"],
   ["d", "mark it done: hands its unspent share to the others now"],
   ["b n", "mark it blocked, or needs-more"],
   ["m", "show every project, not just the first screenful"],
-  [", P", "settings: columns, theme, status line, what to protect"],
+  ["s", "settings: columns, theme, status line, what to protect"],
   ["r", "read everything again now"],
   ["? q", "this help · quit"],
 ];
@@ -459,7 +459,7 @@ export function helpOverlay(control: ControlPlan, context: ViewContext): string[
   out.push(...helpSection("the two tables", context));
   out.push(...helpProse("ACTIVE is what shares your window. A project joins it on its own the moment you open Claude Code there, and stays after you close it, holding whatever target you gave it.", context));
   out.push("");
-  out.push(...helpProse("RECENT is everything else SaveMyTokens has seen. Nothing there holds a share. Press a to move one up into ACTIVE, x to send one back down.", context));
+  out.push(...helpProse("RECENT is everything else SaveMyTokens has seen. Nothing there holds a share. Space moves the selected project between the two, either way, and a target you set is remembered if it goes back down.", context));
   out.push("");
   out.push(...helpProse("A filled dot means a session is open there right now. Only those spend the window, so one sitting in ACTIVE with nothing running lends its share to the rest and takes it back when you return.", context));
 

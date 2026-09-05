@@ -19,6 +19,7 @@ import {
   setPriority,
   setShare,
   setPinned,
+  inPlan,
   joinPlan,
   resetPreferences,
   leavePlan,
@@ -150,12 +151,11 @@ function footerFor(control: ControlPlan, context: ViewContext, showHelp: boolean
 const HINTS = [
   "↑↓ select",
   "←→ target",
-  "a promote",
-  "x drop",
+  "space move",
   "p priority",
   "⏎ open",
   "f pin",
-  ", settings",
+  "s settings",
   "? help",
   "q quit",
 ];
@@ -612,6 +612,14 @@ export async function runControl(options: Options): Promise<void> {
         case "add":
           if (view) {
             joinPlan(view.project, control.provider.id);
+            selectedId = view.project;
+            refresh();
+          }
+          break;
+        case "toggleMember":
+          if (view) {
+            if (inPlan(view)) leavePlan(view.project, control.provider.id);
+            else joinPlan(view.project, control.provider.id);
             selectedId = view.project;
             refresh();
           }
