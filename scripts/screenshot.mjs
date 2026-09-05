@@ -314,3 +314,31 @@ const full = planRows(CONTROL, context(theme, EXAMPLE));
 const from = full.findIndex((line) => line.includes("ACTIVE"));
 const to = full.findIndex((line, at) => at > from && line.includes("RECENT"));
 write("example.svg", full.slice(from, to - 1), theme, "savemytokens", EXAMPLE);
+
+const CARD_W = 1280;
+const CARD_H = 640;
+const shotLines = frame(planRows(CONTROL, context(theme, COLUMNS)).slice(0, 12), "");
+const body = shotLines.slice(0, -2);
+const shot = toSvg(body, theme, { title: "savemytokens", columns: COLUMNS });
+const inner = shot.replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, "");
+const shotW = Math.round(COLUMNS * CELL + PAD * 2);
+const shotH = Math.round(body.length * LINE + PAD * 2 + 34);
+const scale = Math.min((CARD_W - 140) / shotW, (CARD_H - 250) / shotH);
+const x = (CARD_W - shotW * scale) / 2;
+
+fs.writeFileSync(
+  path.join(ROOT, "assets", "social.svg"),
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${CARD_W}" height="${CARD_H}" viewBox="0 0 ${CARD_W} ${CARD_H}">
+  <rect width="${CARD_W}" height="${CARD_H}" fill="#0d0d14"/>
+  <g transform="translate(${(CARD_W - 340) / 2} 62)">
+    <g transform="translate(0 -6) scale(1.7)" fill="none" stroke="#89b4fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M16.924 11.132a5 5 0 1 0 -4.056 5.792"/><path d="M3 12a9 9 0 1 0 9 -9"/>
+    </g>
+    <text x="56" y="30" font-family="${FONT}" font-size="34" font-weight="700" fill="#e9e9f0">SaveMyTokens</text>
+  </g>
+  <text x="${CARD_W / 2}" y="132" text-anchor="middle" font-family="${FONT}" font-size="19" fill="#9a9aac">Decide which projects get your Claude allowance</text>
+  <g transform="translate(${x} 172) scale(${scale})">${inner}</g>
+</svg>
+`,
+);
+process.stdout.write("assets/social.svg  " + CARD_W + "x" + CARD_H + "\n");
