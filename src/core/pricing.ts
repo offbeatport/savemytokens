@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import type { Usage } from "./types.js";
 
@@ -42,7 +43,7 @@ let overrides: Record<string, Rate> | null = null;
 function loadOverrides(): Record<string, Rate> {
   if (overrides) return overrides;
   overrides = {};
-  const home = process.env.SAVEMYTOKENS_HOME || path.join(process.env.HOME ?? "", ".savemytokens");
+  const home = process.env.SAVEMYTOKENS_HOME || path.join(os.homedir(), ".savemytokens");
   try {
     const parsed = JSON.parse(fs.readFileSync(path.join(home, "pricing.json"), "utf8"));
     if (parsed && typeof parsed === "object") overrides = parsed as Record<string, Rate>;

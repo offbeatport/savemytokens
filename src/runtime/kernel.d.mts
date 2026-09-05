@@ -185,6 +185,7 @@ export function loadClaimant(adapter: string, id: string): ClaimantRecord | null
 export function upsertClaimant(adapter: string, id: string, patch?: Partial<ClaimantRecord>): ClaimantRecord;
 export function loadClaimants(adapter: string): ClaimantRecord[];
 export const PROJECT_DIR: string;
+export function projectLabel(project: string): string;
 export function projectKey(project: string): string;
 export function loadProject(adapter: string, project: string): ProjectSettings;
 export function upsertProject(adapter: string, project: string, patch?: Partial<ProjectSettings>): ProjectSettings;

@@ -1124,3 +1124,31 @@ test("the install dialog is the same size whichever option is highlighted", asyn
     }
   }
 });
+
+test("a project label is the last folder, on either kind of path", async () => {
+  const { projectLabel } = await import("../dist/runtime/kernel.mjs");
+  assert.equal(projectLabel("/Users/you/webinvoke"), "webinvoke");
+  assert.equal(projectLabel("C:\\Users\\you\\webinvoke"), "webinvoke", "a Windows path is not one long label");
+  assert.equal(projectLabel("D:\\work\\a b\\proj"), "proj");
+  assert.equal(projectLabel("/Users/you/webinvoke/"), "webinvoke", "a trailing separator is not a folder");
+  assert.equal(projectLabel(""), "unknown");
+  assert.equal(projectLabel(null), "unknown");
+});
+
+test("nothing reads HOME directly, because Windows does not set it", async () => {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const root = new URL("../src", import.meta.url).pathname;
+  const offenders = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.(ts|mjs)$/.test(entry.name) && /process\.env\.HOME\b/.test(fs.readFileSync(full, "utf8"))) {
+        offenders.push(path.relative(root, full));
+      }
+    }
+  };
+  walk(root);
+  assert.deepEqual(offenders, [], "use os.homedir(), which is right on every platform");
+});

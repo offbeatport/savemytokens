@@ -304,12 +304,18 @@ export function effectiveState(claimant, now = Date.now(), strict = false) {
   return claimant.state;
 }
 
+export function projectLabel(project) {
+  const value = String(project || "");
+  const parts = value.split(/[\\/]+/).filter(Boolean);
+  return parts[parts.length - 1] || "unknown";
+}
+
 export function projectKey(project) {
   return String(project || "unknown").replace(/[^a-zA-Z0-9]/g, "-").slice(-90);
 }
 
 function blankProject(project) {
-  return { schema: 1, project, label: project ? project.split("/").filter(Boolean).pop() : "unknown", share: null, priority: "normal", cap: null, pinned: false, parked: false, kept: null };
+  return { schema: 1, project, label: project ? projectLabel(project) : "unknown", share: null, priority: "normal", cap: null, pinned: false, parked: false, kept: null };
 }
 
 export function loadProject(adapter, project) {
@@ -867,7 +873,7 @@ export function schedule(adapter, now = Date.now(), key = "five_hour", quotaOver
 
     return {
       project: group.project,
-      label: group.settings.label || group.project.split("/").filter(Boolean).pop() || group.project,
+      label: group.settings.label || projectLabel(group.project),
       settings: group.settings,
       sessions,
       allocation,
@@ -891,7 +897,7 @@ export function schedule(adapter, now = Date.now(), key = "five_hour", quotaOver
     const settings = loadProject(adapter, seen.project);
     projects.push({
       project: seen.project,
-      label: settings.label || seen.label || seen.project.split("/").filter(Boolean).pop() || seen.project,
+      label: settings.label || seen.label || projectLabel(seen.project),
       settings,
       sessions: [],
       allocation: { claimantId: seen.project, target: 0, pinned: false, pool: 0, released: true },
