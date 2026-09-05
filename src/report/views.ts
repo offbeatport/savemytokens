@@ -170,7 +170,7 @@ function row(
     context.interactive && context.selected === index ? paint(theme, "accent", theme.tui?.cursor ?? "❯", color) : " ";
   const pin = view.settings.pinned ? paint(theme, "accent", theme.tui?.pin ?? "★", color) : " ";
   const open = view.bucket === "active";
-  const dot = open ? paint(theme, "ok", "●", color) : paint(theme, "dim", "○", color);
+  const dot = open ? " " : paint(theme, "dim", "○", color);
   const sessions = view.liveSessions > 1 ? paint(theme, "dim", `${view.liveSessions}`, color) : " ";
   const label = padEndVisible(clip(view.label, widths.label - 2), widths.label - 2);
   const held = view.allocation.target > 0 ? view.allocation.target : (view.settings.share ?? 0);
