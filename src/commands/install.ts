@@ -129,6 +129,10 @@ export function rulesInstalled(): boolean {
   return readMemory().includes(RULES_START);
 }
 
+export function claudeCodeFound(): boolean {
+  return fs.existsSync(CLAUDE_HOME) || fs.existsSync(SETTINGS);
+}
+
 export function hookInstalled(): boolean {
   return fs.existsSync(hookPath("hook.mjs"));
 }
@@ -176,6 +180,7 @@ export function runInstall(options: InstallOptions): void {
     process.exitCode = 1;
     return;
   }
+  const foundClaudeCode = claudeCodeFound();
   const settings = parsed;
   const existingStatusLine = settings.statusLine?.command;
   const ours = ourCommand(existingStatusLine);
@@ -262,6 +267,12 @@ export function runInstall(options: InstallOptions): void {
 
   out.push(`${green("Installed.")} It takes effect in sessions you start from now on.`);
   out.push(dim("  Open the control centre with: npx savemytokens"));
+  if (!foundClaudeCode) {
+    out.push("");
+    out.push(yellow("  Claude Code was not found."));
+    out.push(dim(`  Nothing was seen at ${CLAUDE_HOME}, so this machine may not have it installed.`));
+    out.push(dim("  The hooks are in place and will start working the first time you run it."));
+  }
   out.push("");
   if (!options.quiet) process.stdout.write(out.join("\n") + "\n");
 }
