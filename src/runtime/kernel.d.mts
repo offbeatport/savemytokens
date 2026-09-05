@@ -115,6 +115,7 @@ export interface Config {
   createdAt: number;
   preferencesSetAt: number;
   offeredInstallAt: number;
+  primerSeenAt: number;
   policy: string;
   policyFor: Record<string, string>;
   theme: { tui: string; hud: string };

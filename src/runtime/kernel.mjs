@@ -66,6 +66,7 @@ export const DEFAULT_CONFIG = {
   createdAt: 0,
   preferencesSetAt: 0,
   offeredInstallAt: 0,
+  primerSeenAt: 0,
   theme: { tui: "default", hud: "default" },
   layout: { hud: "allocation" },
   policy: "finish",

@@ -152,6 +152,7 @@ const HINTS = [
   "space up",
   "x down",
   "p priority",
+  "e even",
   "⏎ open",
   "m all",
   "f pin",
@@ -285,6 +286,43 @@ function clipLine(text: string, width: number): string {
   return text.length <= width ? text : `${text.slice(0, Math.max(0, width - 1))}…`;
 }
 
+export function primerScreen(theme: Theme, color: boolean, columns: number): string[] {
+  const inner = Math.max(24, Math.min(columns - 8, 54));
+  const out: string[] = [];
+  const middle = (line: string): void => {
+    out.push(centre(line, inner));
+  };
+  const flush = (text: string, role: string): void => {
+    for (const line of wrapPlain(text, inner)) out.push(paint(theme, role, line, color));
+  };
+  const key = (name: string, what: string): void => {
+    const gutter = 7;
+    const [first, ...rest] = wrapPlain(what, inner - gutter);
+    out.push(`${paint(theme, "accent", padEndVisible(name, gutter - 1), color)} ${paint(theme, "fg", first ?? "", color)}`);
+    for (const line of rest) out.push(`${" ".repeat(gutter)}${paint(theme, "fg", line, color)}`);
+  };
+
+  middle(paint(theme, "accent", "One window, split by you", color));
+  out.push("");
+  flush(
+    "Anthropic gives you one 5-hour allowance across every Claude Code window you have open. This divides it between your projects.",
+    "dim",
+  );
+  out.push("");
+  key("← →", "move a project's share. The others move to fit, so the window always adds up.");
+  out.push("");
+  key("e", "back to an even split.");
+  out.push("");
+  key("p", "priority: who receives what a finished project hands back.");
+  out.push("");
+  key("space", "move a project between ACTIVE and RECENT.");
+  out.push("");
+  flush("Each session is told the share it is working within, and to wind down as it runs out.", "dim");
+  out.push("");
+  middle(paint(theme, "ok", "[ Got it ]", color));
+  return out;
+}
+
 function tightPreview(control: ControlPlan): TightPreview {
   const now = control.schedule.now;
   const project =
@@ -361,7 +399,8 @@ export async function runControl(options: Options): Promise<void> {
 
   const config = loadConfig();
   const offerInstall = !hookInstalled() && !config.offeredInstallAt;
-  let mode: "plan" | "settings" | "setup" | "detail" = offerInstall ? "setup" : "plan";
+  const offerPrimer = !config.primerSeenAt;
+  let mode: "plan" | "settings" | "setup" | "detail" | "primer" = offerInstall ? "setup" : offerPrimer ? "primer" : "plan";
   let setupDetails = false;
   let settingsCursor = 0;
   let setupChoice = true;
@@ -400,6 +439,8 @@ export async function runControl(options: Options): Promise<void> {
       ? helpOverlay(control, context)
       : mode === "setup"
         ? setupScreen(setupChoice, context.theme, context.color, context.columns, setupDetails)
+        : mode === "primer"
+          ? primerScreen(context.theme, context.color, context.columns)
         : mode === "settings"
           ? renderSettings(
               control.config,
@@ -419,7 +460,9 @@ export async function runControl(options: Options): Promise<void> {
     const footer =
       mode === "setup" && !showHelp
         ? [paint(context.theme, "dim", keyHints(["← → choose", "enter confirm", "d what changes", "q quit"], context.columns), context.color)]
-        : mode === "detail" && !showHelp
+        : mode === "primer"
+        ? [paint(context.theme, "dim", keyHints(["any key to start"], context.columns), context.color)]
+      : mode === "detail" && !showHelp
           ? [
               paint(
                 context.theme,
@@ -440,8 +483,8 @@ export async function runControl(options: Options): Promise<void> {
             ),
           ]
         : footerFor(context, showHelp);
-    const title = mode === "setup" ? "setup" : mode === "settings" ? "settings" : mode === "detail" ? "session" : "plan";
-    process.stdout.write(CLEAR + fullScreen(control, body, footer, title, context, mode === "setup" && !showHelp));
+    const title = mode === "primer" ? "how it works" : mode === "setup" ? "setup" : mode === "settings" ? "settings" : mode === "detail" ? "session" : "plan";
+    process.stdout.write(CLEAR + fullScreen(control, body, footer, title, context, (mode === "setup" || mode === "primer") && !showHelp));
   };
 
   const refresh = (): void => {
@@ -488,15 +531,24 @@ export async function runControl(options: Options): Promise<void> {
               runInstall({ dryRun: false, force: false, rules: false, quiet: true });
             } catch {}
           }
-          mode = "plan";
+          mode = offerPrimer ? "primer" : "plan";
           refresh();
         } else if (action.kind === "skip") {
           const stored = loadConfig();
           stored.offeredInstallAt = Date.now();
           saveConfig(stored);
-          mode = "plan";
+          mode = offerPrimer ? "primer" : "plan";
           refresh();
         }
+        return true;
+      }
+
+      if (mode === "primer") {
+        const stored = loadConfig();
+        stored.primerSeenAt = Date.now();
+        saveConfig(stored);
+        mode = "plan";
+        refresh();
         return true;
       }
 

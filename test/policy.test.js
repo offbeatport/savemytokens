@@ -1049,3 +1049,24 @@ test("allocation holds its invariants across every shape of plan", async () => {
     for (const target of targets.values()) assert.ok(target.target >= -1e-9, "no negative target");
   }
 });
+
+test("the primer fits every terminal and names the keys it is there to teach", async () => {
+  const { boxed, primerScreen } = await import("../dist/commands/control.js");
+  const { loadTheme } = await import("../dist/runtime/kernel.mjs");
+  const { keyActions } = await import("../dist/scheduler/keys.js");
+  const theme = loadTheme("default");
+
+  for (const columns of [40, 60, 80, 100, 140]) {
+    const framed = boxed(primerScreen(theme, false, columns), theme, false, columns);
+    for (const line of framed) assert.ok(line.length <= columns, `${columns} overflowed: ${line.length}`);
+    assert.equal(framed[0].length, framed[framed.length - 1].length, "the box closes as it opened");
+    const text = framed.join("\n");
+    assert.match(text, /← →/, "the key the product exists for is named first");
+    assert.match(text, /5-hour/, "and what is being divided is explained");
+    assert.match(text, /\[ Got it \]/);
+  }
+
+  for (const key of ["e", "p", " "]) {
+    assert.ok(keyActions(key).length > 0, `${key}, taught by the primer, does something`);
+  }
+});
