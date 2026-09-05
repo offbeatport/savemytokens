@@ -342,3 +342,32 @@ fs.writeFileSync(
 `,
 );
 process.stdout.write("assets/social.svg  " + CARD_W + "x" + CARD_H + "\n");
+
+const COMMANDS = [
+  ["", "the control centre"],
+  ["status", "one plain-text snapshot · --json for a script"],
+  ["share buydiff 40", "pin a project's allocation"],
+  ["priority buydiff high", "who gets spare capacity first"],
+  ["release buydiff", "hand its unused share back"],
+  ["policy strict", "wind down earlier when it gets tight"],
+  ["hud", "pick a status line, previewed on your numbers"],
+  ["theme", "eighteen themes, or write your own"],
+  ["defer", "work a session pushed to next time"],
+  ["audit", "what your last 7 days wasted"],
+  ["privacy", "every file it reads and writes"],
+  ["uninstall", "remove every trace · --purge drops the data too"],
+];
+
+const CMD_COL = Math.max(...COMMANDS.map(([name]) => `npx savemytokens ${name}`.trimEnd().length)) + 3;
+const CMD_W = CMD_COL + Math.max(...COMMANDS.map(([, what]) => what.length)) + 3;
+write(
+  "commands.svg",
+  COMMANDS.map(([name, what]) => {
+    const call = `npx savemytokens ${name}`.trimEnd();
+    const pad = " ".repeat(CMD_COL - call.length);
+    return `  \u001b[38;2;137;180;250m$\u001b[0m \u001b[38;2;205;214;244m${call}\u001b[0m${pad}\u001b[38;2;147;153;178m${what}\u001b[0m`;
+  }),
+  theme,
+  "savemytokens",
+  CMD_W,
+);

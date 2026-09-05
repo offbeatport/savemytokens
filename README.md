@@ -85,20 +85,11 @@ them. Nothing here required you to guess how many tokens anything costs.
 
 ## Commands
 
-| | |
-| :-- | :-- |
-| `npx savemytokens` | the control centre |
-| `npx savemytokens status` | one plain-text snapshot · `--json` for a script |
-| `npx savemytokens share buydiff 40` | pin a project's allocation |
-| `npx savemytokens priority buydiff high` | who gets spare capacity first |
-| `npx savemytokens release buydiff` | hand its unused share back |
-| `npx savemytokens policy strict` | wind down earlier when it gets tight |
-| `npx savemytokens hud` | pick a status line, previewed on your numbers |
-| `npx savemytokens theme` | eighteen themes, or write your own |
-| `npx savemytokens defer` | work a session pushed to next time |
-| `npx savemytokens audit` | what your last 7 days wasted |
-| `npx savemytokens privacy` | every file it reads and writes |
-| `npx savemytokens uninstall` | remove every trace · `--purge` drops the data too |
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/offbeatport/savemytokens/main/assets/commands.svg" alt="The command list: npx savemytokens for the control centre, status, share, priority, release, policy, hud, theme, defer, audit, privacy and uninstall." width="723">
+
+</div>
 
 `--codex` points any of these at Codex instead, which publishes its own rate limits and needs no
 hooks. It is metered and shown, but nothing can be injected into it, so there is no advice.
