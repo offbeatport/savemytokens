@@ -40,7 +40,7 @@
     "build": "tsc -p tsconfig.json && node scripts/copy-runtime.mjs",
     "dev": "npm run build && node dist/cli.js",
     "test": "npm run build && node --test test/*.test.js",
-    "screenshot": "npm run build && COLORTERM=truecolor node scripts/screenshot.mjs && rsvg-convert -w 1280 -h 640 assets/social.svg -o assets/social.png",
+    "screenshot": "npm run build && COLORTERM=truecolor node scripts/screenshot.mjs && rsvg-convert -w 1280 -h 640 assets/social.svg -o assets/social.png && cp assets/screenshot.svg assets/statusline.svg web/ && node scripts/stamp-assets.mjs",
     "prepublishOnly": "npm run build && npm test",
     "postpublish": "node scripts/release.mjs",
     "release": "node scripts/release.mjs",
