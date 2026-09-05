@@ -171,8 +171,20 @@
       table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
       td { padding: 1rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
       tr:last-child td { border-bottom: 0; }
-      td:first-child { width: 10.5rem; padding-right: 1.5rem; font-weight: 600; }
+      td:first-child {
+        width: 15rem;
+        padding-right: 2rem;
+        font-weight: 600;
+        white-space: nowrap;
+      }
       td:last-child { color: var(--muted); }
+      td code { white-space: nowrap; }
+      @media (max-width: 40rem) {
+        td { display: block; border-bottom: 0; padding: 0.35rem 0; }
+        td:first-child { width: auto; padding-right: 0; white-space: normal; }
+        td:last-child { padding-bottom: 1.25rem; border-bottom: 1px solid var(--rule); }
+        tr:last-child td:last-child { border-bottom: 0; }
+      }
 
       code {
         font: 0.9em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -218,6 +230,33 @@
       .chip.off svg { color: var(--faint); opacity: 0.4; }
       .chip.off .name { color: var(--faint); font-weight: 550; }
       .chip.off:hover svg { opacity: 0.65; }
+
+      .ask {
+        margin: 4rem 0 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      .cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.7rem 1.15rem;
+        border: 1px solid var(--rule);
+        border-radius: 0.6rem;
+        background: var(--panel);
+        color: var(--ink);
+        font-size: 0.92rem;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .cta:hover { border-color: var(--accent); color: var(--accent); }
+      .cta svg { flex: none; }
 
       .tip {
         position: absolute;
@@ -388,23 +427,17 @@
               <span class="who"><span class="name">Codex</span><span class="state">soon</span></span>
               <span class="tip" role="tooltip">Codex publishes its own rate limits, so visibility is close. A share it can act on needs somewhere to inject the advice.</span>
             </span>
-
-            <span class="chip off" tabindex="0" aria-disabled="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M12 3c.4 4.6 1.4 5.6 6 6-4.6.4-5.6 1.4-6 6-.4-4.6-1.4-5.6-6-6 4.6-.4 5.6-1.4 6-6z" />
-              </svg>
-              <span class="who"><span class="name">Gemini CLI</span><span class="state">soon</span></span>
-              <span class="tip" role="tooltip">Not started. It ships when there is a published quota to read, rather than a number to guess at.</span>
-            </span>
-
-            <span class="chip off" tabindex="0" aria-disabled="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M5 5l14 14M19 5l-6 6M5 19l6-6" />
-              </svg>
-              <span class="who"><span class="name">Grok CLI</span><span class="state">soon</span></span>
-              <span class="tip" role="tooltip">Not started. Same bar as the others: a real published window, or it does not ship.</span>
-            </span>
           </div>
+
+          <p class="ask">
+            Another agent you want scheduled?
+            <a class="cta" href="https://github.com/offbeatport/savemytokens/issues/new?title=Adapter%20request%3A%20&amp;body=Which%20agent%2C%20and%20where%20does%20it%20publish%20its%20rate%20limits%3F">
+              <svg width="17" height="17" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+              </svg>
+              Open an issue
+            </a>
+          </p>
         </section>
 
         <section>
@@ -442,18 +475,18 @@
               <td>Opens the control centre and offers to install on first run.</td>
             </tr>
             <tr>
-              <td><code>… install</code></td>
+              <td><code>npx savemytokens install</code></td>
               <td>
                 Four hooks and a status line in <code>settings.json</code>, backed up first. Without
                 them nothing is live.
               </td>
             </tr>
             <tr>
-              <td><code>… uninstall</code></td>
+              <td><code>npx savemytokens uninstall</code></td>
               <td>Removes every entry it added and restores a status line it wrapped.</td>
             </tr>
             <tr>
-              <td><code>… status</code></td>
+              <td><code>npx savemytokens status</code></td>
               <td>One plain-text snapshot, or <code>--json</code> for a script.</td>
             </tr>
           </table>
@@ -462,10 +495,11 @@
         <section class="honest">
           <h2>What it will not do</h2>
           <ul>
-            <li><strong>It cannot stop a session.</strong> There is no API to pause Claude Code, so a share is advice given to Claude, not a hard cap.</li>
-            <li><strong>It does not predict a lockout.</strong> Anthropic publishes a percentage and a reset time; anything past that would be a guess.</li>
-            <li><strong>It makes no network call.</strong> No account, no telemetry, no daemon. Everything
-              lives in <code>~/.savemytokens</code>.</li>
+            <li><strong>It steers by talking to the agent.</strong> A share is delivered as a message at the
+              start of a turn, telling the session the budget it is working within and asking it to narrow
+              scope as that budget runs down. It is a hard limit only if the agent honours it.</li>
+            <li><strong>It does not predict a lockout.</strong> Anthropic publishes a percentage and a
+              reset time; anything past those two facts would be a guess.</li>
           </ul>
         </section>
       </main>
