@@ -309,3 +309,25 @@ test("a nonsense percentage is clamped, and an absent reset prints nothing", () 
   assert.doesNotMatch(send({ five_hour: { used_percentage: 42 } }), /in\s*$/, "no dangling 'in' when there is no reset");
   assert.doesNotMatch(send({ five_hour: { used_percentage: "forty" } }), /5h/, "a percentage that is not a number is ignored");
 });
+
+test("a silent status line prints nothing at all, and still captures the window", () => {
+  const box = sandbox();
+  execFileSync("node", ["-e", `import(${JSON.stringify(new URL("../dist/runtime/kernel.mjs", import.meta.url).href)}).then((k) => { const c = k.loadConfig(); c.hud = { segments: [] }; k.saveConfig(c); })`], {
+    env: box.env,
+  });
+
+  const out = execFileSync("node", [STATUSLINE], {
+    env: box.env,
+    encoding: "utf8",
+    input: JSON.stringify({
+      session_id: "quiet",
+      transcript_path: "/does/not/exist",
+      cwd: process.cwd(),
+      rate_limits: { five_hour: { used_percentage: 42, resets_at: Math.floor(Date.now() / 1000) + 7200 } },
+    }),
+  });
+
+  assert.equal(out, "", "not even a newline, or Claude Code draws an empty row");
+  const quota = JSON.parse(fs.readFileSync(path.join(box.home, "quota", "claude-code.json"), "utf8"));
+  assert.equal(quota.windows.five_hour.usedPercent, 42, "the window is still read while nothing is drawn");
+});

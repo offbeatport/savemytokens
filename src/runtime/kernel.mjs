@@ -106,10 +106,9 @@ export function loadConfig() {
     layout: { ...DEFAULT_CONFIG.layout, ...(stored.layout || {}) },
     columns: migrateColumns(stored.columns),
     hud: {
-      segments:
-        Array.isArray(stored.hud?.segments) && stored.hud.segments.length > 0
-          ? stored.hud.segments
-          : presetSegments(stored.layout?.hud) ?? DEFAULT_CONFIG.hud.segments,
+      segments: Array.isArray(stored.hud?.segments)
+        ? stored.hud.segments
+        : presetSegments(stored.layout?.hud) ?? DEFAULT_CONFIG.hud.segments,
     },
     policyFor: { ...(stored.policyFor || {}) },
     preserveFor: { ...(stored.preserveFor || {}) },

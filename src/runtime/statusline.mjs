@@ -234,7 +234,8 @@ function run() {
   );
 
   const prefix = wrappedOutput(config, raw);
-  process.stdout.write(prefix ? `${prefix}  ${line}\n` : `${line}\n`);
+  if (!prefix && !line) return;
+  process.stdout.write(prefix ? (line ? `${prefix}  ${line}\n` : `${prefix}\n`) : `${line}\n`);
 }
 
 try {
