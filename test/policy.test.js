@@ -874,3 +874,33 @@ test("no em dash anywhere in the source or the docs", async () => {
   walk(root);
   assert.deepEqual(offenders, [], "use a comma, a colon or a full stop instead");
 });
+
+test("both tables share a left edge, and the prompt column does not drift far", async () => {
+  const { planRows, labelsFor } = await import("../dist/report/views.js");
+  const { buildPlan, visibleRows } = await import("../dist/scheduler/plan.js");
+  const { loadTheme } = await import("../dist/runtime/kernel.mjs");
+  const control = buildPlan(Date.now(), false);
+
+  for (const columns of [70, 80, 100, 140]) {
+    const lines = planRows(control, {
+      theme: loadTheme("default"),
+      color: false,
+      columns,
+      rows: 40,
+      selected: 0,
+      interactive: true,
+      expanded: true,
+      labels: labelsFor(visibleRows(control.schedule, true)),
+    });
+    const heads = lines.filter((line) => line.includes("PROJECT"));
+    if (heads.length < 2) continue;
+    const project = heads.map((head) => head.indexOf("PROJECT"));
+    assert.equal(project[0], project[1], `PROJECT starts in the same place at ${columns} columns`);
+    const prompt = heads.map((head) => head.indexOf("LAST PROMPT"));
+    assert.ok(
+      Math.abs(prompt[0] - prompt[1]) <= 40,
+      `the prompt columns stay within sight of each other at ${columns}: ${prompt.join(" and ")}`,
+    );
+    for (const line of lines) assert.ok(line.length <= columns, `${columns} overflowed: ${line.length}`);
+  }
+});

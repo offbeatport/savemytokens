@@ -210,9 +210,21 @@ function row(
   return cells.join(" ");
 }
 
-function idleHeaderRow(context: ViewContext, widths: Widths): string {
+function promptColumn(widths: Widths, columns: string[]): number {
+  let at = 4 + (widths.label - 1);
+  for (const name of columns) {
+    if (name === "last prompt") continue;
+    const width = name === "used" ? widths.used : COLUMN_WIDTH[name];
+    if (width) at += width + 1;
+  }
+  return at + 1;
+}
+
+function idleHeaderRow(context: ViewContext, widths: Widths, columns: string[]): string {
   const { theme, color } = context;
-  return paintHead(theme, `   ${padEndVisible("PROJECT", widths.label)} ${padStartVisible("LAST TURN", 10)}  LAST PROMPT`, color);
+  const head = `    ${padEndVisible("PROJECT", widths.label - 1)} ${padStartVisible("LAST TURN", 10)}`;
+  const gap = Math.min(8, Math.max(2, promptColumn(widths, columns) - visibleWidth(head)));
+  return paintHead(theme, `${head}${" ".repeat(gap)}LAST PROMPT`, color);
 }
 
 function idleRow(
@@ -221,18 +233,21 @@ function idleRow(
   context: ViewContext,
   widths: Widths,
   now: number,
+  columns: string[],
 ): string {
   const { theme, color } = context;
   const cursor =
     context.interactive && context.selected === index ? paint(theme, "accent", theme.tui?.cursor ?? "❯", color) : " ";
   const pin = view.settings.pinned ? paint(theme, "accent", theme.tui?.pin ?? "★", color) : " ";
-  const label = padEndVisible(clip(view.label, widths.label), widths.label);
+  const label = padEndVisible(clip(view.label, widths.label - 1), widths.label - 1);
   const when = padStartVisible(ago(view.lastSeen, now), 10);
   const reserved = view.settings.share != null && view.settings.share > 0 ? `${percentLabel(view.settings.share * 100, 4)} held` : "";
   const tag = view.settings.parked ? "parked" : reserved;
-  const room = Math.max(10, context.columns - widths.label - 18 - (tag ? tag.length + 2 : 0));
+  const head = `${label} ${when}`;
+  const gap = Math.min(8, Math.max(2, promptColumn(widths, columns) - 4 - visibleWidth(head)));
+  const room = Math.max(10, context.columns - 4 - visibleWidth(head) - gap - (tag ? tag.length + 2 : 0));
   const prompt = padEndVisible(clip(view.prompt || "-", room), tag ? room : 0);
-  return `${cursor}${pin} ${paint(theme, "dim", `${label} ${when}  ${prompt}${tag ? `  ${tag}` : ""}`, color)}`;
+  return `${cursor}${pin}  ${paint(theme, "dim", `${head}${" ".repeat(gap)}${prompt}${tag ? `  ${tag}` : ""}`, color)}`;
 }
 
 function footerNote(control: ControlPlan, context: ViewContext): string[] {
@@ -290,9 +305,9 @@ export function planRows(control: ControlPlan, context: ViewContext): string[] {
   if (set.candidates.length > 0) {
     out.push("");
     out.push(sectionTitle("RECENT", set.candidates.length, "holding nothing · a moves one up", context));
-    out.push(idleHeaderRow(context, widths));
+    out.push(idleHeaderRow(context, widths, shown));
     for (const view of set.candidates) {
-      if (printed < budget) out.push(idleRow(view, index, context, widths, now));
+      if (printed < budget) out.push(idleRow(view, index, context, widths, now, shown));
       index += 1;
       printed += 1;
     }
