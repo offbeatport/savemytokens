@@ -53,22 +53,37 @@ export function detectedProviders(): Provider[] {
   return providers.filter((provider) => provider.detect());
 }
 
+const QUIET_MS = 5 * 60 * 1000;
+
 function unattributedPercent(plan: SchedulePlanView): number | null {
   const history = plan.quota?.history;
   if (!Array.isArray(history) || history.length < 2) return null;
+
   let drift = 0;
-  for (let i = 1; i < history.length; i++) {
-    const previous = history[i - 1];
-    const current = history[i];
-    if (!previous || !current) continue;
-    if (current.at < plan.bounds.from) continue;
-    if (typeof current.five_hour !== "number" || typeof previous.five_hour !== "number") continue;
-    if (typeof current.turnAt !== "number" || typeof previous.turnAt !== "number") continue;
-    const quotaDelta = current.five_hour - previous.five_hour;
-    if (quotaDelta > 0 && current.turnAt === previous.turnAt) drift += quotaDelta;
+  let anchor: { at: number; metered: number; five_hour: number } | null = null;
+
+  for (const point of history) {
+    if (point.at < plan.bounds.from) continue;
+    if (typeof point.five_hour !== "number" || typeof point.metered !== "number") continue;
+    const here = { at: point.at, metered: point.metered, five_hour: point.five_hour };
+    if (!anchor) {
+      anchor = here;
+      continue;
+    }
+    if (here.metered > anchor.metered) {
+      anchor = here;
+      continue;
+    }
+    if (here.at - anchor.at < QUIET_MS) continue;
+    const moved = here.five_hour - anchor.five_hour;
+    if (moved > 0) drift += moved;
+    anchor = here;
   }
+
   return drift > 0 ? drift : null;
 }
+
+
 
 export function buildPlan(now = Date.now(), withSweep = true, window: WindowKey = "five_hour", adapter = "claude-code"): ControlPlan {
   const provider = providerFor(adapter);

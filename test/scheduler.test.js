@@ -392,14 +392,14 @@ test("window movement while nothing local ran is reported separately", () => {
   const stored = JSON.parse(fs.readFileSync(file, "utf8"));
   const metered = stored.meteredTokens ?? 0;
   stored.history = [
-    { at: now - 90_000, metered, turnAt: now - 120_000, five_hour: 10, seven_day: 10 },
-    { at: now - 60_000, metered, turnAt: now - 120_000, five_hour: 18, seven_day: 12 },
+    { at: now - 20 * 60_000, metered, turnAt: now - 21 * 60_000, five_hour: 10, seven_day: 10 },
+    { at: now - 9 * 60_000, metered, turnAt: now - 21 * 60_000, five_hour: 18, seven_day: 12 },
     { at: now - 30_000, metered: metered + 5000, turnAt: now - 40_000, five_hour: 24, seven_day: 13 },
   ];
   fs.writeFileSync(file, JSON.stringify(stored));
 
   const out = plan(box);
-  assert.equal(Math.round(out.unattributedPercent), 8, "the 8 points that moved with no local usage are called out");
+  assert.equal(Math.round(out.unattributedPercent), 8, "the 8 points that moved across a quiet gap are called out");
 
   const text = execFileSync("node", [CLI, "status"], { env: box.env, encoding: "utf8" });
   assert.match(text, /8% of the window was spent outside these projects/);
@@ -576,4 +576,28 @@ test("a share set on a project with nothing running keeps climbing", async () =>
 
   const live = { bucket: "active", settings: { share: 0.1 }, allocation: { target: 0.4, pinned: 0.1 } };
   assert.ok(Math.abs(nextShare(live, 0.05) - 0.45) < 1e-9, "a running project still steps from what it actually holds");
+});
+
+test("a quota tick during a live turn is not blamed on another machine", () => {
+  const box = sandbox();
+  const now = Date.now();
+  appendTurns(box, [turn(box, "m1", 1000, now - 120_000)]);
+  runStatusLine(box, rateLimits(10));
+
+  const file = path.join(box.home, "quota", "claude-code.json");
+  const stored = JSON.parse(fs.readFileSync(file, "utf8"));
+  const metered = stored.meteredTokens ?? 0;
+  stored.history = [
+    { at: now - 40_000, metered, turnAt: now - 45_000, five_hour: 4, seven_day: 21 },
+    { at: now - 30_000, metered, turnAt: now - 45_000, five_hour: 5, seven_day: 21 },
+    { at: now - 20_000, metered, turnAt: now - 45_000, five_hour: 6, seven_day: 21 },
+    { at: now - 10_000, metered: metered + 60_000, turnAt: now - 12_000, five_hour: 6, seven_day: 21 },
+  ];
+  fs.writeFileSync(file, JSON.stringify(stored));
+
+  assert.equal(
+    plan(box).unattributedPercent,
+    null,
+    "Anthropic counts a turn before the transcript reaches disk, which is lag, not another machine",
+  );
 });
