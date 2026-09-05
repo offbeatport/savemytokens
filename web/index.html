@@ -173,6 +173,20 @@
         letter-spacing: 0.04em;
         text-transform: uppercase;
       }
+      .alt {
+        margin: 1.1rem 0 0.9rem;
+        color: var(--muted);
+        font-size: 0.95rem;
+        text-align: center;
+      }
+      .alt code {
+        background: color-mix(in srgb, var(--accent) 10%, transparent);
+        border-color: transparent;
+        color: var(--ink);
+        font-size: 0.92em;
+        padding: 0.24rem 0.5rem;
+        user-select: all;
+      }
       .sub { margin: 0; color: var(--faint); font-size: 0.88rem; text-align: center; }
 
       main section { padding: 7rem 0; border-top: 1px solid var(--rule); }
@@ -457,6 +471,9 @@
             <span class="shell-copy" id="hint">copy</span>
           </span>
         </button>
+        <p class="alt">
+          or install it once: <code>npm i -g savemytokens</code>
+        </p>
         <p class="sub">Node 18.17+ · zero dependencies · nothing leaves your machine</p>
 
         <figure>
@@ -593,13 +610,6 @@
             <tr>
               <td><code>npx savemytokens uninstall</code></td>
               <td>Removes every entry it added and restores a status line it wrapped.</td>
-            </tr>
-            <tr>
-              <td><code>npm i -g savemytokens</code></td>
-              <td>
-                Prefer not to run it through npx? Install it once and the command is just
-                <code>savemytokens</code>.
-              </td>
             </tr>
             <tr>
               <td><code>npx savemytokens status</code></td>
