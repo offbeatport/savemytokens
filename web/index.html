@@ -380,10 +380,21 @@
       }
       .hello p {
         margin: 0 auto;
-        max-width: 34rem;
+        max-width: 38rem;
         color: var(--muted);
-        font-size: 1.02rem;
+        font-size: clamp(1.05rem, 2vw, 1.25rem);
+        line-height: 1.6;
       }
+      .hello a {
+        display: inline-block;
+        margin-top: 0.6rem;
+        font-size: clamp(1.35rem, 3.4vw, 1.9rem);
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        text-decoration: none;
+        border-bottom: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+      }
+      .hello a:hover { border-bottom-color: var(--accent); }
       footer {
         margin-top: 0;
         padding: 3rem 0 4.5rem;
@@ -613,8 +624,8 @@
     <section class="hello">
       <div class="wrap">
         <p>
-          For any questions, bugs, or just to say hello, send an email to
-          <a href="mailto:hello@offbeatport.com">hello@offbeatport.com</a>.
+          For any questions, bugs, or just to say hello:<br />
+          <a href="mailto:hello@offbeatport.com">hello@offbeatport.com</a>
         </p>
       </div>
     </section>
