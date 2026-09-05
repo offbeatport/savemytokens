@@ -14,7 +14,7 @@
 
 <br><br>
 
-<img src="https://raw.githubusercontent.com/offbeatport/savemytokens/main/assets/screenshot.svg" alt="The SaveMyTokens control centre: three live projects sharing one 5-hour window, each row showing its allocation, how much of that allocation it has spent, its priority and its last prompt." width="880">
+<img src="https://raw.githubusercontent.com/offbeatport/savemytokens/main/assets/screenshot.svg" alt="The SaveMyTokens control centre: four projects sharing one 5-hour window, three of them open, each row showing its allocation, how much of that allocation it has spent, its priority and its last prompt, above a RECENT table of everything else." width="880">
 
 <br>
 
@@ -36,18 +36,20 @@ installed once rather than fetched each time? `npm i -g savemytokens`, then the 
 `savemytokens`.
 
 **Say yes.** The status line is the only place Anthropic publishes your 5h and weekly usage, and it
-is what proves a session is still open, so nothing is live without it. Changed your mind?
-`npx savemytokens uninstall` takes every entry back out.
+is what proves a session is still open, so nothing is live without it. If you would rather not see
+one, take **Install, no line**: everything is installed and the line renders nothing, so the numbers
+still arrive and your terminal looks unchanged. `npx savemytokens uninstall` takes every entry back
+out.
 
 <br>
 
 |  |  |
 | :-- | :-- |
 | **The real numbers** | Your 5-hour and weekly usage exactly as Anthropic publishes it. Never an invented *"% remaining"*. |
-| **Two lists you control** | **ACTIVE** is what shares your window; **RECENT** is everything else it has seen. A project joins ACTIVE on its own when you open Claude Code there and stays after you close it, so a target survives the session. `a` moves one up, `x` sends it back. |
-| **Claude working to it** | As a session eats into its slice it is told to narrow scope and finish, and to write down whatever it drops. That comes back the next time you work on the project. |
+| **Two lists you control** | **ACTIVE** is what shares your window; **RECENT** is every project Claude Code has opened, read from its own directory so the list is full on a fresh install. A project joins ACTIVE by itself when you open it there and holds its target after you close it. `space` moves one up, `x` moves it down. |
+| **The agent working to it** | As a session eats into its slice it is told to narrow scope and finish, and to write down whatever it drops. That comes back the next time you open the project. |
 | **Unused capacity returned** | A project with nothing running lends its share to the rest and takes it back when you return. Mark one done and what it did not spend goes to the others immediately. |
-| **In your status line** | `21%/50% · 5h 42% · in 3h52`. How much of your share you have spent, where the window is, when it comes back. Pick a shape, or arrange the pieces yourself. |
+| **In your status line** | `⣿⣿⣿⣀⣀⣀⣀⣀ 21%/50% · 5h 42% · in 3h52`. How much of your share you have spent, where the window is, when it comes back. Pick a shape, arrange the pieces yourself, or run it silent. |
 
 <br>
 
@@ -65,11 +67,17 @@ is what proves a session is still open, so nothing is live without it. Changed y
 | `npx savemytokens theme` | eighteen themes, or write your own |
 | `npx savemytokens defer` | work a session pushed to next time |
 | `npx savemytokens audit` | what your last 7 days wasted |
+| `npx savemytokens privacy` | every file it reads and writes |
 | `npx savemytokens uninstall` | remove every trace · `--purge` drops the data too |
 
-Inside the control centre, `?` lists every key. The ones worth knowing: `←→` moves an allocation,
-`space` moves a project up a level and `x` moves it down, so a project you never want to see goes
-ACTIVE to RECENT to hidden. `p` cycles priority, `⏎` opens a project's sessions, `s` opens settings.
+`--codex` points any of these at Codex instead, which publishes its own rate limits and needs no
+hooks. It is metered and shown, but nothing can be injected into it, so there is no advice.
+
+Inside the control centre, `?` lists every key. The ones worth knowing: **`←→` moves an allocation,
+and the others move to fit** so the window always adds up. `space` moves a project up a level and
+`x` moves it down, so one you never want to see goes ACTIVE to RECENT to hidden, and `m` shows what
+is hidden. `e` puts everything back to an even split, `p` cycles priority, `⏎` opens a project's
+sessions, `s` opens settings.
 
 ## Where the numbers come from
 
@@ -82,8 +90,8 @@ Three different kinds of number sit on that screen, and it matters which is whic
 | **used, allocation** | Anthropic's percentage, split by that measured share. The total is theirs. The division between projects is ours, and it is the only inferred number on the screen. |
 
 Usage from another machine, or from claude.ai, is invisible to a local tool. When the window moves
-while none of your projects had a turn, that is reported on its own line rather than folded silently
-into a project's figure.
+across five minutes in which nothing local was metered, that is reported on its own line rather than
+folded silently into a project's figure.
 
 ## How it works
 
@@ -101,6 +109,11 @@ back, and restores a status line of your own if it wrapped one.
 Node 18.17 or newer, and Claude Code 2.1 or newer. The published 5h and 7d figures come with a Claude
 subscription. On an API key or through the Console, Anthropic reports no window; SaveMyTokens says so
 rather than guessing, and allocation and advice still work from measured usage alone.
+
+Developed and tested on macOS. Linux should behave identically. Windows is written for but unproven:
+paths and the home directory are resolved portably, and the control centre wants a terminal that
+handles the alternate screen buffer, which Windows Terminal does. If it misbehaves there, please
+[open an issue](https://github.com/offbeatport/savemytokens/issues/new).
 
 <details>
 <summary><b>Writing your own theme</b></summary>
@@ -153,6 +166,9 @@ bar the built-in themes have to clear.
   beyond those two facts would be a guess dressed up as a number.
 - **It cannot see usage it did not measure.** Another machine, claude.ai, or work done before you
   installed it shows up as unattributed window, labelled as such.
+- **An idle window still holds its share.** A session with nothing running keeps its slice rather
+  than lending it out, so ten open terminals divide the window ten ways. Treating a target as a
+  weight among sessions actually consuming is the next fix.
 - **It makes no network call.** No account, no telemetry, no daemon. `savemytokens privacy` prints
   every file it reads and writes.
 
