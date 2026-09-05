@@ -27,11 +27,12 @@ export interface ViewContext {
 }
 
 function barCellsFor(columns: number): number {
-  if (columns >= 130) return 18;
-  if (columns >= 110) return 15;
-  if (columns >= 95) return 12;
-  if (columns >= 80) return 9;
-  return 6;
+  if (columns >= 150) return 32;
+  if (columns >= 130) return 26;
+  if (columns >= 110) return 21;
+  if (columns >= 95) return 17;
+  if (columns >= 80) return 12;
+  return 8;
 }
 const UNATTRIBUTED_FLOOR = 5;
 
@@ -57,8 +58,10 @@ function capacityRow(control: ControlPlan, context: ViewContext): string[] {
     }
     return [`  ${paint(theme, "warn", clip(head, context.columns - 2), color)}`];
   }
+  const wide = Math.max(12, Math.min(24, Math.floor((context.columns - 58) / 2)));
   const levels: Array<{ bar: number; reset: "clock" | "long" | "short" | "none"; gap: number }> = [
-    { bar: 12, reset: "clock", gap: 4 },
+    { bar: wide, reset: "clock", gap: 4 },
+    { bar: wide, reset: "long", gap: 4 },
     { bar: 12, reset: "long", gap: 4 },
     { bar: 10, reset: "short", gap: 3 },
     { bar: 6, reset: "short", gap: 2 },
