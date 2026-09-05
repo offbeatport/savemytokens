@@ -1283,3 +1283,20 @@ test("pinned projects hold the order you pinned them in", async () => {
     "the first thing you pinned stays first, whatever the allocations do",
   );
 });
+
+test("an open window that is not being typed in lends its share out", async () => {
+  const { allocate } = await import("../dist/runtime/kernel.mjs");
+  const entry = (id, o = {}) => ({ id, share: null, priority: "normal", state: "active", consumed: 0, cap: null, ...o });
+  const resting = (id) => entry(id, { state: "done", consumed: 0 });
+
+  const one = allocate([entry("working"), ...Array.from({ length: 9 }, (_, at) => resting(`idle${at}`))]).targets;
+  assert.ok(Math.abs(one.get("working").target - 1) < 1e-9, "ten windows open with one in use is not a tenth each");
+  assert.equal(one.get("idle0").target, 0, "the nine resting ones hold nothing while they rest");
+
+  const two = allocate([entry("a"), entry("b"), ...Array.from({ length: 8 }, (_, at) => resting(`idle${at}`))]).targets;
+  assert.ok(Math.abs(two.get("a").target - 0.5) < 1e-9, "two typing split it between themselves");
+
+  const spent = allocate([entry("working"), entry("paused", { state: "done", consumed: 0.3 })]).targets;
+  assert.ok(Math.abs(spent.get("paused").target - 0.3) < 1e-9, "what a resting project already spent stays spent");
+  assert.ok(Math.abs(spent.get("working").target - 0.7) < 1e-9, "and the rest is available");
+});

@@ -281,6 +281,7 @@ export interface ProjectView {
   usage: { tokens: number; weighted: number; requests: number };
   lastSeen: number;
   bucket: ClaimantBucket;
+  consuming?: boolean;
   attributedPercent: number | null;
   pressure: Pressure;
   prompt: string;

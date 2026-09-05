@@ -25,6 +25,7 @@ const LOCKOUT_GAP_MS = 5 * 60 * 1000;
 const STALE_MS = 45 * 60 * 1000;
 const HEARTBEAT_MS = 60 * 1000;
 const RECENT_MS = 24 * 60 * 60 * 1000;
+const IDLE_MS = 10 * 60 * 1000;
 const DEFER_LIMIT = 12;
 const DEFER_RETENTION_MS = 14 * 24 * 60 * 60 * 1000;
 const CHUNK = 1 << 20;
@@ -815,17 +816,17 @@ export function schedule(adapter, now = Date.now(), key = "five_hour", quotaOver
     group.lastSeen = Math.max(group.lastSeen, claimant.lastSeen ?? 0);
   }
 
-  const entries = [...groups.values()].map((group) => {
-    const running = group.sessions.some((session) => session.bucket === "active");
-    return {
-      id: group.project,
-      share: group.settings.share,
-      priority: group.settings.priority,
-      state: running ? "active" : "done",
-      consumed: live ? (live.usedPercent / 100) * group.observed : 0,
-      cap: group.settings.cap,
-    };
-  });
+  const consumingNow = (group) =>
+    group.sessions.some((session) => session.bucket === "active") && now - (group.lastSeen ?? 0) <= IDLE_MS;
+
+  const entries = [...groups.values()].map((group) => ({
+    id: group.project,
+    share: group.settings.share,
+    priority: group.settings.priority,
+    state: consumingNow(group) ? "active" : "done",
+    consumed: live ? (live.usedPercent / 100) * group.observed : 0,
+    cap: group.settings.cap,
+  }));
 
   const eligible = entries.filter((entry) => entry.state === "active").length;
   const { targets, unusedPool } = allocate(entries);
@@ -868,6 +869,7 @@ export function schedule(adapter, now = Date.now(), key = "five_hour", quotaOver
       })
       .sort((a, b) => b.observed - a.observed);
 
+    const consuming = consumingNow(group);
     const bucket = sessions.some((session) => session.bucket === "active")
       ? "active"
       : group.settings.parked
@@ -886,6 +888,7 @@ export function schedule(adapter, now = Date.now(), key = "five_hour", quotaOver
       usage: { tokens: group.tokens, weighted: group.weighted, requests: group.requests },
       lastSeen: group.lastSeen,
       bucket,
+      consuming,
       attributedPercent: live ? live.usedPercent * group.observed : null,
       pressure:
         live || eligible > 1

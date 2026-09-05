@@ -167,11 +167,12 @@ function row(
   const cursor =
     context.interactive && context.selected === index ? paint(theme, "accent", theme.tui?.cursor ?? "❯", color) : " ";
   const pin = view.settings.pinned ? paint(theme, "accent", theme.tui?.pin ?? "★", color) : " ";
-  const open = view.bucket === "active";
+  const live = view.bucket === "active";
+  const open = view.consuming ?? live;
   const tone = (want: string) => (open ? want : "dim");
   const sessions = view.liveSessions > 1 ? paint(theme, "dim", `${view.liveSessions}`, color) : " ";
   const label = padEndVisible(paint(theme, tone("fg"), clip(view.label, widths.label - 1), color), widths.label - 1);
-  const held = view.allocation.target > 0 ? view.allocation.target : (view.settings.share ?? 0);
+  const held = open && view.allocation.target > 0 ? view.allocation.target : (view.settings.share ?? view.allocation.target);
   const asked = view.settings.share;
   const squeezed = asked != null && asked - held > 0.005;
   const allocationCell = padStartVisible(
@@ -199,7 +200,7 @@ function row(
   if (columns.includes("share")) cells.push(share);
   if (columns.includes("tokens")) cells.push(tokens);
   if (columns.includes("priority")) cells.push(priority);
-  const leaving = open && view.settings.kept === false;
+  const leaving = live && view.settings.kept === false;
   if (columns.includes("last prompt") && widths.prompt > 0) {
     const tag = leaving && widths.prompt >= 18 ? "leaving" : "";
     const room = tag ? widths.prompt - tag.length - 2 : widths.prompt;
@@ -254,7 +255,7 @@ function idleRow(
 function footerNote(control: ControlPlan, context: ViewContext): string[] {
   const { theme, color } = context;
   const set = workingSet(control.schedule, context.expanded);
-  const open = set.members.filter((view) => view.bucket === "active");
+  const open = set.members.filter((view) => view.consuming ?? view.bucket === "active");
   const sessions = open.reduce((sum, view) => sum + view.liveSessions, 0);
   const spare = Math.round(control.schedule.unusedPool * 100);
   const room = Math.max(10, context.columns - 2);
