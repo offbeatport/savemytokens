@@ -1332,6 +1332,7 @@ export const HUD_PRESETS = {
   window: ["5h", "reset", "7d"],
   pacing: ["bar", "pace", "5h", "reset"],
   everything: ["project", "target", "used", "priority", "meter5h", "5h", "7d", "reset"],
+  off: [],
 };
 
 export const HUD_PRESET_ABOUT = {
@@ -1340,6 +1341,7 @@ export const HUD_PRESET_ABOUT = {
   window: "only Anthropic's numbers, no per-project detail",
   pacing: "whether you are ahead of or behind the clock",
   everything: "every number there is",
+  off: "nothing is drawn, and the numbers still arrive",
 };
 
 const HUD_PRESET_ALIASES = {

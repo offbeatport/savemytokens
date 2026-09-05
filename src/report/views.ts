@@ -196,8 +196,14 @@ function row(
   if (columns.includes("share")) cells.push(share);
   if (columns.includes("tokens")) cells.push(tokens);
   if (columns.includes("priority")) cells.push(priority);
+  const leaving = open && view.settings.kept === false;
   if (columns.includes("last prompt") && widths.prompt > 0) {
-    cells.push(paint(theme, "dim", clip(view.prompt || "-", widths.prompt), color));
+    const tag = leaving && widths.prompt >= 18 ? "leaving" : "";
+    const room = tag ? widths.prompt - tag.length - 2 : widths.prompt;
+    const prompt = padEndVisible(clip(view.prompt || "-", room), tag ? room : 0);
+    cells.push(`${paint(theme, "dim", prompt, color)}${tag ? `  ${paint(theme, "warn", tag, color)}` : ""}`);
+  } else if (leaving) {
+    cells.push(paint(theme, "warn", "leaving", color));
   }
   return cells.join(" ");
 }
@@ -249,10 +255,15 @@ function footerNote(control: ControlPlan, context: ViewContext): string[] {
   const sessions = open.reduce((sum, view) => sum + view.liveSessions, 0);
   const spare = Math.round(control.schedule.unusedPool * 100);
   const room = Math.max(10, context.columns - 2);
+  const leaving = set.members.filter((view) => view.bucket === "active" && view.settings.kept === false).length;
   const waiting = set.members.length - open.length;
   const long = `${open.length} of ${set.members.length} open, across ${sessions} ${sessions === 1 ? "session" : "sessions"}${waiting > 0 ? `, ${waiting} waiting` : ""}${spare > 0 ? `, ${spare}% unclaimed` : ""}.`;
   const short = `${open.length}/${set.members.length} open · ${sessions}s${spare > 0 ? ` · ${spare}% spare` : ""}`;
   const out = [`  ${paint(theme, "dim", long.length <= room ? long : short, color)}`];
+  if (leaving > 0) {
+    const note = leaving === 1 ? "One project leaves ACTIVE when its window closes." : `${leaving} projects leave ACTIVE when their windows close.`;
+    out.push(`  ${paint(theme, "dim", clip(note, room), color)}`);
+  }
   const drift = control.unattributed ?? 0;
   if (drift >= UNATTRIBUTED_FLOOR) {
     const head = `${Math.round(drift)}% of the window was spent outside these projects`;

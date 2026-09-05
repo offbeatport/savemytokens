@@ -208,7 +208,8 @@ test("every hud layout renders on one line", async () => {
       loadTheme("default"),
       false,
     );
-    assert.ok(line.length > 0, `${layout} rendered nothing`);
+    if (layout === "off") assert.equal(line, "", "off is the one shape that draws nothing");
+    else assert.ok(line.length > 0, `${layout} rendered nothing`);
     assert.ok(!line.includes("\n"), `${layout} must stay on one line`);
   }
 });
@@ -1151,4 +1152,40 @@ test("nothing reads HOME directly, because Windows does not set it", async () =>
   };
   walk(root);
   assert.deepEqual(offenders, [], "use os.homedir(), which is right on every platform");
+});
+
+test("dropping a project whose window is still open says so instead of doing nothing visible", async () => {
+  const { planRows, labelsFor } = await import("../dist/report/views.js");
+  const { inPlan } = await import("../dist/scheduler/plan.js");
+  const { loadTheme } = await import("../dist/runtime/kernel.mjs");
+  const now = Date.now();
+  const make = (label, kept) => ({
+    project: `/tmp/${label}`,
+    label,
+    settings: { project: `/tmp/${label}`, label, share: null, priority: "normal", cap: null, pinned: false, parked: false, kept },
+    sessions: [],
+    allocation: { claimantId: label, target: 0.5, pinned: false, pool: 0, released: false },
+    observed: 0.4,
+    usage: { tokens: 1000, weighted: 1000, requests: 1 },
+    lastSeen: now,
+    bucket: "active",
+    attributedPercent: 20,
+    pressure: { value: 0.6, basis: "budget" },
+    prompt: "Implement the provider fallback chain",
+    liveSessions: 1,
+  });
+
+  const dropped = make("buydiff", false);
+  assert.equal(inPlan(dropped), true, "a running session cannot be evicted, because it is spending the window");
+
+  const projects = [make("webinvoke", null), dropped];
+  const lines = planRows(
+    { provider: { id: "claude-code", label: "Claude Code" }, installed: true, resources: [], enforcement: [], unattributed: 0, deferred: [], others: [], config: { columns: ["allocation", "used", "last prompt"] }, schedule: { now, key: "five_hour", bounds: { from: now - 1, to: now + 1 }, quota: null, unusedPool: 0, claimants: [], projects } },
+    { theme: loadTheme("default"), color: false, columns: 104, rows: 30, selected: 0, interactive: true, expanded: false, labels: labelsFor(projects) },
+  );
+
+  const row = lines.find((line) => line.includes("buydiff")) ?? "";
+  assert.match(row, /leaving/, "the row it was pressed on shows the keypress registered");
+  assert.ok(!(lines.find((line) => line.includes("webinvoke")) ?? "").includes("leaving"), "and no other row does");
+  assert.match(lines.join("\n"), /leaves ACTIVE when its window closes/, "and the footer says when it takes effect");
 });
