@@ -647,7 +647,7 @@ test("the tight section shows the real text, when it fires, and where you are", 
 
   const columns = renderSettings(config, rows, selectable[0], false, "", preview, loadTheme("default"), false, tight, 100);
   assert.match(columns.join("\n"), /allocation.*the share of the window/, "columns explain themselves");
-  assert.match(columns.join("\n"), /5h.*the 5-hour window Anthropic publishes/, "so do status line segments");
+  assert.match(columns.join("\n"), /5h.*the 5-hour window that is published/, "so do status line segments");
 });
 
 test("every theme dresses the control centre as well as the status line", async () => {

@@ -194,7 +194,7 @@ export function runInstall(options: InstallOptions): void {
       ? `  keeps   your existing status line ${dim("(--force wraps it and appends the SMT segment)")}`
       : conflict
         ? `  wraps   your existing status line, then appends the SMT segment`
-        : `  sets    the status line, the only place Anthropic publishes your 5h and 7d usage`,
+        : `  sets    the status line, the only place your 5h and 7d usage`,
   );
   out.push(`  backs up the current settings to ${path.join(HOME, "settings.backup.json")}`);
   if (options.rules) out.push(`  adds    a fenced token-discipline block to ${MEMORY}`);

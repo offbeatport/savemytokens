@@ -10,7 +10,7 @@ export function runPrivacy(): void {
   out.push("");
   out.push(`  ${displayHome()}/claimants/  ${dim("one file per session: label, target share, priority, state")}`);
   out.push(`  ${displayHome()}/meter/      ${dim("token counts in five-minute buckets, and how far each transcript was read")}`);
-  out.push(`  ${displayHome()}/quota/      ${dim("the 5h and 7d percentages Anthropic publishes to the status line")}`);
+  out.push(`  ${displayHome()}/quota/      ${dim("the 5h and 7d percentages published to the status line")}`);
   out.push(`  ${displayHome()}/hooks/      ${dim("the three scripts install puts there")}`);
   out.push(`  ${displayHome()}/cache/      ${dim("per-session audit measurements, so repeat runs are fast")}`);
   out.push(dim("      · includes the first 120 characters of each prompt, so a finding or a row can"));

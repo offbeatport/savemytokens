@@ -479,14 +479,14 @@ export function helpOverlay(control: ControlPlan, context: ViewContext): string[
   out.push(
     ...helpProse(
       control.installed
-        ? "Installed. It is the only place Anthropic publishes your 5h and 7d usage, and it is what proves a session is still open, so without it nothing here is live. Change its shape with P."
-        : "Not installed, so nothing here is live. It is the only place Anthropic publishes your 5h and 7d usage, and it is what proves a session is still open. Run: npx savemytokens install",
+        ? "Installed. It is the only place your 5h and 7d usage is published, and it is what proves a session is still open, so without it nothing here is live. Change its shape with P."
+        : "Not installed, so nothing here is live. It is the only place your 5h and 7d usage is publishes your 5h and 7d usage, and it is what proves a session is still open. Run: npx savemytokens install",
       context,
     ),
   );
 
   out.push(...helpSection("the numbers", context));
-  out.push(...helpProse("5h and 7d are Anthropic's own. Share is measured from the tokens in your transcripts. Used of it is their number split by that share, so the split between rows is ours, not theirs.", context));
+  out.push(...helpProse("5h and 7d are published figures, not ours. Share is measured from the tokens in your transcripts. Used of it is their number split by that share, so the split between rows is ours, not theirs.", context));
 
   const drift = control.unattributed ?? 0;
   if (drift >= UNATTRIBUTED_FLOOR) {

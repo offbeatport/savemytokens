@@ -1347,7 +1347,7 @@ export const HUD_PRESETS = {
 export const HUD_PRESET_ABOUT = {
   default: "a bar for your share, then the numbers",
   minimal: "the bar and your share, nothing else",
-  window: "only Anthropic's numbers, no per-project detail",
+  window: "only the published numbers, no per-project detail",
   pacing: "whether you are ahead of or behind the clock",
   everything: "every number there is",
   off: "nothing is drawn, and the numbers still arrive",

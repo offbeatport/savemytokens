@@ -41,7 +41,7 @@ const SEGMENT_ABOUT: Record<string, string> = {
   pair: "how much of your allocation is gone, and what it is, as 84% of 17%",
   bar: "how far through its allocation it is",
   priority: "HIGH, NORMAL or LOW",
-  "5h": "the 5-hour window Anthropic publishes",
+  "5h": "the 5-hour window that is published",
   "7d": "the weekly window",
   spend: "a gateway spend limit, when you have one",
   reset: "how long until the 5-hour window comes back",

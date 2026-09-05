@@ -25,7 +25,7 @@
 <br>
 
 You have four Claude Code windows open. One of them is a throwaway experiment and it is quietly
-eating the afternoon, but Anthropic reports a single number for all four, so there is no way to know
+eating the afternoon, but there is one usage number for all four, so there is no way to know
 which. By the time the window is gone, the work that mattered is the work that did not finish.
 
 ## Get started
@@ -34,22 +34,22 @@ which. By the time the window is gone, the work that mattered is the work that d
 npx savemytokens
 ```
 
-That is the whole install. It opens the control centre and, on the first run, offers to add four
-hooks and a status line to Claude Code's `settings.json`, backing the file up first. Prefer it
-installed once rather than fetched each time? `npm i -g savemytokens`, then the command is just
-`savemytokens`.
+That is the whole install. On the first run it offers to add four hooks and a status line to Claude
+Code's `settings.json`, backing the file up first.
 
-**Say yes.** The status line is the only place Anthropic publishes your 5h and weekly usage, and it
-is what proves a session is still open, so nothing is live without it. If you would rather not see
-one, take **Install, no line**: everything is installed and the line renders nothing, so the numbers
-still arrive and your terminal looks unchanged. `npx savemytokens uninstall` takes every entry back
-out.
+- **Say yes.** The status line is the only place your 5h and weekly usage is published, and it is
+  what proves a session is still open. Nothing is live without it.
+- **Don't want to see one?** Take **Install, no line**. Everything is installed and the line renders
+  nothing, so the numbers still arrive and your terminal looks unchanged.
+- **Rather not fetch it each time?** `npm i -g savemytokens`, then the command is just
+  `savemytokens`.
+- **Changed your mind?** `npx savemytokens uninstall` takes every entry back out.
 
 <br>
 
 |  |  |
 | :-- | :-- |
-| **The real numbers** | Your 5-hour and weekly usage exactly as Anthropic publishes it, read from the status line. Never an invented *"% remaining"*. |
+| **The real numbers** | Your 5-hour and weekly usage exactly as Claude Code publishes it to the status line. Never an invented *"% remaining"*. |
 | **A split you control** | Give each project a target and a priority. Move one and the others move to fit, so the window always adds up. |
 | **The agent working to it** | As a session eats into its slice it is told to narrow scope and finish, and to write down whatever it drops. That comes back the next time you open the project. |
 | **Capacity returned** | A project with nothing running lends its share to the rest and reclaims it when you come back. |
@@ -113,35 +113,35 @@ Three different kinds of number sit on that screen, and it matters which is whic
 
 | | |
 | :-- | :-- |
-| **5h and 7d** | Anthropic's own figures. Claude Code publishes them to the status line, so SaveMyTokens installs one, reads them, and stores each reading with its timestamp. Nothing is estimated. |
-| **share** | Measured from the transcripts already on your disk, token by token, including subagents. Exact, and independent of anything Anthropic reports. |
-| **used, allocation** | Anthropic's percentage, split by that measured share. The total is theirs. The division between projects is ours, and it is the only inferred number on the screen. |
+| **5h and 7d** | Published figures, not ours. Claude Code writes them to the status line, so SaveMyTokens installs one, reads them, and stores each reading with its timestamp. Nothing is estimated. |
+| **share** | Measured from the transcripts already on your disk, token by token, including subagents. Exact, and independent of anything the provider reports. |
+| **used, allocation** | The published percentage, split by that measured share. The total is not ours. The division between projects is ours, and it is the only inferred number on the screen. |
 
 Usage from another machine, or from claude.ai, is invisible to a local tool. When the window moves
-across five minutes in which nothing local was metered, that is reported on its own line rather than
+across five minutes in which nothing local was metered, it is reported on its own line rather than
 folded silently into a project's figure.
 
 ## How it works
 
-`install` writes three scripts to `~/.savemytokens/hooks`, adds four hook entries and a status line
-to Claude Code's `settings.json`, and backs that file up first. There is no daemon. The hooks meter
-their own session as it runs, the status line captures the published window every ten seconds, and
-the control centre reads what they leave behind. Transcripts are read incrementally, from a stored
-byte offset per file, so a prompt costs milliseconds however long the session has run.
-
-Nothing outside `~/.savemytokens` and Claude Code's own settings is touched. `uninstall` puts it
-back, and restores a status line of your own if it wrapped one.
+- **No daemon.** Three scripts in `~/.savemytokens/hooks`, four hook entries and a status line in
+  Claude Code's `settings.json`, which is backed up first.
+- **The hooks meter their own session** as it runs. The status line captures the published window
+  every ten seconds. The control centre reads what they leave behind.
+- **Transcripts are read incrementally**, from a stored byte offset per file, so a prompt costs
+  milliseconds however long the session has run.
+- **Nothing else is touched.** `uninstall` puts it back, and restores a status line of your own if
+  it wrapped one.
 
 ## Requirements
 
-Node 18.17 or newer, and Claude Code 2.1 or newer. The published 5h and 7d figures come with a Claude
-subscription. On an API key or through the Console, Anthropic reports no window; SaveMyTokens says so
-rather than guessing, and allocation and advice still work from measured usage alone.
-
-Developed and tested on macOS. Linux should behave identically. Windows is written for but unproven:
-paths and the home directory are resolved portably, and the control centre wants a terminal that
-handles the alternate screen buffer, which Windows Terminal does. If it misbehaves there, please
-[open an issue](https://github.com/offbeatport/savemytokens/issues/new).
+- **Node 18.17 or newer**, and **Claude Code 2.1 or newer**.
+- **A Claude subscription** for the published 5h and 7d figures. On an API key or through the
+  Console no window is reported; SaveMyTokens says so rather than guessing, and allocation and
+  advice still work from measured usage alone.
+- **macOS** is what it is developed and tested on. **Linux** should behave identically. **Windows**
+  is written for but unproven: paths and the home directory resolve portably, and the control centre
+  wants a terminal that handles the alternate screen buffer, which Windows Terminal does. If it
+  misbehaves there, please [open an issue](https://github.com/offbeatport/savemytokens/issues/new).
 
 <details>
 <summary><b>Writing your own theme</b></summary>
@@ -190,7 +190,7 @@ bar the built-in themes have to clear.
 - **It advises; it does not enforce.** The hooks inject text, and a model does not hold a budget the
   way a scheduler holds a lock. A session that ignores the advice keeps running. Hard caps are the
   next step, and will ship only after a period of logging what *would* have been blocked.
-- **It does not predict a lockout.** Anthropic publishes a percentage and a reset time. Anything
+- **It does not predict a lockout.** A percentage and a reset time are published. Anything
   beyond those two facts would be a guess dressed up as a number.
 - **It cannot see usage it did not measure.** Another machine, claude.ai, or work done before you
   installed it shows up as unattributed window, labelled as such.
