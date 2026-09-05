@@ -5,7 +5,7 @@ import { DEFAULT_HUD_SEGMENTS, loadTheme, renderSegments } from "../dist/runtime
 import { helpOverlay, labelsFor, planRows } from "../dist/report/views.js";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
-const COLUMNS = 112;
+const COLUMNS = 122;
 const FONT_SIZE = 12.5;
 const CELL = FONT_SIZE * 0.6;
 const LINE = FONT_SIZE * 1.5;
@@ -26,9 +26,9 @@ function project(label, options) {
       priority: options.priority,
       cap: null,
       pinned: Boolean(options.pinned),
+      pinnedAt: options.pinned ? START - (10 - options.pinned) * 1000 : 0,
       parked: false,
-      inPlan: options.member === false ? false : true,
-      joinedAt: START,
+      kept: options.member === false ? false : true,
     },
     sessions: [],
     allocation: { claimantId: label, target: options.target, pinned: options.pinned ? options.target : null, pool: 0, released: !options.live },
@@ -36,6 +36,7 @@ function project(label, options) {
     usage: { tokens: options.tokens, weighted: options.tokens * 2, requests: options.requests },
     lastSeen: START - (options.lastSeen ?? 90_000),
     bucket: options.live ? "active" : "recent",
+    consuming: Boolean(options.live),
     attributedPercent: Math.round(options.target * 100 * 0.42),
     pressure: { value: options.used, basis: "budget" },
     prompt: options.prompt,
@@ -44,69 +45,70 @@ function project(label, options) {
 }
 
 const PROJECTS = [
-  project("webinvoke", {
-    target: 0.5,
-    used: 0.62,
-    tokens: 4_120_000,
-    requests: 214,
-    priority: "high",
-    pinned: true,
-    live: true,
-    sessions: 2,
-    prompt: "Implement the provider fallback chain end to end",
+  project("burningdemand", {
+    target: 0.2, used: 0.71, tokens: 1_640_000, requests: 88,
+    priority: "high", pinned: 1, live: true,
+    prompt: "Rewrite the ingest queue so a failed batch retries once",
   }),
-  project("buydiff", {
-    target: 0.3,
-    used: 0.41,
-    tokens: 1_870_000,
-    requests: 96,
-    priority: "normal",
-    live: true,
-    prompt: "Fix the verdict table alignment on mobile",
+  project("autonomykernel", {
+    target: 0.18, used: 0.44, tokens: 1_210_000, requests: 64,
+    priority: "normal", pinned: 2, live: true,
+    prompt: "Add the policy loader and wire it to the scheduler",
   }),
-  project("obp-ui", {
-    target: 0.2,
-    used: 0.93,
-    tokens: 980_000,
-    requests: 61,
-    priority: "low",
-    live: true,
-    prompt: "Try the alternate parser and compare the output",
+  project("coldverdict", {
+    target: 0.12, used: 0.93, tokens: 980_000, requests: 51,
+    priority: "low", pinned: 3, live: true,
+    prompt: "Compare the two ranking passes on last week's data",
+  }),
+  project("savemytokens", {
+    target: 0.18, used: 0.52, tokens: 1_430_000, requests: 96,
+    priority: "normal", live: true, sessions: 2,
+    prompt: "Regenerate the screenshots with the new pin order",
   }),
   project("reposhine", {
-    target: 0.15,
-    used: 0,
-    observed: 0,
-    tokens: 0,
-    requests: 0,
-    priority: "normal",
-    live: false,
-    lastSeen: 3 * 3600_000,
+    target: 0.14, used: 0.31, tokens: 720_000, requests: 40,
+    priority: "normal", live: true,
     prompt: "Draft the plan for the ingest rewrite",
   }),
+  project("webinvoke", {
+    target: 0.11, used: 0.18, tokens: 410_000, requests: 22,
+    priority: "normal", live: true,
+    prompt: "Implement the provider fallback chain end to end",
+  }),
+  project("cslopslop", {
+    target: 0.07, used: 0.06, tokens: 180_000, requests: 11,
+    priority: "low", live: true,
+    prompt: "Fix the verdict table alignment on mobile",
+  }),
+  project("meshaway", {
+    target: 0, used: 0, observed: 0, tokens: 0, requests: 0,
+    priority: "normal", live: false, member: false,
+    lastSeen: 5 * 3600_000, prompt: "Try the alternate parser and compare the output",
+  }),
+  project("polarbase", {
+    target: 0, used: 0, observed: 0, tokens: 0, requests: 0,
+    priority: "normal", live: false, member: false,
+    lastSeen: 9 * 3600_000, prompt: "Move the migrations into their own package",
+  }),
   project("picsuper", {
-    target: 0,
-    used: 0,
-    observed: 0,
-    tokens: 0,
-    requests: 0,
-    priority: "normal",
-    live: false,
-    member: false,
-    lastSeen: 9 * 3600_000,
-    prompt: "Compare the two upscalers on the same source",
+    target: 0, used: 0, observed: 0, tokens: 0, requests: 0,
+    priority: "normal", live: false, member: false,
+    lastSeen: 26 * 3600_000, prompt: "Compare the two upscalers on the same source",
+  }),
+  project("obp-ui", {
+    target: 0, used: 0, observed: 0, tokens: 0, requests: 0,
+    priority: "normal", live: false, member: false,
+    lastSeen: 2 * 24 * 3600_000, prompt: "yes, that's it. commit push",
   }),
   project("proto", {
-    target: 0,
-    used: 0,
-    observed: 0,
-    tokens: 0,
-    requests: 0,
-    priority: "normal",
-    live: false,
-    member: false,
-    lastSeen: 3 * 24 * 3600_000,
-    prompt: "Sketch the ingest schema",
+    target: 0, used: 0, observed: 0, tokens: 0, requests: 0,
+    priority: "normal", live: false, member: false,
+    lastSeen: 3 * 24 * 3600_000, prompt: "Sketch the ingest schema",
+  }),
+  project("alphadiff", {
+    target: 0, used: 0, observed: 0, tokens: 0, requests: 0,
+    priority: "normal", live: false, member: false,
+    lastSeen: 4 * 24 * 3600_000, prompt: "Check the diff viewer against the golden files",
   }),
 ];
 

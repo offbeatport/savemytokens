@@ -14,7 +14,7 @@
 
 <br><br>
 
-<img src="https://raw.githubusercontent.com/offbeatport/savemytokens/main/assets/screenshot.svg" alt="The SaveMyTokens control centre: four projects sharing one 5-hour window, three of them open, each row showing its allocation, how much of that allocation it has spent, its priority and its last prompt, above a RECENT table of everything else." width="880">
+<img src="https://raw.githubusercontent.com/offbeatport/savemytokens/main/assets/screenshot.svg" alt="The SaveMyTokens control centre: seven projects sharing one 5-hour window, three of them pinned to the top, each row showing its allocation, how much of that allocation it has spent, its priority and its last prompt, above a RECENT table of six more." width="955">
 
 <br>
 
@@ -59,28 +59,27 @@ Code's `settings.json`, backing the file up first.
 
 ## A worked example
 
-Four sessions open, and the release matters more than the experiment.
+Seven projects open, and the release matters more than the experiment.
 
 ```sh
-npx savemytokens share webinvoke 50      # Set webinvoke target to 50%
-npx savemytokens priority webinvoke high # webinvoke now takes spare capacity first
+npx savemytokens share burningdemand 20      # Set burningdemand target to 20%
+npx savemytokens priority burningdemand high # burningdemand now takes spare capacity first
 ```
 
-The other three split what is left. When one of them finishes, whatever it did not spend goes to
-webinvoke, because it is the only project on the high tier.
+The others split what is left. When one of them finishes, whatever it did not spend goes to
+burningdemand, because it is the only project on the high tier.
 
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/offbeatport/savemytokens/main/assets/example.svg" alt="Four projects in the ACTIVE table: webinvoke pinned at 50% and 62% through it, buydiff at 30% and 41% through, obp-ui at 20% and 93% through, reposhine holding 15% with nothing running." width="730">
+<img src="https://raw.githubusercontent.com/offbeatport/savemytokens/main/assets/example.svg" alt="Seven projects in the ACTIVE table. Three are pinned, in the order they were pinned: burningdemand at 20% and 71% through it on HIGH, autonomykernel at 18% and 44% through, coldverdict at 12% and 93% through on LOW. Below them the unpinned ones share what is left." width="900">
 
 </div>
 
-`obp-ui` is at 93% of its slice, so its next turn opens with a line telling it to finish what it has
-and write down the rest. Whatever it drops comes back the next time you open that project.
-`reposhine` is holding 15% with nothing running: it lends that out while it rests, and takes it back
-when you return.
+`coldverdict` is at 93% of its slice, so its next turn opens with a line telling it to finish what it
+has and write down the rest. Whatever it drops comes back the next time you open that project.
 
-Nothing here required you to guess how many tokens anything costs.
+The three pinned rows hold the order you pinned them in, whatever happens to the numbers beside
+them. Nothing here required you to guess how many tokens anything costs.
 
 ## Commands
 
