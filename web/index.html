@@ -465,6 +465,26 @@
         .tip { transition: none; }
       }
     </style>
+    <script>
+      (function () {
+        var clientId = "";
+        var apiUrl = "https://opapi.offbeatport.com";
+        if (!clientId) return;
+        window.op = window.op || function () {
+          var queue = [];
+          return new Proxy(function () { arguments.length && queue.push([].slice.call(arguments)); }, {
+            get: function (target, name) { return name === "q" ? queue : function () { queue.push([name].concat([].slice.call(arguments))); }; },
+            has: function (target, name) { return name === "q"; }
+          });
+        }();
+        window.op("init", { clientId: clientId, apiUrl: apiUrl, trackScreenViews: true, trackOutgoingLinks: true });
+        var script = document.createElement("script");
+        script.src = "https://openpanel.dev/op1.js";
+        script.defer = true;
+        script.async = true;
+        document.head.appendChild(script);
+      })();
+    </script>
   </head>
   <body>
     <div class="bar">
